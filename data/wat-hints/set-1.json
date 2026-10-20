@@ -1,0 +1,482 @@
+{
+  "escape": {
+    "simple": "to get away from danger or a bad situation",
+    "natural": "He stayed calm and looked for a way to escape the fire.",
+    "positive": "Escaping a bad habit is the first step towards a better life.",
+    "leadership": "The leader checked every exit and helped the team escape safely.",
+    "factual": "The prisoners escaped through a tunnel dug over three months.",
+    "general": "The cat escaped through the open window before anyone noticed."
+  },
+  "gun": {
+    "simple": "a weapon that fires bullets",
+    "natural": "He saw the gun and raised his hands slowly.",
+    "positive": "A gun in trained hands protects the innocent.",
+    "leadership": "The officer kept the gun secured and briefed the squad on safety.",
+    "factual": "A service rifle is checked and cleared before it is handed over.",
+    "general": "The guard carried his gun on his shoulder through the night."
+  },
+  "award": {
+    "simple": "a prize given for good work",
+    "natural": "He felt proud when his name was called for the award.",
+    "positive": "An award reminds us that sincere effort is noticed.",
+    "leadership": "The team leader shared the award credit with every member.",
+    "factual": "The award is given every year to the best cadet in the academy.",
+    "general": "She kept the award on the shelf beside her books."
+  },
+  "guts": {
+    "simple": "courage to face something difficult",
+    "natural": "It took guts to admit the mistake in front of everyone.",
+    "positive": "Guts grow stronger each time you choose the right path under pressure.",
+    "leadership": "A leader shows guts by taking responsibility when the plan fails.",
+    "factual": "The word guts is used informally for courage and determination.",
+    "general": "He had the guts to speak first in the meeting."
+  },
+  "god": {
+    "simple": "the supreme power people worship",
+    "natural": "He closed his eyes and thanked God for his family.",
+    "positive": "Faith in God gives many people calm and strength.",
+    "leadership": "A good leader respects the faith of every person in the team.",
+    "factual": "India recognises many faiths and protects the freedom to worship.",
+    "general": "She visits the temple every Sunday to pray to God."
+  },
+  "fight": {
+    "simple": "to struggle against something",
+    "natural": "He decided to fight the problem instead of running from it.",
+    "positive": "We can fight any difficulty with patience and a clear plan.",
+    "leadership": "The leader taught the team to fight fear, not each other.",
+    "factual": "Soldiers train daily so they can fight effectively when called.",
+    "general": "The children fought over the last seat in the bus."
+  },
+  "achieve": {
+    "simple": "to reach a goal by effort",
+    "natural": "He wrote the target down so he could achieve it.",
+    "positive": "Small daily steps help you achieve big results.",
+    "leadership": "A leader helps every member achieve more than they thought possible.",
+    "factual": "The unit achieved its training target two weeks ahead of schedule.",
+    "general": "You can achieve good marks with steady revision."
+  },
+  "fake": {
+    "simple": "not real; copied to deceive",
+    "natural": "He noticed the signature looked fake and asked for proof.",
+    "positive": "Rejecting fake shortcuts builds real confidence.",
+    "leadership": "The leader checked the documents so no fake claim entered the file.",
+    "factual": "Fake news spreads fastest when people share without checking.",
+    "general": "The watch was fake, but it still kept good time."
+  },
+  "hard work": {
+    "simple": "steady effort over a long time",
+    "natural": "He believed hard work would take him further than luck.",
+    "positive": "Hard work turns ordinary ability into real achievement.",
+    "leadership": "The leader worked harder than anyone and set the standard.",
+    "factual": "Consistent hard work improves skill more than short bursts of effort.",
+    "general": "Hard work in the morning leaves the evening free."
+  },
+  "imagination": {
+    "simple": "the ability to form new ideas in the mind",
+    "natural": "His imagination turned a simple box into a spaceship.",
+    "positive": "Imagination lets us see solutions that do not exist yet.",
+    "leadership": "A leader uses imagination to plan for problems before they arrive.",
+    "factual": "Imagination helps children learn language faster.",
+    "general": "She has a lively imagination and writes stories at night."
+  },
+  "aim": {
+    "simple": "a goal you want to reach",
+    "natural": "He fixed his aim on the target and breathed out.",
+    "positive": "A clear aim keeps the mind focused under pressure.",
+    "leadership": "The leader explained the aim before dividing the tasks.",
+    "factual": "The aim of the exercise was to test teamwork under fatigue.",
+    "general": "My aim this year is to read twelve books."
+  },
+  "kill": {
+    "simple": "to cause death",
+    "natural": "He could not kill even an insect without reason.",
+    "positive": "Choose to kill bad habits before they grow.",
+    "leadership": "The leader ordered the team to kill the rumour with facts.",
+    "factual": "The pest control team had to kill the infected crop to save the field.",
+    "general": "The frost killed the young plants overnight."
+  },
+  "lose": {
+    "simple": "to fail to win, or to no longer have something",
+    "natural": "He accepted that he might lose, but he would not quit.",
+    "positive": "You lose a match, not the lesson it teaches.",
+    "leadership": "A leader absorbs the blame when the team loses.",
+    "factual": "The team lost the final by three points.",
+    "general": "Be careful not to lose your keys again."
+  },
+  "aloof": {
+    "simple": "distant and unfriendly",
+    "natural": "He seemed aloof, so nobody asked him for help.",
+    "positive": "Being quiet is fine, but staying aloof weakens a team.",
+    "leadership": "A leader cannot afford to stay aloof from the people he leads.",
+    "factual": "The word aloof describes someone who keeps a distance.",
+    "general": "The new boy was aloof for a week, then joined the games."
+  },
+  "bribe": {
+    "simple": "money given to get an unfair favour",
+    "natural": "He refused the bribe and reported it to his senior.",
+    "positive": "Refusing a bribe protects your self-respect more than money can.",
+    "leadership": "A leader sets the example by rejecting every bribe openly.",
+    "factual": "Taking a bribe is a criminal offence under the Prevention of Corruption Act.",
+    "general": "The clerk was arrested for accepting a bribe."
+  },
+  "jungle": {
+    "simple": "a thick forest",
+    "natural": "They lost the path in the jungle and waited for daylight.",
+    "positive": "The jungle teaches patience, alertness and respect for nature.",
+    "leadership": "The leader kept the group together in the jungle.",
+    "factual": "Jungles hold more than half of the world's plant and animal species.",
+    "general": "We saw deer and peacocks in the jungle."
+  },
+  "identity": {
+    "simple": "who a person is",
+    "natural": "He was proud of his identity and his roots.",
+    "positive": "A strong identity helps you stay steady under pressure.",
+    "leadership": "A leader respects every identity in a mixed team.",
+    "factual": "Aadhaar is used as proof of identity in India.",
+    "general": "The wallet held his identity card and licence."
+  },
+  "books": {
+    "simple": "printed or written works you read",
+    "natural": "He opened a book whenever he felt restless.",
+    "positive": "Books give knowledge and calm in equal measure.",
+    "leadership": "A leader reads widely to make better decisions.",
+    "factual": "The library holds over ten thousand books.",
+    "general": "She keeps her books neatly on the shelf."
+  },
+  "money": {
+    "simple": "coins and notes used to buy things",
+    "natural": "He saved money every month instead of spending it.",
+    "positive": "Money managed well brings security, not show.",
+    "leadership": "A leader spends team money as carefully as his own.",
+    "factual": "The rupee is issued by the Reserve Bank of India.",
+    "general": "He forgot his money at home and paid by phone."
+  },
+  "riot": {
+    "simple": "a violent public disturbance",
+    "natural": "The shopkeeper closed early when the riot began.",
+    "positive": "A calm word can stop a crowd before a riot starts.",
+    "leadership": "The officer controlled the riot without firing a shot.",
+    "factual": "Riot control units use shields, helmets and water cannon.",
+    "general": "The market stayed shut after the riot."
+  },
+  "mother": {
+    "simple": "a female parent",
+    "natural": "He called his mother first whenever something good happened.",
+    "positive": "A mother's patience shapes a child's character.",
+    "leadership": "A leader cares for his team the way a mother cares for her family.",
+    "factual": "Motherhood is protected by law in most countries.",
+    "general": "My mother makes the best tea in the house."
+  },
+  "praise": {
+    "simple": "words that show approval",
+    "natural": "He felt shy when his teacher praised him.",
+    "positive": "Honest praise costs nothing and lifts a whole team.",
+    "leadership": "A leader praises in public and corrects in private.",
+    "factual": "The report praised the unit for its quick response.",
+    "general": "She praised the food and asked for the recipe."
+  },
+  "organise": {
+    "simple": "to arrange things in order",
+    "natural": "He organised his notes the night before the exam.",
+    "positive": "Organising small tasks early removes half the stress.",
+    "leadership": "The leader organised the camp so everyone had a clear job.",
+    "factual": "The event was organised by the student council.",
+    "general": "Please organise these files by date."
+  },
+  "bright": {
+    "simple": "full of light, or clever",
+    "natural": "The bright light made him shade his eyes.",
+    "positive": "A bright mind and a steady heart make a strong officer.",
+    "leadership": "The leader saw a bright solution where others saw a dead end.",
+    "factual": "The brightest star in the night sky is Sirius.",
+    "general": "She wore a bright yellow dress to the function."
+  },
+  "plan": {
+    "simple": "a set of steps to reach a goal",
+    "natural": "He made a plan before touching the problem.",
+    "positive": "A simple plan followed well beats a clever plan abandoned.",
+    "leadership": "The leader made a plan, shared it and kept it flexible.",
+    "factual": "The operation followed a plan rehearsed three times.",
+    "general": "Our plan for Sunday is a long walk by the river."
+  },
+  "meet": {
+    "simple": "to come together with someone",
+    "natural": "He was glad to meet his old friend at the station.",
+    "positive": "Every meeting is a chance to learn something new.",
+    "leadership": "The leader meets the team every morning for five minutes.",
+    "factual": "The two officers met at the border post to discuss the handover.",
+    "general": "Let us meet outside the theatre at six."
+  },
+  "lonely": {
+    "simple": "sad from being alone",
+    "natural": "He felt lonely on the first night away from home.",
+    "positive": "Loneliness can be used to think and grow.",
+    "leadership": "A leader notices the lonely member and brings him into the group.",
+    "factual": "Loneliness is common among people who live far from family.",
+    "general": "The old house felt lonely after the children moved out."
+  },
+  "border": {
+    "simple": "the line between two countries",
+    "natural": "The soldier kept watch at the border through the night.",
+    "positive": "A calm border lets trade and friendship grow.",
+    "leadership": "The leader checked the border post and spoke to every guard.",
+    "factual": "India shares borders with seven countries.",
+    "general": "We stopped at a small town on the border."
+  },
+  "honest": {
+    "simple": "truthful and fair",
+    "natural": "He was honest even when the truth cost him.",
+    "positive": "Honesty builds trust that no cleverness can replace.",
+    "leadership": "A leader must be honest about bad news first.",
+    "factual": "The officer was praised for his honest report.",
+    "general": "Be honest with me about what happened."
+  },
+  "blunder": {
+    "simple": "a careless mistake",
+    "natural": "He realised his blunder and corrected it at once.",
+    "positive": "A blunder admitted early becomes a lesson, not a habit.",
+    "leadership": "The leader owned the blunder instead of blaming the team.",
+    "factual": "The filing blunder delayed the application by a week.",
+    "general": "I made a blunder by calling her by the wrong name."
+  },
+  "air force": {
+    "simple": "the branch of the armed forces that fights in the sky",
+    "natural": "He dreamed of joining the Air Force as a pilot.",
+    "positive": "The Air Force guards the sky so the ground can live in peace.",
+    "leadership": "The Air Force captain briefed the crew before the sortie.",
+    "factual": "The Indian Air Force was founded in 1932.",
+    "general": "The Air Force display drew thousands of visitors."
+  },
+  "progress": {
+    "simple": "movement towards something better",
+    "natural": "He measured his progress each week to stay motivated.",
+    "positive": "Slow progress is still progress worth protecting.",
+    "leadership": "The leader tracked progress without pressuring the team.",
+    "factual": "The project made steady progress through the year.",
+    "general": "Her reading has shown good progress."
+  },
+  "success": {
+    "simple": "reaching what you set out to do",
+    "natural": "He stayed humble after his first success.",
+    "positive": "Success is the result of many unglamorous habits.",
+    "leadership": "A leader shares success and carries failure alone.",
+    "factual": "The campaign was a success, with every target met.",
+    "general": "The function was a success thanks to the volunteers."
+  },
+  "select": {
+    "simple": "to choose from a group",
+    "natural": "He was happy to be selected for the trial.",
+    "positive": "Select your battles carefully and finish the ones you choose.",
+    "leadership": "The leader selected the team by skill, not by favour.",
+    "factual": "Candidates are selected through a written exam and an interview.",
+    "general": "Please select a colour from the list."
+  },
+  "climb": {
+    "simple": "to go up",
+    "natural": "He climbed slowly and rested at every ledge.",
+    "positive": "Every climb is easier when the next step is clear.",
+    "leadership": "The leader climbed last to make sure nobody was left behind.",
+    "factual": "The peak was first climbed in 1953.",
+    "general": "The children climbed the mango tree for fruit."
+  },
+  "task": {
+    "simple": "a piece of work to be done",
+    "natural": "He finished the task before taking a break.",
+    "positive": "A hard task done well builds quiet confidence.",
+    "leadership": "The leader gave each person a task that matched his strength.",
+    "factual": "The task took four hours and two people.",
+    "general": "My only task today is to buy vegetables."
+  },
+  "tragedy": {
+    "simple": "a very sad event",
+    "natural": "The village never forgot the tragedy of that flood.",
+    "positive": "Even after tragedy, people rebuild with courage.",
+    "leadership": "The leader reached the tragedy site before dawn.",
+    "factual": "The tragedy claimed many lives and damaged the bridge.",
+    "general": "It was a tragedy that the trip ended in rain."
+  },
+  "weak": {
+    "simple": "not strong",
+    "natural": "He felt weak after the long march but kept walking.",
+    "positive": "A weak start can still become a strong finish.",
+    "leadership": "The leader protected the weakest member instead of leaving him.",
+    "factual": "The bridge was declared weak and closed for repairs.",
+    "general": "The tea is too weak for my taste."
+  },
+  "corruption": {
+    "simple": "dishonest use of power for personal gain",
+    "natural": "He refused to join the corruption around him.",
+    "positive": "Clean systems and honest people can defeat corruption.",
+    "leadership": "The leader made every payment public to stop corruption.",
+    "factual": "The Lokpal investigates complaints of corruption.",
+    "general": "Corruption raises the price of everything."
+  },
+  "bluff": {
+    "simple": "to pretend to be strong in order to deceive",
+    "natural": "He called the bluff instead of backing away.",
+    "positive": "Honesty wins where bluff only delays.",
+    "leadership": "The leader saw the bluff and kept the team steady.",
+    "factual": "In poker, a bluff is a bet made on a weak hand.",
+    "general": "He was only bluffing when he said he would leave."
+  },
+  "borrow": {
+    "simple": "to take something and return it later",
+    "natural": "He asked politely before borrowing the cycle.",
+    "positive": "Borrowing wisely and returning on time builds trust.",
+    "leadership": "The leader borrowed nothing he could not return.",
+    "factual": "The bank lets students borrow for education at low interest.",
+    "general": "Can I borrow your pen for a minute?"
+  },
+  "calamity": {
+    "simple": "a great disaster",
+    "natural": "The town prepared before the calamity struck.",
+    "positive": "Preparedness turns a calamity into a manageable crisis.",
+    "leadership": "The leader stayed calm during the calamity and gave clear orders.",
+    "factual": "The calamity destroyed crops across three districts.",
+    "general": "Missing the last bus was a small calamity for us."
+  },
+  "convince": {
+    "simple": "to make someone believe something",
+    "natural": "He convinced his friend with facts, not force.",
+    "positive": "A calm explanation convinces better than a loud argument.",
+    "leadership": "The leader convinced the team to accept a difficult plan.",
+    "factual": "The evidence convinced the committee to change the rule.",
+    "general": "She convinced me to try the new restaurant."
+  },
+  "duty": {
+    "simple": "what you must do",
+    "natural": "He stayed at his post because it was his duty.",
+    "positive": "Duty done quietly is the strongest form of service.",
+    "leadership": "A leader puts duty before comfort every time.",
+    "factual": "Every officer takes an oath to do his duty without fear.",
+    "general": "It is my duty to lock the gate at night."
+  },
+  "doubt": {
+    "simple": "a feeling of not being sure",
+    "natural": "A small doubt made him check the figures twice.",
+    "positive": "Doubt handled honestly leads to better decisions.",
+    "leadership": "The leader welcomed doubt and answered every question.",
+    "factual": "The report left no doubt about the cause of the failure.",
+    "general": "I doubt it will rain today."
+  },
+  "joy": {
+    "simple": "great happiness",
+    "natural": "He felt joy when the results were announced.",
+    "positive": "Joy shared with others lasts longer.",
+    "leadership": "The leader took joy in the team's success, not his own.",
+    "factual": "Festivals are celebrated with music and joy across India.",
+    "general": "The children jumped with joy at the news."
+  },
+  "injustice": {
+    "simple": "unfair treatment",
+    "natural": "He spoke up against the injustice he saw.",
+    "positive": "Courage and law together can correct injustice.",
+    "leadership": "The leader refused to allow injustice in his unit.",
+    "factual": "The Constitution protects citizens against injustice.",
+    "general": "It was an injustice to blame the whole class."
+  },
+  "stress": {
+    "simple": "pressure that strains the mind",
+    "natural": "He managed stress by running every morning.",
+    "positive": "Stress handled well sharpens your focus.",
+    "leadership": "The leader reduced stress by giving the team clear priorities.",
+    "factual": "Long hours without rest increase stress and reduce accuracy.",
+    "general": "Exam stress made him forget his own name."
+  },
+  "win": {
+    "simple": "to come first or succeed",
+    "natural": "He wanted to win, but he played fair.",
+    "positive": "You win twice when you win without cheating.",
+    "leadership": "A leader wins by making the team believe in itself.",
+    "factual": "India won the match by six wickets.",
+    "general": "Nobody wins an argument with a stubborn person."
+  },
+  "exploit": {
+    "simple": "to use something, often unfairly",
+    "natural": "He refused to exploit the trust of his juniors.",
+    "positive": "Use your strengths to lift others, never to exploit them.",
+    "leadership": "The leader made sure no worker was exploited for extra hours.",
+    "factual": "The law protects children from being exploited at work.",
+    "general": "They exploited the free offer and ate twice."
+  },
+  "freedom": {
+    "simple": "the right to act without being controlled",
+    "natural": "He valued the freedom to choose his own path.",
+    "positive": "Freedom grows stronger when it is used with responsibility.",
+    "leadership": "A leader gives freedom with clear limits.",
+    "factual": "India became independent in 1947 after a long freedom struggle.",
+    "general": "The holiday gave us the freedom to sleep late."
+  },
+  "battlefield": {
+    "simple": "the place where a battle is fought",
+    "natural": "He imagined the battlefield and felt the weight of it.",
+    "positive": "Courage on a battlefield begins with discipline at home.",
+    "leadership": "The leader kept the wounded moving off the battlefield.",
+    "factual": "The battlefield was cleared and secured by nightfall.",
+    "general": "The old battlefield is now a quiet field of grass."
+  },
+  "employment": {
+    "simple": "the state of having paid work",
+    "natural": "He searched for employment while studying at night.",
+    "positive": "Skill and honesty make employment easier to find.",
+    "leadership": "The leader trained his team so their employment was secure.",
+    "factual": "Employment in the services sector has grown steadily.",
+    "general": "The factory provides employment to three hundred people."
+  },
+  "scheme": {
+    "simple": "a plan or official programme",
+    "natural": "He read the scheme carefully before applying.",
+    "positive": "A good scheme reaches the people it was made for.",
+    "leadership": "The leader explained the scheme in simple words to the village.",
+    "factual": "The scheme gives every household a cooking gas connection.",
+    "general": "Their scheme to surprise her worked perfectly."
+  },
+  "navy": {
+    "simple": "the branch of the armed forces that fights at sea",
+    "natural": "He watched the navy ships leave the harbour.",
+    "positive": "The navy protects trade routes that keep the country running.",
+    "leadership": "The navy captain steadied the crew in rough weather.",
+    "factual": "The Indian Navy traces its origins to 1612.",
+    "general": "The navy band played at the parade."
+  },
+  "agree": {
+    "simple": "to have the same opinion",
+    "natural": "He agreed only after hearing the full argument.",
+    "positive": "People agree faster when they feel heard.",
+    "leadership": "The leader got everyone to agree on one clear goal.",
+    "factual": "Both sides agreed to the ceasefire terms.",
+    "general": "I agree with your plan for the weekend."
+  },
+  "run": {
+    "simple": "to move quickly on foot",
+    "natural": "He ran to the gate when he heard the bell.",
+    "positive": "A short run each morning clears the mind.",
+    "leadership": "The leader ran beside the slowest recruit.",
+    "factual": "He ran the distance in under four minutes.",
+    "general": "I need to run to the shop before it closes."
+  },
+  "life": {
+    "simple": "the state of being alive",
+    "natural": "He chose to value life in every form.",
+    "positive": "Life becomes meaningful when it serves others.",
+    "leadership": "A leader protects life before property.",
+    "factual": "Life expectancy in India has risen over the decades.",
+    "general": "Life in a small town is slow and peaceful."
+  },
+  "discipline": {
+    "simple": "control and order in behaviour",
+    "natural": "He followed a strict discipline during training.",
+    "positive": "Discipline is the bridge between a goal and its achievement.",
+    "leadership": "The leader enforced discipline by example.",
+    "factual": "The academy is known for its discipline and routine.",
+    "general": "Discipline at home makes school easier."
+  },
+  "courage": {
+    "simple": "the strength to face fear",
+    "natural": "It took courage to speak the truth in that room.",
+    "positive": "Courage grows every time fear is faced honestly.",
+    "leadership": "A leader shows courage by standing with the team in failure.",
+    "factual": "The soldier was awarded for courage under fire.",
+    "general": "She found the courage to say no."
+  }
+}

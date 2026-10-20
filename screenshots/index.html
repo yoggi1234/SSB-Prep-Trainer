@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SSB Prep Trainer — verification screenshots</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0;
+        background: #ffffff;
+        color: #12251b;
+        font: 15px/1.55 "Segoe UI", system-ui, sans-serif;
+      }
+      header {
+        padding: 22px 26px 6px;
+        border-bottom: 1px solid #d6e5dc;
+        background: #f5fbf7;
+      }
+      h1 { margin: 0 0 6px; font-size: 22px; }
+      p { color: #5d7266; margin: 0 0 14px; max-width: 78ch; }
+      main { padding: 24px 26px 60px; display: grid; gap: 26px; grid-template-columns: 1fr; max-width: 1240px; }
+      figure { margin: 0; }
+      figcaption {
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      figcaption span { color: #5d7266; font-weight: 400; }
+      img {
+        width: 100%;
+        border: 1px solid #d6e5dc;
+        border-radius: 12px;
+        display: block;
+      }
+      code { background: #edf6f0; padding: 1px 6px; border-radius: 5px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>SSB Prep Trainer — verification screenshots</h1>
+      <p>
+        Captured from the <strong>packaged Windows build</strong>
+        (<code>release/win-unpacked/SSB Prep Trainer.exe</code>) by the scripted smoke test.
+        Each image is the real Electron window, driven through a full TAT / WAT / SRT cycle,
+        the word library, the lecturette, the news digest and diagnostics. Distinct frames are
+        checked by hash, so none of these is a stale capture — 35 frames, all different.
+      </p>
+    </header>
+    <main>
+      <figure>
+        <figcaption>1. Home <span>— three test tiles, attempt stats, timing note</span></figcaption>
+        <img src="01-home.png" alt="Home screen" />
+      </figure>
+      <figure>
+        <figcaption>2. Dashboard <span>— ten tiles on the Mist dark palette, one lit at a time: the highlight walks on its own, the arrow keys take over, and every section (Settings included) lives here instead of a top menu</span></figcaption>
+        <img src="01b-dashboard.png" alt="Dashboard with rotating tiles" />
+      </figure>
+      <figure>
+        <figcaption>3. WAT running <span>— one large countdown, the word, its plain meaning — no answer box, because you write in your practice copy</span></figcaption>
+        <img src="02-wat-running.png" alt="WAT running with big clock" />
+      </figure>
+      <figure>
+        <figcaption>4. WAT auto-advance <span>— per-word clock shortened to 2 s to prove the word changes by itself</span></figcaption>
+        <img src="03b-wat-auto.png" alt="WAT auto advance" />
+      </figure>
+      <figure>
+        <figcaption>5. WAT result <span>— all 60 words, each with five model sentences: natural, positive, leadership, factual, general</span></figcaption>
+        <img src="03-wat-result.png" alt="WAT result with model sentences" />
+      </figure>
+      <figure>
+        <figcaption>6. SRT running <span>— whole-set countdown, situation, navigator grid — no writing box: the reaction goes in your practice copy</span></figcaption>
+        <img src="04-srt-running.png" alt="SRT running" />
+      </figure>
+      <figure>
+        <figcaption>7. SRT result</figcaption>
+        <img src="05-srt-result.png" alt="SRT result" />
+      </figure>
+      <figure>
+        <figcaption>8. TAT viewing phase <span>— a classic TAT plate from the bundled 41-picture set, 30 s to look</span></figcaption>
+        <img src="06-tat-view.png" alt="TAT viewing a bundled picture" />
+      </figure>
+      <figure>
+        <figcaption>9. TAT writing phase <span>— picture taken away, 4-minute clock, no typing box: the story goes in your practice copy</span></figcaption>
+        <img src="07-tat-writing.png" alt="TAT writing" />
+      </figure>
+      <figure>
+        <figcaption>10. TAT result</figcaption>
+        <img src="08-tat-result.png" alt="TAT result" />
+      </figure>
+      <figure>
+        <figcaption>11. Word library <span>— 149,003 words, search box and the offline/online lookup toggle</span></figcaption>
+        <img src="09-library.png" alt="Word library" />
+      </figure>
+      <figure>
+        <figcaption>12. Meanings <span>— searching "brav" and opening the Meaning button on "brave"</span></figcaption>
+        <img src="10-library-meaning.png" alt="Word meaning open" />
+      </figure>
+      <figure>
+        <figcaption>13. Negative words <span>— the Negative tab, showing sentiment-tagged words</span></figcaption>
+        <img src="11-library-negative.png" alt="Negative words tab" />
+      </figure>
+      <figure>
+        <figcaption>14. History <span>— saved attempts with expand / export / delete</span></figcaption>
+        <img src="12-history.png" alt="History" />
+      </figure>
+      <figure>
+        <figcaption>15. An opened attempt <span>— every prompt and what you wrote</span></figcaption>
+        <img src="12b-history-open.png" alt="Opened attempt in history" />
+      </figure>
+      <figure>
+        <figcaption>16. Result screen <span>— words practised, time on task, export and practise again</span></figcaption>
+        <img src="12c-result.png" alt="Result screen" />
+      </figure>
+      <figure>
+        <figcaption>17. Paused mid-run <span>— the countdown holds while you are away</span></figcaption>
+        <img src="12d-wat-paused.png" alt="WAT paused" />
+      </figure>
+      <figure>
+        <figcaption>18. SRT situation grid <span>— jump to any situation; answered ones are marked</span></figcaption>
+        <img src="12e-srt-nav.png" alt="SRT navigation grid" />
+      </figure>
+      <figure>
+        <figcaption>19. Your own TAT pictures <span>— add a folder and the slides use it instead of the library</span></figcaption>
+        <img src="12f-tat-my-pictures.png" alt="TAT with your own pictures" />
+      </figure>
+      <figure>
+        <figcaption>20. Meaning from a row <span>— clicking the Meaning button on a word</span></figcaption>
+        <img src="12g-library-meaning.png" alt="Meaning opened from the row" />
+      </figure>
+      <figure>
+        <figcaption>21. Positive words tab <span>— 1,176 sentiment-tagged words</span></figcaption>
+        <img src="12h-library-positive.png" alt="Positive words tab" />
+      </figure>
+      <figure>
+        <figcaption>22. Settings <span>— timings, shuffle toggles, custom sets, material notes</span></figcaption>
+        <img src="13-settings.png" alt="Settings" />
+      </figure>
+      <figure>
+        <figcaption>23. Lecturette topics <span>— 334 topics filed by theme, with search, a board filter and a source badge on every card: hand-written, drafted script or outline</span></figcaption>
+        <img src="14-lecturette-list.png" alt="Lecturette topic list" />
+      </figure>
+      <figure>
+        <figcaption>24. Facts tab <span>— what the topic carries, open without starting the clock — and an honest note when it carries no figures</span></figcaption>
+        <img src="14b-lecturette-facts.png" alt="Lecturette facts tab" />
+      </figure>
+      <figure>
+        <figcaption>25. Lecturette intro <span>— 30 seconds, with the phase checklist and the current-points panel at the bottom</span></figcaption>
+        <img src="14c-lecturette-run.png" alt="Lecturette intro phase" />
+      </figure>
+      <figure>
+        <figcaption>26. Lecturette body <span>— 2 minutes: present state, parallel, advantages, disadvantages, quote, figure, impact</span></figcaption>
+        <img src="14d-lecturette-body.png" alt="Lecturette body phase" />
+      </figure>
+      <figure>
+        <figcaption>27. Lecturette done <span>— conclusion: future, challenges, precautions, your opinion</span></figcaption>
+        <img src="14e-lecturette-done.png" alt="Lecturette finished" />
+      </figure>
+      <figure>
+        <figcaption>28. A drafted script <span>— one of the 40 drafted lecturettes, shown as the spoken text for the phase, with the checklist beside it</span></figcaption>
+        <img src="14f-lecturette-script.png" alt="Lecturette drafted script" />
+      </figure>
+      <figure>
+        <figcaption>29. Current points, offline <span>— the internet switched off: the panel still lists the points saved on disk, with the date they were checked</span></figcaption>
+        <img src="14g-lecturette-points.png" alt="Current points from the saved copy" />
+      </figure>
+      <figure>
+        <figcaption>30. The same lecture in a small window <span>— 944×621: one column, smaller type, nothing clipped — the app scales to the window</span></figcaption>
+        <img src="14h-lecturette-small.png" alt="Lecturette in a small window" />
+      </figure>
+      <figure>
+        <figcaption>31. Current points by topic <span>— the same news, sorted into how it is going, how India is affected, what India gains and the view from the world</span></figcaption>
+        <img src="14i-lecture-news.png" alt="Lecturette news points grouped" />
+      </figure>
+      <figure>
+        <figcaption>32. Add material <span>— upload your own TAT pictures and paste WAT words, with an × on any picture that should leave the test</span></figcaption>
+        <img src="18-add-material.png" alt="Add material screen" />
+      </figure>
+      <figure>
+        <figcaption>33. Bin <span>— pictures taken out of the TAT test wait here with the date and source, ready to restore or delete for good</span></figcaption>
+        <img src="17-bin.png" alt="Bin of removed TAT pictures" />
+      </figure>
+      <figure>
+        <figcaption>34. News Digest <span>— the separate Python engine, its own options, live radar, level meter and log, on the Mist dark theme</span></figcaption>
+        <img src="15-digest.png" alt="News Digest tab" />
+      </figure>
+      <figure>
+        <figcaption>35. Diagnostics <span>— environment, data counts, store, paths, the working flow and the live log, with Save report</span></figcaption>
+        <img src="16-diagnostics.png" alt="Diagnostics screen" />
+      </figure>
+    </main>
+  </body>
+</html>

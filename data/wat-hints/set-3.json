@@ -1,0 +1,482 @@
+{
+  "attitude": {
+    "simple": "the way you think and behave",
+    "natural": "His attitude changed once he understood the reason.",
+    "positive": "A good attitude turns an ordinary opportunity into a great one.",
+    "leadership": "A leader's attitude sets the mood of the whole team.",
+    "factual": "A positive attitude was found to improve recovery after surgery.",
+    "general": "She has a cheerful attitude towards chores."
+  },
+  "education": {
+    "simple": "teaching and learning",
+    "natural": "He valued education because it had changed his own life.",
+    "positive": "Education opens doors that cannot be closed again.",
+    "leadership": "A leader invests in the education of others, not only his own.",
+    "factual": "The Right to Education Act was passed in 2009.",
+    "general": "Her education was paid for by a scholarship."
+  },
+  "team": {
+    "simple": "a group working together",
+    "natural": "He trusted the team and did his own part well.",
+    "positive": "A good team makes each person stronger than he is alone.",
+    "leadership": "A leader builds the team before building the plan.",
+    "factual": "The team completed the exercise in the shortest time.",
+    "general": "Our team meets every Monday."
+  },
+  "tough": {
+    "simple": "difficult, or strong",
+    "natural": "The task was tough, but he kept at it.",
+    "positive": "Tough times reveal who your real friends are.",
+    "leadership": "A leader stays tough on the problem and gentle with people.",
+    "factual": "The route was tough because of the loose gravel.",
+    "general": "It has been a tough week at work."
+  },
+  "regular": {
+    "simple": "happening at fixed times or in a pattern",
+    "natural": "He kept a regular routine even on holidays.",
+    "positive": "Regular small efforts beat occasional big ones.",
+    "leadership": "A leader keeps regular hours so the team can plan.",
+    "factual": "The regular check is done every third day.",
+    "general": "He is a regular customer at the bakery."
+  },
+  "problem": {
+    "simple": "a difficulty that needs solving",
+    "natural": "He wrote the problem down before trying to solve it.",
+    "positive": "Every problem carries the seed of a better method.",
+    "leadership": "A leader absorbs the problem instead of passing it down.",
+    "factual": "The problem was traced to a loose connection.",
+    "general": "The problem is that the shop closes early."
+  },
+  "decision": {
+    "simple": "a choice you have made",
+    "natural": "He made the decision and informed the team.",
+    "positive": "A decision made early can be changed; none made cannot.",
+    "leadership": "A leader takes the final decision and stands by it.",
+    "factual": "The committee's decision was announced in the evening.",
+    "general": "Renovating the kitchen was a good decision."
+  },
+  "curiosity": {
+    "simple": "the wish to know or learn",
+    "natural": "His curiosity made him open the old radio.",
+    "positive": "Curiosity keeps the mind young and learning.",
+    "leadership": "A leader encourages curiosity instead of punishing questions.",
+    "factual": "Curiosity is what drove most early scientific discoveries.",
+    "general": "Curiosity made the cat climb the shelf."
+  },
+  "competition": {
+    "simple": "a contest between people",
+    "natural": "He treated the competition as a chance to test himself.",
+    "positive": "Healthy competition raises everyone's standard.",
+    "leadership": "A leader keeps competition fair and celebrates effort.",
+    "factual": "The competition had over two hundred entries.",
+    "general": "There is stiff competition for that seat."
+  },
+  "father": {
+    "simple": "a male parent",
+    "natural": "He called his father before making the final choice.",
+    "positive": "A father's quiet example teaches more than his advice.",
+    "leadership": "A leader feels as responsible for his team as a father for his family.",
+    "factual": "His father served in the army for twenty years.",
+    "general": "My father taught me to ride a cycle."
+  },
+  "stamina": {
+    "simple": "the strength to keep going",
+    "natural": "He saved his stamina for the final stretch.",
+    "positive": "Stamina is built by small efforts repeated daily.",
+    "leadership": "A leader paces the team so stamina lasts the full distance.",
+    "factual": "Long-distance running mainly builds stamina and mental strength.",
+    "general": "The hill climb tested everyone's stamina."
+  },
+  "death": {
+    "simple": "the end of life",
+    "natural": "He thought about death and held life more carefully.",
+    "positive": "The reality of death teaches us to value the time we have.",
+    "leadership": "A leader protects life and takes the risks himself.",
+    "factual": "Road accidents cause over a lakh deaths in India every year.",
+    "general": "The death of the old tree changed the shade of the courtyard."
+  },
+  "struggle": {
+    "simple": "a hard fight or effort",
+    "natural": "He struggled with the rope before the team pulled together.",
+    "positive": "The struggle is where real strength is made.",
+    "leadership": "A leader struggles beside the team, never above it.",
+    "factual": "The struggle for independence lasted almost a century.",
+    "general": "I struggle to wake up early in winter."
+  },
+  "war": {
+    "simple": "armed conflict between groups or countries",
+    "natural": "He studied war to understand its human cost.",
+    "positive": "Understanding war is the first step to preventing it.",
+    "leadership": "A leader prepares for war but works for peace.",
+    "factual": "The Second World War ended in 1945.",
+    "general": "The museum has many pictures from the war."
+  },
+  "faith": {
+    "simple": "belief and trust",
+    "natural": "He kept his faith and kept working.",
+    "positive": "Faith gives calm when the outcome is still unknown.",
+    "leadership": "A leader earns the team's faith by keeping his word.",
+    "factual": "The soldiers had faith in their training and their leader.",
+    "general": "I have faith that things will settle down."
+  },
+  "system": {
+    "simple": "a set of parts that work together",
+    "natural": "He learned the system before trying to change it.",
+    "positive": "A good system makes the right action easy.",
+    "leadership": "A leader improves the system instead of blaming people.",
+    "factual": "The alert system worked and warned the village in time.",
+    "general": "The ticket system is down today."
+  },
+  "solve": {
+    "simple": "to find the answer",
+    "natural": "He solved the problem quietly before anyone noticed.",
+    "positive": "Most problems are solved by the simplest workable step.",
+    "leadership": "A leader solves what is blocking the team first.",
+    "factual": "The engineers solved the fault within two hours.",
+    "general": "Can you solve this crossword clue?"
+  },
+  "detail": {
+    "simple": "a small part of something",
+    "natural": "He checked every detail before signing.",
+    "positive": "Care for detail separates good work from great work.",
+    "leadership": "A leader checks important details without slowing the team.",
+    "factual": "The report covered every detail of the inspection.",
+    "general": "The plan is fine; do not worry about the detail."
+  },
+  "together": {
+    "simple": "with each other",
+    "natural": "They worked together and finished early.",
+    "positive": "Together we can do what none of us can alone.",
+    "leadership": "A leader brings people together instead of taking sides.",
+    "factual": "The two villages built the bridge together.",
+    "general": "Let us cook together tonight."
+  },
+  "difficult": {
+    "simple": "not easy",
+    "natural": "The climb looked difficult, so he started slowly.",
+    "positive": "A difficult task done well is worth more than five easy ones.",
+    "leadership": "A leader takes the difficult part himself.",
+    "factual": "The road was difficult after the rain.",
+    "general": "It is difficult to choose between the two."
+  },
+  "respect": {
+    "simple": "to think well of someone and treat them well",
+    "natural": "He respected every person, whatever their rank.",
+    "positive": "Respect given freely returns without being asked.",
+    "leadership": "A leader respects the team first and expects it back.",
+    "factual": "The officer was respected for his fairness.",
+    "general": "Respect your elders, but learn from everyone."
+  },
+  "nation": {
+    "simple": "a country and its people",
+    "natural": "He felt proud of the nation's achievements.",
+    "positive": "A nation grows when its people work together.",
+    "leadership": "A leader serves the nation before party or self.",
+    "factual": "The nation celebrated its independence day with a parade.",
+    "general": "The whole nation watched the match."
+  },
+  "peace": {
+    "simple": "calm and freedom from fighting",
+    "natural": "He found peace in the early morning walk.",
+    "positive": "Peace built on justice lasts; peace bought by silence does not.",
+    "leadership": "A leader keeps peace inside the team before asking it of others.",
+    "factual": "India has contributed to many peacekeeping missions.",
+    "general": "There is peace and quiet after the festival."
+  },
+  "compromise": {
+    "simple": "a solution where both sides give a little",
+    "natural": "Both sides compromised without losing the main point.",
+    "positive": "A fair compromise saves the relationship for a better day.",
+    "leadership": "A leader compromises on method but not on standards.",
+    "factual": "The border agreement was a compromise between two claims.",
+    "general": "We compromised and picked two restaurants."
+  },
+  "challenge": {
+    "simple": "a difficult task that tests you",
+    "natural": "He accepted the challenge and started that evening.",
+    "positive": "Every challenge is a chance to prove yourself to yourself.",
+    "leadership": "A leader accepts the challenge and carries the risk.",
+    "factual": "The challenge was to finish the march with a full pack.",
+    "general": "The new timetable is a challenge for all of us."
+  },
+  "impossible": {
+    "simple": "not able to be done",
+    "natural": "He thought it was impossible until he tried a new route.",
+    "positive": "The impossible usually takes a longer way round.",
+    "leadership": "A leader turns an impossible task into a series of possible steps.",
+    "factual": "It is impossible to cross the river in the monsoon.",
+    "general": "Getting all four of us free on Sunday is impossible."
+  },
+  "rights": {
+    "simple": "what a person is fairly allowed to have",
+    "natural": "He stood up for the rights of the weaker worker.",
+    "positive": "Rights respected today prevent suffering tomorrow.",
+    "leadership": "A leader respects the rights of the people he leads.",
+    "factual": "The Constitution guarantees fundamental rights to every citizen.",
+    "general": "You have every right to ask for a receipt."
+  },
+  "careless": {
+    "simple": "not paying enough attention",
+    "natural": "The careless mistake could have cost the team the match.",
+    "positive": "Careless habits can be replaced by simple checklists.",
+    "leadership": "A leader corrects careless work before it reaches the customer.",
+    "factual": "The report was careless with dates and was returned.",
+    "general": "It was careless of me to leave the keys inside."
+  },
+  "prosperity": {
+    "simple": "wealth and success",
+    "natural": "The family worked hard and made its prosperity itself.",
+    "positive": "Prosperity shared across the village is prosperity that lasts.",
+    "leadership": "A leader builds prosperity for the many, not the few.",
+    "factual": "Trade and education drove the region's prosperity.",
+    "general": "The market reflects the city's prosperity."
+  },
+  "responsible": {
+    "simple": "having a duty for something",
+    "natural": "He accepted he was responsible for the mix-up.",
+    "positive": "Taking responsibility is the mark of a person you can trust.",
+    "leadership": "A leader is responsible for the team's mistakes before he is responsible for its wins.",
+    "factual": "The officer responsible for the route was changed.",
+    "general": "I am responsible for feeding the dog."
+  },
+  "advance": {
+    "simple": "to move forward",
+    "natural": "He advanced slowly and kept a steady pace.",
+    "positive": "Advance in small steps and you will not fall back.",
+    "leadership": "A leader advances only after making sure the way is clear.",
+    "factual": "The team advanced two kilometres before nightfall.",
+    "general": "Book the tickets in advance."
+  },
+  "lead": {
+    "simple": "to guide others or be in front",
+    "natural": "He led from the front without raising his voice.",
+    "positive": "The best way to lead is to make others feel capable.",
+    "leadership": "A leader leads by example, then by instruction.",
+    "factual": "India leads the world in digital payments.",
+    "general": "This road leads to the station."
+  },
+  "character": {
+    "simple": "the qualities that make a person",
+    "natural": "His character showed in how he treated the waiters.",
+    "positive": "Character is built in small choices, not big speeches.",
+    "leadership": "A leader's character is tested most on bad days.",
+    "factual": "The school gives prizes for character and conduct.",
+    "general": "She has a strong character and never gives up."
+  },
+  "newspaper": {
+    "simple": "a paper printed with the news",
+    "natural": "He read the newspaper before starting his day.",
+    "positive": "A newspaper habit keeps the mind awake to the world.",
+    "leadership": "A leader reads beyond the headlines before forming a view.",
+    "factual": "The newspaper carries news in twelve local editions.",
+    "general": "The newspaper is delivered at six."
+  },
+  "programme": {
+    "simple": "an organised set of activities",
+    "natural": "He joined the programme to learn first aid.",
+    "positive": "A good programme leaves people better than it found them.",
+    "leadership": "The leader designed the programme around the team's weaknesses.",
+    "factual": "The training programme runs for six weeks.",
+    "general": "The music programme starts at eight."
+  },
+  "tiredness": {
+    "simple": "the feeling of being tired",
+    "natural": "Tiredness slowed him down, but he finished the task.",
+    "positive": "Rest is part of work, not a break from it.",
+    "leadership": "A leader notices tiredness in the team before it causes mistakes.",
+    "factual": "Tiredness was the main cause of the early errors.",
+    "general": "Tiredness caught up with me after lunch."
+  },
+  "conference": {
+    "simple": "a meeting to discuss a subject",
+    "natural": "He spoke briefly at the conference and listened more.",
+    "positive": "A good conference sends everyone home with one useful idea.",
+    "leadership": "A leader makes the team feel free to speak at a conference.",
+    "factual": "The conference was attended by two hundred delegates.",
+    "general": "The conference call is at ten tomorrow."
+  },
+  "correct": {
+    "simple": "right, or to make right",
+    "natural": "He checked twice and found the correct answer.",
+    "positive": "Being corrected early is a gift, not an insult.",
+    "leadership": "A leader corrects the error quietly and the person publicly never.",
+    "factual": "The correct pressure for the tyre is listed in the manual.",
+    "general": "Please correct me if I am wrong."
+  },
+  "enjoy": {
+    "simple": "to take pleasure in something",
+    "natural": "He enjoyed the walk even in the rain.",
+    "positive": "Enjoy the work and it takes less effort.",
+    "leadership": "A leader makes sure the team enjoys the journey, not only the result.",
+    "factual": "The children enjoyed the museum visit the most.",
+    "general": "I enjoy reading before bed."
+  },
+  "leader": {
+    "simple": "a person who guides a group",
+    "natural": "The leader listened first and spoke last.",
+    "positive": "A good leader makes other leaders, not followers.",
+    "leadership": "A leader takes the blame and gives away the credit.",
+    "factual": "The leader of the expedition had climbed the peak twice before.",
+    "general": "Every group needs a leader for the trip."
+  },
+  "alert": {
+    "simple": "watchful and quick to notice",
+    "natural": "He stayed alert even during the quiet hours.",
+    "positive": "An alert mind prevents most accidents.",
+    "leadership": "A leader keeps the team alert without keeping them afraid.",
+    "factual": "The guard was alert and spotted the movement at once.",
+    "general": "Stay alert on the road at night."
+  },
+  "method": {
+    "simple": "a way of doing something",
+    "natural": "He used a simple method and stuck to it.",
+    "positive": "A clear method removes confusion under pressure.",
+    "leadership": "A leader improves the method after hearing the team.",
+    "factual": "The new method cut the repair time by half.",
+    "general": "There must be a better method for packing."
+  },
+  "defeat": {
+    "simple": "losing a contest",
+    "natural": "He accepted the defeat and asked for a rematch.",
+    "positive": "Defeat teaches faster than victory if you let it.",
+    "leadership": "A leader absorbs defeat and protects the team's confidence.",
+    "factual": "The army suffered a defeat at the river crossing.",
+    "general": "The defeat in the final was hard to take."
+  },
+  "coward": {
+    "simple": "someone who runs from danger or duty",
+    "natural": "He refused to be called a coward and stepped forward.",
+    "positive": "Nobody is born a coward; courage can be practised.",
+    "leadership": "A leader never shames a frightened person into action.",
+    "factual": "The word coward describes someone who avoids danger out of fear.",
+    "general": "It is being a coward to let a friend take the blame."
+  },
+  "governor": {
+    "simple": "the head of a state or an institution",
+    "natural": "The governor visited the flood-hit district.",
+    "positive": "A good governor listens to the smallest village.",
+    "leadership": "A governor leads by visiting the problem, not just reading reports.",
+    "factual": "The Governor is appointed by the President of India.",
+    "general": "The governor met the students at the function."
+  },
+  "travel": {
+    "simple": "to go from one place to another",
+    "natural": "He travelled by train to see his family.",
+    "positive": "Travel teaches more than books about how others live.",
+    "leadership": "A leader travels light and keeps the team together.",
+    "factual": "The journey by road takes about six hours.",
+    "general": "I travel to the city twice a week."
+  },
+  "democracy": {
+    "simple": "government chosen by the people",
+    "natural": "He valued the right to vote in a democracy.",
+    "positive": "Democracy grows stronger each time people vote thoughtfully.",
+    "leadership": "A leader in a democracy listens even to those who did not vote for him.",
+    "factual": "India is the largest democracy in the world.",
+    "general": "The debate was a good example of democracy at work."
+  },
+  "irresponsible": {
+    "simple": "not taking proper care or duty",
+    "natural": "He realised the irresponsible choice had cost the team time.",
+    "positive": "An irresponsible habit can be replaced with one small rule.",
+    "leadership": "A leader corrects irresponsible behaviour before it spreads.",
+    "factual": "Irresponsible driving caused most of the accidents last year.",
+    "general": "It was irresponsible to leave the gate open."
+  },
+  "rigid": {
+    "simple": "stiff, or not willing to change",
+    "natural": "The rigid plan broke as soon as the weather changed.",
+    "positive": "Be firm on values and flexible on methods.",
+    "leadership": "A rigid leader loses good ideas; a flexible one keeps them.",
+    "factual": "The frame is rigid enough to carry the load.",
+    "general": "Her timetable is too rigid for a holiday."
+  },
+  "persuade": {
+    "simple": "to make someone agree by talking",
+    "natural": "He persuaded the crowd to step back calmly.",
+    "positive": "Persuasion by listening works better than pressure.",
+    "leadership": "A leader persuades the team to accept a hard decision.",
+    "factual": "The officer persuaded the family to move to higher ground.",
+    "general": "She persuaded me to try the new route."
+  },
+  "hate": {
+    "simple": "to dislike very strongly",
+    "natural": "He hated waste and saved everything usable.",
+    "positive": "Hate used against a bad habit is useful.",
+    "leadership": "A leader hates the problem, never the person.",
+    "factual": "The campaign asks people to hate discrimination, not people.",
+    "general": "I hate waiting in long queues."
+  },
+  "help": {
+    "simple": "to make things easier for someone",
+    "natural": "He helped without being asked.",
+    "positive": "Help offered early is worth more than rescue later.",
+    "leadership": "A leader helps the team finish rather than finishing first.",
+    "factual": "The villagers helped clear the road after the landslide.",
+    "general": "Can you help me carry these boxes?"
+  },
+  "understand": {
+    "simple": "to know what something means",
+    "natural": "He understood the worry behind the sharp words.",
+    "positive": "Understanding the other person solves half the conflict.",
+    "leadership": "A leader understands the problem before giving the order.",
+    "factual": "The students understood the lesson after the example.",
+    "general": "I understand how you feel about this."
+  },
+  "revolution": {
+    "simple": "a complete change, often by force",
+    "natural": "He read about the revolution and its costs.",
+    "positive": "A revolution of daily habits changes a life quietly.",
+    "leadership": "A leader brings change with explanation, not only with force.",
+    "factual": "The industrial revolution began in the eighteenth century.",
+    "general": "The new phone caused a small revolution at home."
+  },
+  "adventure": {
+    "simple": "an exciting and risky experience",
+    "natural": "He said yes to the adventure and packed lightly.",
+    "positive": "An adventure with preparation is safer and more fun.",
+    "leadership": "A leader takes the risk himself so the adventure stays safe for others.",
+    "factual": "The trek was an adventure of five days through the forest.",
+    "general": "Driving in the rain felt like an adventure."
+  },
+  "goal": {
+    "simple": "something you aim to achieve",
+    "natural": "He wrote his goal where he could see it daily.",
+    "positive": "A clear goal makes courage easier.",
+    "leadership": "A leader sets the goal and then lets the team own the method.",
+    "factual": "The goal was to complete the march in twelve hours.",
+    "general": "My goal is to save for a new cycle."
+  },
+  "accommodate": {
+    "simple": "to make room for or adjust to",
+    "natural": "He accommodated the extra guests without complaint.",
+    "positive": "A willingness to accommodate keeps a group together.",
+    "leadership": "A leader accommodates a genuine need without lowering standards.",
+    "factual": "The hall can accommodate three hundred people.",
+    "general": "Can the car accommodate five of us?"
+  },
+  "teacher": {
+    "simple": "a person who teaches",
+    "natural": "He remembered the teacher who believed in him.",
+    "positive": "A good teacher asks better questions than he answers.",
+    "leadership": "A leader is a teacher first and a commander second.",
+    "factual": "The school has one teacher for every thirty students.",
+    "general": "My teacher gave us extra time for the project."
+  },
+  "bank": {
+    "simple": "a place that keeps money, or land beside a river",
+    "natural": "He went to the bank before it closed.",
+    "positive": "Small savings kept safely in a bank build security.",
+    "leadership": "A leader plans the team's money with the same care as his own.",
+    "factual": "The bank opens at ten and closes at four.",
+    "general": "We sat on the river bank and watched the birds."
+  },
+  "self respect": {
+    "simple": "respect for yourself",
+    "natural": "He kept his self respect by telling the truth.",
+    "positive": "Self respect is protected by small honest choices.",
+    "leadership": "A leader protects the self respect of every person he corrects.",
+    "factual": "The workshop focused on discipline and self respect.",
+    "general": "She walked away to keep her self respect."
+  }
+}

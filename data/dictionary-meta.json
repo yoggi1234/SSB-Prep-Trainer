@@ -1,0 +1,10 @@
+{
+  "source": "WordNet 3.1 (Princeton University) + AFINN-165",
+  "license": "WordNet licence (permissive, see NOTICE) / AFINN ODbL",
+  "generated": "2026-10-17",
+  "words": 149003,
+  "withDefinitions": 147982,
+  "positive": 1176,
+  "negative": 2204,
+  "sensesPerWordCap": 6
+}

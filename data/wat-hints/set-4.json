@@ -1,0 +1,482 @@
+{
+  "loyal": {
+    "simple": "always supporting a person or group",
+    "natural": "He stayed loyal to his friend through the difficult year.",
+    "positive": "Loyalty shown in small things is trusted in big ones.",
+    "leadership": "A leader is loyal to the team before he is loyal to his own comfort.",
+    "factual": "The regiment is known for its loyal service.",
+    "general": "Our dog is loyal to the whole family."
+  },
+  "convince": {
+    "simple": "to make someone believe something",
+    "natural": "He convinced his friend with facts, not force.",
+    "positive": "A calm explanation convinces better than a loud argument.",
+    "leadership": "The leader convinced the team to accept a difficult plan.",
+    "factual": "The evidence convinced the committee to change the rule.",
+    "general": "She convinced me to try the new restaurant."
+  },
+  "relax": {
+    "simple": "to rest and become calm",
+    "natural": "He relaxed his shoulders before the race began.",
+    "positive": "Relaxing the mind helps it work better.",
+    "leadership": "A leader keeps the team relaxed before a hard task.",
+    "factual": "Doctors advise people to relax for ten minutes after lunch.",
+    "general": "Let us relax at home this evening."
+  },
+  "continuous": {
+    "simple": "going on without a break",
+    "natural": "The continuous noise made it hard to think.",
+    "positive": "Continuous small effort produces visible results.",
+    "leadership": "A leader plans rest so continuous duty does not wear the team out.",
+    "factual": "The pump ran continuously for six hours.",
+    "general": "The continuous rain spoiled the picnic."
+  },
+  "happiness": {
+    "simple": "the feeling of being happy",
+    "natural": "He found happiness in a quiet evening at home.",
+    "positive": "Happiness grows when it is shared.",
+    "leadership": "A leader measures success by the team's happiness as well as its output.",
+    "factual": "Studies link regular exercise with greater happiness.",
+    "general": "Her happiness was obvious from her smile."
+  },
+  "bluff": {
+    "simple": "to pretend to be strong in order to deceive",
+    "natural": "He called the bluff instead of backing away.",
+    "positive": "Honesty wins where bluff only delays.",
+    "leadership": "The leader saw the bluff and kept the team steady.",
+    "factual": "In poker, a bluff is a bet made on a weak hand.",
+    "general": "He was only bluffing when he said he would leave."
+  },
+  "allow": {
+    "simple": "to let something happen",
+    "natural": "He allowed the junior to lead the meeting.",
+    "positive": "Allowing others to try builds their confidence.",
+    "leadership": "A leader allows mistakes that teach, and stops those that harm.",
+    "factual": "Visitors are not allowed beyond this gate.",
+    "general": "My parents allow me to stay up on Saturdays."
+  },
+  "helpless": {
+    "simple": "unable to help yourself",
+    "natural": "He felt helpless until he found one small thing he could do.",
+    "positive": "Even when helpless, a calm mind finds the next step.",
+    "leadership": "A leader never leaves a helpless person alone.",
+    "factual": "The flood left many families helpless for two days.",
+    "general": "I felt helpless without my phone."
+  },
+  "curious": {
+    "simple": "wanting to know more",
+    "natural": "The curious child asked a dozen questions.",
+    "positive": "A curious mind keeps learning all its life.",
+    "leadership": "A leader stays curious about the team's problems.",
+    "factual": "The curious student stayed back to ask the teacher.",
+    "general": "I am curious about how the machine works."
+  },
+  "close": {
+    "simple": "near, or to shut",
+    "natural": "He closed the door quietly and listened.",
+    "positive": "A close team talks openly about hard things.",
+    "leadership": "A leader keeps a close watch without breathing down necks.",
+    "factual": "The shop closes at nine in winter.",
+    "general": "We are close to the station now."
+  },
+  "sportsman": {
+    "simple": "someone who plays sport well and fairly",
+    "natural": "He shook hands with the winner like a true sportsman.",
+    "positive": "A sportsman values the game above the score.",
+    "leadership": "A leader brings a sportsman's spirit to competition.",
+    "factual": "The sportsman trained for four hours every day.",
+    "general": "He is a good sportsman on the field."
+  },
+  "hint": {
+    "simple": "a small clue",
+    "natural": "He followed the hint and found the path.",
+    "positive": "A gentle hint saves a person from embarrassment.",
+    "leadership": "A leader gives a hint and lets the team work it out.",
+    "factual": "The teacher gave one hint before the test ended.",
+    "general": "Give me a hint about the surprise."
+  },
+  "improvement": {
+    "simple": "the act of getting better",
+    "natural": "He noticed the improvement after a month of practice.",
+    "positive": "Any improvement, however small, deserves to be recorded.",
+    "leadership": "A leader points out improvement before pointing out the gap.",
+    "factual": "The report showed a clear improvement in response time.",
+    "general": "There is room for improvement in your handwriting."
+  },
+  "drink": {
+    "simple": "to take liquid into the body",
+    "natural": "He drank water before the long run.",
+    "positive": "Small habits like drinking enough water protect health.",
+    "leadership": "A leader makes sure the team drinks water during long duty.",
+    "factual": "The body needs about three litres of water a day in hot weather.",
+    "general": "Would you like a cold drink?"
+  },
+  "conquest": {
+    "simple": "winning control over something by force",
+    "natural": "He studied the conquest and its long aftermath.",
+    "positive": "The best conquest is over your own fear.",
+    "leadership": "A leader wins hearts before seeking territory.",
+    "factual": "The museum shows maps from the time of the conquest.",
+    "general": "Finishing the exam felt like a conquest."
+  },
+  "hurdle": {
+    "simple": "an obstacle you must get over",
+    "natural": "He cleared the first hurdle and kept his pace.",
+    "positive": "Every hurdle passed makes the next one smaller.",
+    "leadership": "A leader removes the team's hurdles before asking for speed.",
+    "factual": "The hurdle was set at the right height for the race.",
+    "general": "The approval was the last hurdle."
+  },
+  "movement": {
+    "simple": "the act of moving, or a group with a cause",
+    "natural": "He noticed movement in the trees and stopped.",
+    "positive": "A movement built on truth attracts ordinary people.",
+    "leadership": "A leader controls the team's movement in the dark.",
+    "factual": "The movement spread across three districts in a month.",
+    "general": "There was a slight movement near the door."
+  },
+  "fellow": {
+    "simple": "a companion or a person",
+    "natural": "He helped his fellow cadets pack the tent.",
+    "positive": "A fellow traveller teaches you patience.",
+    "leadership": "A leader behaves as a fellow worker, not as a special guest.",
+    "factual": "The fellow members shared the cost of the trip.",
+    "general": "He is a cheerful fellow to be around."
+  },
+  "clothes": {
+    "simple": "things worn on the body",
+    "natural": "He washed his clothes the night before the parade.",
+    "positive": "Clean clothes and a clean mind both show discipline.",
+    "leadership": "A leader checks his own turnout before checking anyone else's.",
+    "factual": "The uniform clothes were handed out on Monday.",
+    "general": "Pack warm clothes for the hills."
+  },
+  "company": {
+    "simple": "a business, or people with you",
+    "natural": "He enjoyed the company of his old classmates.",
+    "positive": "Good company lifts your mood and your standards.",
+    "leadership": "A leader keeps bad company out of the team's way.",
+    "factual": "The company employs over two thousand people.",
+    "general": "Come over; the company will be good."
+  },
+  "adventurous": {
+    "simple": "liking new and exciting experiences",
+    "natural": "The adventurous plan looked fun until the rain came.",
+    "positive": "An adventurous spirit, kept with care, finds new paths.",
+    "leadership": "A leader is adventurous with plans but careful with people.",
+    "factual": "The adventurous route crosses two rivers.",
+    "general": "He is adventurous about food."
+  },
+  "exaggerate": {
+    "simple": "to make something seem bigger than it is",
+    "natural": "He exaggerated the danger, and the team lost trust.",
+    "positive": "Plain facts spoken calmly need no exaggeration.",
+    "leadership": "A leader never exaggerates a threat to look heroic.",
+    "factual": "The report exaggerated the damage by double.",
+    "general": "Do not exaggerate; tell me the real number."
+  },
+  "dispute": {
+    "simple": "an argument or disagreement",
+    "natural": "He settled the dispute before it grew loud.",
+    "positive": "Most disputes end when both sides repeat the other's point.",
+    "leadership": "A leader resolves a dispute in the open, not by taking sides.",
+    "factual": "The land dispute was settled by the village council.",
+    "general": "The bill is in dispute, so do not pay it yet."
+  },
+  "clever": {
+    "simple": "quick at learning and thinking",
+    "natural": "He found a clever way to carry both boxes.",
+    "positive": "Cleverness with humility solves what force cannot.",
+    "leadership": "A leader is clever enough to use the team's best ideas.",
+    "factual": "The clever design saved space and cost.",
+    "general": "That was a clever trick with the knot."
+  },
+  "important": {
+    "simple": "mattering a lot",
+    "natural": "He asked which part was important before starting.",
+    "positive": "Important work deserves full attention, not speed.",
+    "leadership": "A leader tells the team which tasks truly matter.",
+    "factual": "The most important step is checking the figures.",
+    "general": "It is important to call your parents."
+  },
+  "lend": {
+    "simple": "to give something for a short time",
+    "natural": "He lent his cycle without a second thought.",
+    "positive": "Lending what you can spare builds quiet trust.",
+    "leadership": "A leader lends his time before asking others for theirs.",
+    "factual": "The bank lent the money at a fixed rate.",
+    "general": "Can you lend me your umbrella?"
+  },
+  "complaint": {
+    "simple": "a statement that something is wrong",
+    "natural": "He listened to the complaint and wrote it down.",
+    "positive": "A complaint heard early is a problem solved cheaply.",
+    "leadership": "A leader treats a complaint as information, not insult.",
+    "factual": "The complaint was resolved within two days.",
+    "general": "She made a complaint about the noise."
+  },
+  "battle": {
+    "simple": "a fight between armed groups",
+    "natural": "He held his position through the whole battle.",
+    "positive": "The hardest battle is against your own laziness.",
+    "leadership": "A leader plans the battle but protects the people.",
+    "factual": "The battle lasted two days and ended at dawn.",
+    "general": "He fought a battle with the paperwork all afternoon."
+  },
+  "mad": {
+    "simple": "angry, or mentally unwell",
+    "natural": "He was mad for a minute, then spoke calmly.",
+    "positive": "Anger cooled by a short pause rarely becomes regret.",
+    "leadership": "A leader does not make decisions while mad.",
+    "factual": "The noise drove the neighbours mad during the repairs.",
+    "general": "I am mad at myself for forgetting."
+  },
+  "impress": {
+    "simple": "to make someone admire you",
+    "natural": "He wanted to impress the seniors but chose honesty.",
+    "positive": "Consistent work impresses longer than clever talk.",
+    "leadership": "A leader is impressed by reliability, not by words.",
+    "factual": "The drill impressed the visiting officers.",
+    "general": "Her singing impressed everyone at the party."
+  },
+  "beat": {
+    "simple": "to hit, or to win against",
+    "natural": "He beat his own record by ten seconds.",
+    "positive": "Beat your last attempt, not your neighbour.",
+    "leadership": "A leader prepares the team to beat the challenge, not each other.",
+    "factual": "The home team beat the visitors by two goals.",
+    "general": "The rain beat against the window all night."
+  },
+  "notice": {
+    "simple": "to see or become aware of",
+    "natural": "He noticed the loose wire before anyone touched it.",
+    "positive": "Noticing small things prevents large accidents.",
+    "leadership": "A leader notices effort, not only results.",
+    "factual": "The notice was posted on the board yesterday.",
+    "general": "Did you notice the new shop?"
+  },
+  "junior": {
+    "simple": "lower in rank or younger",
+    "natural": "He gave the junior a clear task and space to do it.",
+    "positive": "Juniors learn best from patience, not from shouting.",
+    "leadership": "A leader protects a junior's dignity in public.",
+    "factual": "The junior officer took the night watch.",
+    "general": "My junior at work handles the emails."
+  },
+  "curse": {
+    "simple": "an angry wish, or a harmful word",
+    "natural": "He refused to curse the driver who cut him off.",
+    "positive": "Replace a curse with a deep breath.",
+    "leadership": "A leader never uses a curse to control a team.",
+    "factual": "The old story describes a curse on the well.",
+    "general": "The traffic was a curse this morning."
+  },
+  "politeness": {
+    "simple": "good manners and courtesy",
+    "natural": "He thanked the guard with real politeness.",
+    "positive": "Politeness costs nothing and opens doors.",
+    "leadership": "A leader's politeness shows his confidence, not weakness.",
+    "factual": "The letter closed with the usual politeness.",
+    "general": "A little politeness would have ended the argument."
+  },
+  "read": {
+    "simple": "to look at words and understand them",
+    "natural": "He read the instructions before pressing any button.",
+    "positive": "Reading each day keeps the mind quick.",
+    "leadership": "A leader reads the report before the meeting.",
+    "factual": "He read the entire manual in one evening.",
+    "general": "I read the news on my phone."
+  },
+  "interpretation": {
+    "simple": "the meaning you give to something",
+    "natural": "He offered a fair interpretation of the rule.",
+    "positive": "A generous interpretation prevents needless conflict.",
+    "leadership": "A leader explains the interpretation so nobody guesses.",
+    "factual": "The court gave its interpretation of the clause.",
+    "general": "That is only one interpretation of the poem."
+  },
+  "union": {
+    "simple": "a group joined together",
+    "natural": "The union spoke for the workers calmly.",
+    "positive": "A strong union can protect workers without harming the work.",
+    "leadership": "A leader works with the union instead of around it.",
+    "factual": "The union represents three thousand employees.",
+    "general": "The union of two families was celebrated together."
+  },
+  "popular": {
+    "simple": "liked by many people",
+    "natural": "He was popular because he helped without fuss.",
+    "positive": "Popularity earned through service lasts.",
+    "leadership": "A leader does not chase popularity but stays approachable.",
+    "factual": "The song became popular within a week of release.",
+    "general": "This is a popular spot for morning walks."
+  },
+  "mischief": {
+    "simple": "small naughty behaviour",
+    "natural": "The children got into mischief during the break.",
+    "positive": "Mischief channelled into games keeps a group lively.",
+    "leadership": "A leader handles mischief with humour and a clear limit.",
+    "factual": "The mischief was caught on camera.",
+    "general": "Keep an eye on them; they are full of mischief."
+  },
+  "literacy": {
+    "simple": "the ability to read and write",
+    "natural": "He joined the literacy class after his shift.",
+    "positive": "Literacy changes what a person can do for himself.",
+    "leadership": "A leader supports literacy because it lifts the whole community.",
+    "factual": "India's literacy rate has risen sharply since 1947.",
+    "general": "The literacy camp runs every Sunday."
+  },
+  "unity": {
+    "simple": "being joined together as one",
+    "natural": "The team's unity carried it through the last hour.",
+    "positive": "Unity in small things makes a strong group.",
+    "leadership": "A leader builds unity by sharing credit and blame fairly.",
+    "factual": "The states were joined in unity after 1947.",
+    "general": "The family's unity helped during the move."
+  },
+  "protect": {
+    "simple": "to keep someone or something safe",
+    "natural": "He protected the smaller boys from the crowd.",
+    "positive": "Protecting others gives courage a purpose.",
+    "leadership": "A leader protects his team from blame and from danger.",
+    "factual": "The walls protect the village from the river in flood.",
+    "general": "Wear a helmet to protect your head."
+  },
+  "necessity": {
+    "simple": "something you must have",
+    "natural": "Water was the first necessity they packed.",
+    "positive": "Necessity teaches invention faster than comfort does.",
+    "leadership": "A leader separates necessities from luxuries quickly.",
+    "factual": "Clean water is a necessity for health.",
+    "general": "A phone has become a necessity for me."
+  },
+  "up to date": {
+    "simple": "having the latest information",
+    "natural": "He kept his records up to date every week.",
+    "positive": "Staying up to date prevents small mistakes from growing.",
+    "leadership": "A leader keeps the team up to date on decisions.",
+    "factual": "The list is up to date as of Monday.",
+    "general": "My calendar is finally up to date."
+  },
+  "nervous": {
+    "simple": "worried and jumpy",
+    "natural": "He felt nervous before the interview but steadied his breathing.",
+    "positive": "Nervousness before something important is normal and useful.",
+    "leadership": "A leader steadies nervous beginners with small first tasks.",
+    "factual": "Some nervousness improves alertness.",
+    "general": "I get nervous before speaking in public."
+  },
+  "merit": {
+    "simple": "a good quality that deserves credit",
+    "natural": "He respected the merit in the other candidate's plan.",
+    "positive": "A decision based on merit earns trust.",
+    "leadership": "A leader rewards merit openly and explains the reason.",
+    "factual": "The scholarship is awarded on merit.",
+    "general": "There is some merit in your suggestion."
+  },
+  "behaviour": {
+    "simple": "the way a person acts",
+    "natural": "His behaviour with the villagers won their confidence.",
+    "positive": "Good behaviour in small moments builds reputation.",
+    "leadership": "A leader's behaviour sets the standard for ease or fear.",
+    "factual": "The report described the unit's behaviour in the exercise.",
+    "general": "Her behaviour at the dinner was very polite."
+  },
+  "represent": {
+    "simple": "to speak or act for a group",
+    "natural": "He represented the team at the meeting.",
+    "positive": "To represent others well, listen before you speak.",
+    "leadership": "A leader represents the team honestly, including its failures.",
+    "factual": "She represented the college in the debate.",
+    "general": "The colours represent the four seasons."
+  },
+  "obey": {
+    "simple": "to follow an order",
+    "natural": "He obeyed the order though he disagreed.",
+    "positive": "Obedience with understanding is stronger than obedience from fear.",
+    "leadership": "A leader obeys the rules he expects others to obey.",
+    "factual": "Traffic signals must be obeyed at all times.",
+    "general": "The dog obeys only my father."
+  },
+  "conscience": {
+    "simple": "the inner sense of right and wrong",
+    "natural": "His conscience stopped him from taking the easy route.",
+    "positive": "A clear conscience is worth more than a quick gain.",
+    "leadership": "A leader listens to his conscience before his ambition.",
+    "factual": "The decision troubled his conscience for years.",
+    "general": "My conscience tells me to return the extra change."
+  },
+  "election": {
+    "simple": "the process of choosing by voting",
+    "natural": "He worked at the election booth from morning.",
+    "positive": "A free election gives every voice equal weight.",
+    "leadership": "A leader accepts the election result with grace.",
+    "factual": "The election was held in three phases.",
+    "general": "The club election is next month."
+  },
+  "overcome": {
+    "simple": "to get past a difficulty",
+    "natural": "He overcame his fear by facing the crowd often.",
+    "positive": "Every difficulty overcome becomes experience.",
+    "leadership": "A leader helps the team overcome doubts before obstacles.",
+    "factual": "The team overcame a two-goal deficit to win.",
+    "general": "She overcame her shyness at the party."
+  },
+  "recognition": {
+    "simple": "being noticed for your work",
+    "natural": "He was glad of the recognition but stayed modest.",
+    "positive": "Recognition given honestly encourages everyone.",
+    "leadership": "A leader gives recognition to the person who did the work.",
+    "factual": "The unit received recognition for its rescue work.",
+    "general": "He waved in recognition when he saw me."
+  },
+  "excuse": {
+    "simple": "a reason given to avoid blame",
+    "natural": "He gave no excuse and fixed the mistake.",
+    "positive": "An excuse explains once; a habit of excuses explains nothing.",
+    "leadership": "A leader listens to an excuse, then asks for the fix.",
+    "factual": "The delay was explained by the traffic, not an excuse.",
+    "general": "That is a poor excuse for being late."
+  },
+  "rank": {
+    "simple": "a position in an order or hierarchy",
+    "natural": "He treated every rank with the same respect.",
+    "positive": "Rank earned by service is respected; rank held for show is not.",
+    "leadership": "A leader's rank matters less than his behaviour.",
+    "factual": "He was promoted to the next rank in June.",
+    "general": "This college ranks first in the district."
+  },
+  "poor": {
+    "simple": "having little money",
+    "natural": "He grew up poor and valued every opportunity.",
+    "positive": "Being poor is not a failure; giving up is.",
+    "leadership": "A leader plans for the poorest person's needs.",
+    "factual": "The scheme supports poor families with food and gas.",
+    "general": "The lighting in the hall is poor."
+  },
+  "encouragement": {
+    "simple": "words that give confidence",
+    "natural": "A word of encouragement kept him going on the last lap.",
+    "positive": "Encouragement costs a sentence and changes a whole day.",
+    "leadership": "A leader gives encouragement where it is needed most, not where it is deserved most.",
+    "factual": "The instructor's encouragement improved the group's morale.",
+    "general": "Your encouragement made a real difference."
+  },
+  "attempt": {
+    "simple": "an effort to do something",
+    "natural": "His first attempt failed, so he tried a simpler approach.",
+    "positive": "Every attempt teaches something worth keeping.",
+    "leadership": "A leader values the attempt even when the result falls short.",
+    "factual": "The second attempt succeeded within the hour.",
+    "general": "My attempt at baking ended in a mess."
+  },
+  "cancel": {
+    "simple": "to call off something planned",
+    "natural": "They cancelled the match when the rain grew heavy.",
+    "positive": "Cancelling early is kinder than cancelling late.",
+    "leadership": "A leader cancels a plan when the risk to the team is too high.",
+    "factual": "The train was cancelled because of the flooding.",
+    "general": "I had to cancel my dentist appointment."
+  }
+}

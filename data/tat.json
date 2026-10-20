@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "note": "TAT practice scene descriptions, written for this app. Official TAT pictures are copyrighted and are deliberately not bundled. Add your own picture folder in the app to practise with images instead.",
+  "sets": [
+    {
+      "id": "tat-1",
+      "name": "Scene Set 1 — Work and Duty",
+      "scenes": [
+        "A young man sits at the edge of a field at dawn with a broken plough beside him.",
+        "Two students bend over a broken machine in a half-lit workshop.",
+        "A woman stands at a doorway holding a lantern, looking out at heavy rain.",
+        "A group of villagers cluster around a hand pump that has stopped working.",
+        "A soldier crouches behind a low wall, radio in hand, watching an empty road.",
+        "A boy climbs a steep rocky slope with a school bag on his shoulder.",
+        "A doctor sits at a table opposite a tired family, an X-ray report in his hand.",
+        "A crowd of workers stands outside a closed factory gate.",
+        "A girl sits alone at a desk in an empty examination hall.",
+        "Two men row a small boat towards a flooded village at dusk.",
+        "A young officer stands before a large map while several people wait for his orders."
+      ]
+    },
+    {
+      "id": "tat-2",
+      "name": "Scene Set 2 — People and Choices",
+      "scenes": [
+        "A farmer looks at his flooded field with his family standing behind him.",
+        "Three friends sit on a bench in a college corridor and one of them looks away.",
+        "A woman reads a letter in a quiet room while a child sleeps beside her.",
+        "A man in uniform carries a small child across a shallow stream.",
+        "A group of students measure a damaged village road with a long tape.",
+        "A young man stands before a mirror, tie half knotted, already late for something.",
+        "A rescue worker ties a rope around himself at the edge of a collapsed wall.",
+        "An old man hands a well-worn tool to a younger man in a small workshop.",
+        "A team sits around a table at night with a single lamp and papers spread out.",
+        "A boy watches a train pull away from a small country station.",
+        "A woman teaches a small group of children seated under a large tree."
+      ]
+    },
+    {
+      "id": "tat-3",
+      "name": "Scene Set 3 — Effort and Rebuilding",
+      "scenes": [
+        "A young man walks a long empty road with a bag, telephone poles stretching ahead of him.",
+        "People gather around an overturned truck on a mountain road.",
+        "A girl holds a trophy while her teammates cheer behind her.",
+        "A man stands at the door of a burning shed with a bucket in his hand.",
+        "Two boys sit beside a broken bicycle on a roadside, one examining the chain.",
+        "A woman stands at a pharmacy counter reading a prescription urgently.",
+        "A soldier and a villager shake hands beside a damaged bridge.",
+        "A student stares at a notice board while others walk past behind him.",
+        "A family sits together on the floor of a small room lit by one lamp.",
+        "A young man rows a boat while a woman and child sit behind him.",
+        "A group of young people plant saplings on a dry hillside."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "name": "ssb-prep-trainer",
+  "productName": "SSB Prep Trainer",
+  "version": "1.0.0",
+  "description": "Offline SSB psychology test trainer - timed TAT, WAT and SRT practice with real SSB timings, no internet or AI needed.",
+  "main": "src/main.js",
+  "author": "SSB Prep Trainer",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "in.ssbprep.trainer",
+    "productName": "SSB Prep Trainer",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "NOTICE.txt",
+      "package.json",
+      "!data/lecturettes.part*.json",
+      "!data/lecturette-topics.json",
+      "!data/lecturette-topics-extra.json"
+    ],
+    "extraResources": [
+      {
+        "from": "digest-tool",
+        "to": "digest-tool",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!output/**",
+          "!drafts/**",
+          "!state/**",
+          "!user_data/**",
+          "!inbox/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SSB Prep Trainer"
+    },
+    "portable": {
+      "artifactName": "SSB-Prep-Trainer-${version}-portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3"
+  }
+}

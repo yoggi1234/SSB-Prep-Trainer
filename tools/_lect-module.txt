@@ -1,0 +1,554 @@
+  /* ------------------------------------------- lecturette — 3-minute pattern */
+
+  // The SSB lecturette is a three-minute talk: 30 seconds intro, two minutes
+  // body, 30 seconds conclusion. The clock moves through the phases on its own
+  // and the whole pattern is laid out for you. Nothing is typed here — the
+  // candidate speaks aloud and keeps notes on paper.
+  var LECT_PHASES = [
+    {
+      id: 'intro',
+      label: 'Intro',
+      secs: 30,
+      cue: 'Meaning · brief history · original background · why it came about'
+    },
+    {
+      id: 'body',
+      label: 'Body',
+      secs: 120,
+      cue: 'Present state · explanation · a parallel · pros and cons · quote, fact or figure · impact'
+    },
+    {
+      id: 'conclusion',
+      label: 'Conclusion',
+      secs: 30,
+      cue: 'Future possibilities · challenges · precautions to exercise · your own opinion'
+    }
+  ];
+
+  function lectState() {
+    if (!S.lect) {
+      S.lect = {
+        mode: 'list',
+        board: 'all',
+        open: {},
+        run: null,
+        hot: null,
+        hotBusy: false,
+        timer: null,
+        summary: null
+      };
+    }
+    return S.lect;
+  }
+
+  function lectTopics() {
+    return Array.isArray(S.lectures) ? S.lectures : [];
+  }
+
+  function asList(v) {
+    if (Array.isArray(v)) return v.slice();
+    if (v === null || v === undefined || v === '') return [];
+    return [String(v)];
+  }
+
+  function lectBoards() {
+    var seen = {};
+    lectTopics().forEach(function (t) {
+      asList(t.boards).forEach(function (b) {
+        seen[b] = 1;
+      });
+    });
+    return Object.keys(seen).sort();
+  }
+
+  function stopLectTimer() {
+    var L = lectState();
+    if (L.timer) clearInterval(L.timer);
+    L.timer = null;
+  }
+
+  function lectBullets(items) {
+    return asList(items)
+      .map(function (x) {
+        return '<li>' + esc(x) + '</li>';
+      })
+      .join('');
+  }
+
+  function lectFactsHtml(t) {
+    var facts = asList(t.facts)
+      .map(function (f) {
+        return '<div class="fact"><b>' + esc(f.label || '') + '</b><span>' + esc(f.value || '') + '</span></div>';
+      })
+      .join('');
+    return (
+      '<div class="lectfacts">' +
+      '<h3>Facts to quote</h3>' +
+      '<div class="fact"><b>Fact</b><span>' + esc(t.fact || '—') + '</span></div>' +
+      '<div class="fact"><b>Figure</b><span>' + esc(t.statistic || '—') + '</span></div>' +
+      (t.quote && t.quote.text
+        ? '<div class="fact"><b>Quote</b><span>“' + esc(t.quote.text) + '”' +
+          (t.quote.who ? ' <span class="muted">— ' + esc(t.quote.who) + '</span>' : '') +
+          '</span></div>'
+        : '') +
+      facts +
+      '</div>'
+    );
+  }
+
+  function lectHotError(r) {
+    if (!r) return 'Nothing came back.';
+    if (r.error === 'offline') return 'Online lookup is off — turn it on in Word library first.';
+    if (r.error === 'network') return 'Could not reach the news feed.' + (r.detail ? ' (' + r.detail + ')' : '');
+    if (r.error === 'empty') return 'The feed had no headlines just now.';
+    return 'Fetch failed (' + (r.error || 'unknown') + ').';
+  }
+
+  function lectHotHtml() {
+    var L = lectState();
+    var inner;
+    if (!S.config.onlineEnabled) {
+      inner =
+        '<div class="small muted">Online lookup is off, so only the bundled topics are available. Turn it on under ' +
+        '<b>Word library → Extra words from the internet</b> to pull today\'s headlines.</div>' +
+        '<div class="row" style="margin-top:10px"><button class="btn sm" id="lectToLibrary">Open Word library</button></div>';
+    } else if (L.hotBusy) {
+      inner = '<div class="small muted">Fetching today\'s SSB and defence headlines…</div>';
+    } else if (L.hot) {
+      inner = L.hot.ok
+        ? '<div class="words">' +
+          L.hot.items
+            .map(function (h, i) {
+              return '<button class="wchip hotitem" data-hot="' + i + '">' + esc(h.title) + '</button>';
+            })
+            .join('') +
+          '</div>' +
+          '<div class="row" style="margin-top:12px">' +
+          '<button class="btn sm" id="lectHotAgain">Refresh</button>' +
+          '<span class="chip">' + L.hot.items.length + ' headlines · ' + esc(L.hot.source || 'news') + '</span>' +
+          '</div>' +
+          '<div class="small muted" style="margin-top:8px">Press a headline to practise it as a topic — the same three-minute pattern applies.</div>'
+        : '<div class="small muted">' + esc(lectHotError(L.hot)) + '</div>' +
+          '<div class="row" style="margin-top:10px"><button class="btn sm" id="lectHotAgain">Try again</button></div>';
+    } else {
+      inner = '<div class="row" style="margin-top:10px"><button class="btn primary sm" id="lectHot">Fetch hot topics</button></div>';
+    }
+    return (
+      '<h2>Hot topics from the internet</h2>' +
+      '<div class="card onlinecard">' +
+      '<div class="small muted">Recent SSB and Armed Forces headlines, so your lecturette sounds current. ' +
+      'They are fetched only when you ask, and need online lookup turned on.</div>' +
+      inner +
+      '</div>'
+    );
+  }
+
+  function lectRunTopic(topic, extra) {
+    var t = {
+      topic: topic.topic || 'Untitled topic',
+      theme: topic.theme || '',
+      intro: topic.intro || {},
+      body: topic.body || {},
+      conclusion: topic.conclusion || {},
+      fact: topic.fact || '',
+      statistic: topic.statistic || '',
+      quote: topic.quote || { text: '', who: '' },
+      facts: topic.facts || [],
+      hot: !!extra && !!extra.hot,
+      link: (extra && extra.link) || ''
+    };
+    return t;
+  }
+
+  function randomLecture(shown) {
+    var pool = shown && shown.length ? shown : lectTopics();
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function renderLecturette() {
+    var L = lectState();
+    if (L.mode === 'run' && L.run) return mountLecture();
+    if (L.mode === 'done') return renderLectDone();
+    return renderLectList();
+  }
+
+  function renderLectList() {
+    var L = lectState();
+    var topics = lectTopics();
+    var boards = lectBoards();
+
+    var boardOpts = ['<option value="all">All centres and boards</option>']
+      .concat(
+        boards.map(function (b) {
+          return '<option value="' + esc(b) + '"' + (L.board === b ? ' selected' : '') + '>' + esc(b) + '</option>';
+        })
+      )
+      .join('');
+
+    var shown = topics.filter(function (t) {
+      return L.board === 'all' || asList(t.boards).indexOf(L.board) >= 0;
+    });
+
+    var cards = shown
+      .map(function (t) {
+        var idx = topics.indexOf(t);
+        var open = !!L.open[t.id];
+        return (
+          '<div class="card lectcard">' +
+          '<div class="lechead">' +
+          '<div>' +
+          '<div class="lectitle">' + esc(t.topic) + '</div>' +
+          '<div class="small muted">' + esc(t.theme || '') +
+          (asList(t.boards).length ? ' · asked at: ' + esc(asList(t.boards).join(', ')) : '') +
+          '</div>' +
+          '</div>' +
+          '<div class="row" style="margin:0">' +
+          '<button class="btn sm ghost" data-lectfacts="' + idx + '">' + (open ? 'Hide facts' : 'Facts') + '</button>' +
+          '<button class="btn primary sm" data-lectstart="' + idx + '">Practise</button>' +
+          '</div>' +
+          '</div>' +
+          (open ? '<div style="margin-top:12px">' + lectFactsHtml(t) + '</div>' : '') +
+          '</div>'
+        );
+      })
+      .join('');
+
+    body(
+      '<h1>Lecturette — the three-minute SSB pattern</h1>' +
+      '<p class="lead">A lecturette is a three-minute talk on a topic handed to you on the spot. ' +
+      'The pattern that scores is <b>30 seconds intro, 2 minutes body, 30 seconds conclusion</b>. ' +
+      'The clock here changes phase by itself, exactly like the real thing. Nothing is typed — speak it aloud and write in your notebook.</p>' +
+      '<div class="card">' +
+      '<div class="field"><label>Selection centre / board<br><span class="small muted">' +
+      topics.length + ' topics in the bundled database, grouped by the centres that ask them</span></label>' +
+      '<div class="ctl"><select id="lectBoard">' + boardOpts + '</select>' +
+      '<button class="btn primary" id="lectRandom">Practise a random topic</button></div></div>' +
+      '<div class="small muted">Pattern: <b>' + esc(LECT_PHASES[0].label) + ' ' + LECT_PHASES[0].secs + 's</b> → ' +
+      '<b>' + esc(LECT_PHASES[1].label) + ' ' + LECT_PHASES[1].secs / 60 + ' min</b> → ' +
+      '<b>' + esc(LECT_PHASES[2].label) + ' ' + LECT_PHASES[2].secs + 's</b>. ' +
+      'Every topic carries the sub-points the examiners expect, plus a facts panel to quote.</div>' +
+      '</div>' +
+      lectHotHtml() +
+      '<h2>Topics</h2>' +
+      (shown.length
+        ? cards
+        : '<div class="empty">No topics for that centre yet — choose “All centres and boards”.</div>') +
+      '<p class="small muted" style="margin-top:16px">Topic material is compiled from publicly reported SSB guidance and rewritten for this app. ' +
+      'Figures are the ones most commonly quoted and are marked as reported.</p>'
+    );
+
+    var board = document.getElementById('lectBoard');
+    if (board) {
+      board.addEventListener('change', function () {
+        L.board = board.value;
+        render();
+      });
+    }
+
+    var rnd = document.getElementById('lectRandom');
+    if (rnd) {
+      rnd.addEventListener('click', function () {
+        var pick = randomLecture(shown);
+        if (pick) startLecture(pick, null);
+      });
+    }
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectstart]'), function (b) {
+      b.addEventListener('click', function () {
+        var t = topics[parseInt(b.getAttribute('data-lectstart'), 10)];
+        if (t) startLecture(t, null);
+      });
+    });
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectfacts]'), function (b) {
+      b.addEventListener('click', function () {
+        var t = topics[parseInt(b.getAttribute('data-lectfacts'), 10)];
+        if (!t) return;
+        L.open[t.id] = !L.open[t.id];
+        render();
+      });
+    });
+
+    var hotBtn = document.getElementById('lectHot');
+    if (hotBtn) hotBtn.addEventListener('click', function () { fetchHotTopics(); });
+    var hotAgain = document.getElementById('lectHotAgain');
+    if (hotAgain) hotAgain.addEventListener('click', function () { fetchHotTopics(); });
+    var toLib = document.getElementById('lectToLibrary');
+    if (toLib) toLib.addEventListener('click', function () { goto('library'); });
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-hot]'), function (b) {
+      b.addEventListener('click', function () {
+        var h = L.hot && L.hot.items[parseInt(b.getAttribute('data-hot'), 10)];
+        if (!h) return;
+        startLecture({ topic: h.title }, { hot: true, link: h.link });
+      });
+    });
+  }
+
+  function fetchHotTopics() {
+    var L = lectState();
+    L.hotBusy = true;
+    L.hot = null;
+    render();
+    window.api
+      .lecturesHot()
+      .then(function (res) {
+        L.hotBusy = false;
+        L.hot = res || { ok: false, error: 'empty' };
+        render();
+      })
+      .catch(function (err) {
+        L.hotBusy = false;
+        L.hot = { ok: false, error: 'network', detail: err && err.message };
+        render();
+      });
+  }
+
+  function startLecture(topic, extra) {
+    var L = lectState();
+    L.summary = null;
+    L.run = {
+      topic: lectRunTopic(topic, extra),
+      phase: 0,
+      remaining: LECT_PHASES[0].secs,
+      paused: false,
+      startedAt: Date.now(),
+      done: false
+    };
+    L.mode = 'run';
+    S.view = 'lecturette';
+    window.api.keepAwake(true);
+    render();
+  }
+
+  function mountLecture() {
+    var L = lectState();
+    var R = L.run;
+    if (!R) return renderLectList();
+    var t = R.topic;
+
+    if (!document.getElementById('lectClock')) {
+      shell(
+        '<div class="run">' +
+          '<div class="runbar">' +
+          '<span class="chip ok">LECTURETTE</span>' +
+          '<span class="chip" id="lectPhaseChip"></span>' +
+          '<span class="chip">' + esc(t.hot ? 'headline topic' : t.theme || 'topic') + '</span>' +
+          '<span class="spacer"></span>' +
+          '<span class="countdown-big" id="lectClock"></span>' +
+          '<button class="btn ghost sm" id="lectPause">Pause</button>' +
+          '<button class="btn sm" id="lectNext">Next phase →</button>' +
+          '<button class="btn primary sm" id="lectFinish">Finish</button>' +
+          '</div>' +
+          '<div class="runbody">' +
+          '<div class="progress"><i id="lectBar"></i></div>' +
+          '<div class="lect-cue" id="lectCue"></div>' +
+          '<div class="lect-grid">' +
+          '<div class="lect-main" id="lectBody"></div>' +
+          '<aside class="lect-side">' + lectFactsHtml(t) + '</aside>' +
+          '</div>' +
+          '<div class="footbar">' +
+          '<span class="hint">The phase changes by itself. Look up from the screen, speak in points, and keep your notebook open.</span>' +
+          '<span class="right"><button class="btn ghost sm" id="lectList">All topics</button></span>' +
+          '</div>' +
+          '</div>' +
+          '</div>'
+      );
+
+      document.getElementById('lectPause').addEventListener('click', function () { lecturePause(); });
+      document.getElementById('lectNext').addEventListener('click', function () { lectureNextPhase(); });
+      document.getElementById('lectFinish').addEventListener('click', function () { finishLecture('manual'); });
+      document.getElementById('lectList').addEventListener('click', function () { leaveLecture(); });
+    }
+
+    paintLecture(true);
+    stopLectTimer();
+    L.timer = setInterval(lectTick, 1000);
+  }
+
+  function paintLecture(buildBody) {
+    var R = lectState().run;
+    if (!R) return;
+    var phase = LECT_PHASES[R.phase];
+    var clockEl = document.getElementById('lectClock');
+    var chip = document.getElementById('lectPhaseChip');
+    var bar = document.getElementById('lectBar');
+    var cue = document.getElementById('lectCue');
+    var bodyEl = document.getElementById('lectBody');
+    var pauseBtn = document.getElementById('lectPause');
+
+    if (clockEl) {
+      clockEl.textContent = clock(R.remaining * 1000);
+      clockEl.classList.toggle('low', R.remaining <= 10);
+    }
+    if (chip) chip.textContent = phase.label + ' · ' + phase.secs + 's';
+    if (pauseBtn) pauseBtn.textContent = R.paused ? 'Resume' : 'Pause';
+    if (bar) {
+      var pct = Math.max(0, Math.min(1, R.remaining / phase.secs)) * 100;
+      bar.style.width = pct.toFixed(2) + '%';
+      var prog = bar.parentNode;
+      if (prog) prog.classList.toggle('warn', pct < 25);
+    }
+    if (buildBody && cue) {
+      cue.innerHTML = '<b>' + esc(phase.label) + ' — ' + phase.secs + ' seconds.</b> ' + esc(phase.cue);
+    }
+    if (buildBody && bodyEl) {
+      bodyEl.innerHTML =
+        '<h2 class="lecttopic">' + esc(R.topic.topic) + '</h2>' + lectPhaseBodyHtml(R.topic, R.phase);
+    }
+  }
+
+  function lectPhaseBodyHtml(t, phaseIdx) {
+    var id = LECT_PHASES[phaseIdx].id;
+
+    if (t.hot) {
+      var guide = {
+        intro: [
+          'Say what the topic means in one sentence.',
+          'Give the background in two lines.',
+          'Say why it is in the news right now.'
+        ],
+        body: [
+          'Present the facts as they stand.',
+          'Draw one parallel or comparison.',
+          'Two advantages and two disadvantages.',
+          'One figure, date or line you remember.',
+          'Say what it changes for India.'
+        ],
+        conclusion: [
+          'What may happen next.',
+          'The biggest challenge.',
+          'The precaution that should be taken.',
+          'Your own clear opinion.'
+        ]
+      };
+      return (
+        '<div class="lectblock"><div class="lectlabel">Headline</div><p>' + esc(t.topic) + '</p></div>' +
+        '<div class="lectblock"><div class="lectlabel">Cover in this phase</div><ul>' + lectBullets(guide[id]) + '</ul></div>' +
+        (t.link ? '<div class="row"><button class="btn sm ghost" data-external="' + esc(t.link) + '">Open the source</button></div>' : '')
+      );
+    }
+
+    if (id === 'intro') {
+      return (
+        '<div class="lectblock"><div class="lectlabel">What it means</div><p>' + esc(t.intro.meaning || '') + '</p></div>' +
+        '<div class="lectblock"><div class="lectlabel">Brief history</div><p>' + esc(t.intro.history || '') + '</p></div>' +
+        '<div class="lectblock"><div class="lectlabel">Why it came about</div><p>' + esc(t.intro.origin || '') + '</p></div>'
+      );
+    }
+
+    if (id === 'body') {
+      return (
+        '<div class="lectblock"><div class="lectlabel">Present state and explanation</div><p>' + esc(t.body.present || '') + '</p></div>' +
+        '<div class="lectblock"><div class="lectlabel">Draw this parallel</div><p>' + esc(t.body.parallels || '') + '</p></div>' +
+        '<div class="lectcols">' +
+        '<div class="lectblock"><div class="lectlabel ok">Advantages</div><ul>' + lectBullets(t.body.advantages) + '</ul></div>' +
+        '<div class="lectblock"><div class="lectlabel bad">Disadvantages</div><ul>' + lectBullets(t.body.disadvantages) + '</ul></div>' +
+        '</div>' +
+        '<div class="lectblock"><div class="lectlabel">Impact</div><p>' + esc(t.body.impact || '') + '</p></div>' +
+        '<div class="lectcallout"><b>Quote:</b> “' + esc((t.quote && t.quote.text) || '') + '”' +
+        (t.quote && t.quote.who ? ' <span class="muted">— ' + esc(t.quote.who) + '</span>' : '') +
+        '<br><b>Figure:</b> ' + esc(t.statistic || '') + '</div>'
+      );
+    }
+
+    return (
+      '<div class="lectblock"><div class="lectlabel">Future possibilities</div><p>' + esc(t.conclusion.future || '') + '</p></div>' +
+      '<div class="lectblock"><div class="lectlabel">Challenges</div><ul>' + lectBullets(t.conclusion.challenges) + '</ul></div>' +
+      '<div class="lectblock"><div class="lectlabel">Precautions to exercise</div><ul>' + lectBullets(t.conclusion.precautions) + '</ul></div>' +
+      '<div class="lectblock opinion"><div class="lectlabel">Your opinion — end here</div><p>' + esc(t.conclusion.opinion || '') + '</p></div>'
+    );
+  }
+
+  function lecturePause() {
+    var R = lectState().run;
+    if (!R || R.done) return false;
+    R.paused = !R.paused;
+    paintLecture(false);
+    return R.paused;
+  }
+
+  function lectureNextPhase() {
+    var L = lectState();
+    var R = L.run;
+    if (!R || R.done) return;
+    if (R.phase >= LECT_PHASES.length - 1) {
+      finishLecture('manual');
+      return;
+    }
+    R.phase += 1;
+    R.remaining = LECT_PHASES[R.phase].secs;
+    paintLecture(true);
+  }
+
+  function lectTick() {
+    var L = lectState();
+    var R = L.run;
+    if (!R || R.done || R.paused) return;
+    R.remaining = Math.max(0, R.remaining - 1);
+    if (R.remaining === 0) {
+      if (R.phase < LECT_PHASES.length - 1) {
+        R.phase += 1;
+        R.remaining = LECT_PHASES[R.phase].secs;
+        paintLecture(true);
+        toast('Time — now the ' + LECT_PHASES[R.phase].label.toLowerCase() + ' (' + LECT_PHASES[R.phase].secs + ' seconds)');
+      } else {
+        finishLecture('time');
+      }
+      return;
+    }
+    paintLecture(false);
+  }
+
+  function finishLecture(reason) {
+    var L = lectState();
+    var R = L.run;
+    if (!R) return;
+    stopLectTimer();
+    window.api.keepAwake(false);
+    R.done = true;
+    L.summary = {
+      topic: R.topic.topic,
+      topicRef: R.topic,
+      reason: reason,
+      spent: Date.now() - R.startedAt
+    };
+    L.mode = 'done';
+    L.run = null;
+    render();
+  }
+
+  function leaveLecture() {
+    stopLectTimer();
+    window.api.keepAwake(false);
+    var L = lectState();
+    L.run = null;
+    L.mode = 'list';
+    render();
+  }
+
+  function renderLectDone() {
+    var L = lectState();
+    var sm = L.summary || {};
+    body(
+      '<h1>Lecturette finished</h1>' +
+      '<p class="lead">' + esc(sm.topic || 'Topic') + ' · ' + clock(sm.spent || 0) + ' on the clock ' +
+      (sm.reason === 'time' ? '(all three phases ran out)' : '(finished early)') + '</p>' +
+      '<div class="note">Score yourself honestly against the pattern. Did the <b>intro</b> say what the topic means and where it came from? ' +
+      'Did the <b>body</b> give the present state, a parallel, both sides and one figure or quote? ' +
+      'Did the <b>conclusion</b> end with a clear opinion?</div>' +
+      '<div class="row" style="margin-top:20px">' +
+      '<button class="btn primary" id="lectAnother">Back to topics</button>' +
+      '<button class="btn" id="lectRepeat">Repeat this topic</button>' +
+      '<button class="btn ghost" id="lectHome">Home</button>' +
+      '</div>'
+    );
+    document.getElementById('lectAnother').addEventListener('click', function () { leaveLecture(); });
+    document.getElementById('lectRepeat').addEventListener('click', function () {
+      if (sm.topicRef) startLecture(sm.topicRef, null);
+      else leaveLecture();
+    });
+    document.getElementById('lectHome').addEventListener('click', function () { goto('home'); });
+  }
+

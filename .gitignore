@@ -1,0 +1,20 @@
+node_modules/
+release/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+
+# Build scratch: the icon source and the temporary TAT download folder.
+build/
+.tmpimg/
+.tat-build-state.json
+
+# The classic TAT set is user-supplied practice material (see NOTICE.txt).
+# It is not covered by this project's licence and must not be redistributed,
+# so it is deliberately left out of this repository.
+data/tat-classic/
+
+# Throwaway screenshot folders from repeated local smoke runs.
+screenshots2/
+screenshots3/

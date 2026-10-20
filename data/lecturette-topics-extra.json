@@ -1,0 +1,1784 @@
+[
+ {
+  "id": "robotics-above40",
+  "title": "Robotics",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Robotics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "special-economic-zone-above1",
+  "title": "Special Economic Zone",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Special Economic Zone India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-wto-above2",
+  "title": "India & WTO",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India & WTO India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "search-engine-above41",
+  "title": "Search Engine",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Search Engine India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "tax-reform-above3",
+  "title": "Tax reform",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Tax reform India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "taiwan-china-dispute-above42",
+  "title": "Taiwan - China Dispute",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "Taiwan - China Dispute India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cloning-above4",
+  "title": "Cloning",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Cloning India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "social-corporate-behaviour-above43",
+  "title": "Social Corporate Behaviour",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "Social Corporate Behaviour India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "land-acquisition-above5",
+  "title": "Land acquisition",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "Land acquisition India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "nato-above44",
+  "title": "NATO",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "NATO India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "global-economic-crises-above6",
+  "title": "Global Economic crises",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Global Economic crises India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "net-banking-above45",
+  "title": "Net Banking",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Net Banking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "centre-and-state-relation-above7",
+  "title": "Centre and State Relation",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "Centre and State Relation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "chemical-warfare-above46",
+  "title": "Chemical warfare",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Chemical warfare India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "strategic-indian-ocean-above8",
+  "title": "Strategic Indian Ocean",
+  "category": "Environment & Geography",
+  "band": "above",
+  "boards": [],
+  "query": "Strategic Indian Ocean India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "chronic-capitalism-above47",
+  "title": "Chronic Capitalism",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Chronic Capitalism India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "stem-cell-above9",
+  "title": "Stem Cell",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Stem Cell India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "missile-technology-control-regime-in-india-mtcr-above48",
+  "title": "Missile Technology Control Regime in India (MTCR)",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Missile Technology Control Regime in India (MTCR) India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-s-space-programme-above10",
+  "title": "India's Space Programme",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "India's Space Programme India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "niti-ayog-above49",
+  "title": "NITI Ayog",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "NITI Ayog India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-s-east-locality-above11",
+  "title": "Indian's east locality",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "Indian's east locality India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "weapons-of-mass-destruction-above50",
+  "title": "Weapons of mass destruction",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Weapons of mass destruction India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "nano-technology-above12",
+  "title": "Nano technology",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Nano technology India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-china-relation-above51",
+  "title": "India-China relation",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India-China relation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "global-planning-india-above13",
+  "title": "Global Planning India",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "Global Planning India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "fiscal-deficit-above52",
+  "title": "Fiscal Deficit",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Fiscal Deficit India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "demilitarization-of-siachen-above14",
+  "title": "Demilitarization of Siachen",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Demilitarization of Siachen India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "south-china-sea-above53",
+  "title": "South-China Sea",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "South-China Sea India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-nuclear-programme-above15",
+  "title": "Indian Nuclear programme",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Indian Nuclear programme India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "european-union-above54",
+  "title": "European Union",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "European Union India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-missile-programme-above16",
+  "title": "Indian Missile Programme",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Indian Missile Programme India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "virtual-reality-above55",
+  "title": "Virtual Reality",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Virtual Reality India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "unipolar-world-above17",
+  "title": "Unipolar World",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "Unipolar World India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "computer-hacking-above56",
+  "title": "Computer Hacking",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Computer Hacking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ucab-above18",
+  "title": "UCAB",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "UCAB India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-israel-relations-above57",
+  "title": "India-Israel Relations",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India-Israel Relations India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "fibre-optic-above19",
+  "title": "Fibre Optic",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Fibre Optic India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "crypto-currency-above58",
+  "title": "Crypto Currency",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Crypto Currency India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ind-ces-relation-above20",
+  "title": "Ind - CES Relation",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "Ind - CES Relation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "un-peace-keeping-mission-above59",
+  "title": "UN Peace Keeping Mission",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "UN Peace Keeping Mission India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "genetically-modified-food-above21",
+  "title": "Genetically Modified Food",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Genetically Modified Food India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cag-above60",
+  "title": "CAG",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "CAG India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-claim-in-permanent-seat-in-unsc-above22",
+  "title": "India Claim in permanent seat in UNSC",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "India Claim in permanent seat in UNSC India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "wto-above61",
+  "title": "WTO",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "WTO India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "artificial-intelligence-above23",
+  "title": "Artificial Intelligence",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Artificial Intelligence India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "fdi-in-defense-above62",
+  "title": "FDI in Defense",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "FDI in Defense India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "kaveri-basin-above24",
+  "title": "Kaveri Basin",
+  "category": "Environment & Geography",
+  "band": "above",
+  "boards": [],
+  "query": "Kaveri Basin India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "brics-above63",
+  "title": "BRICS",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "BRICS India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "minimum-wage-policy-above25",
+  "title": "Minimum Wage Policy",
+  "category": "Economy & Business",
+  "band": "above",
+  "boards": [],
+  "query": "Minimum Wage Policy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "saarc-above64",
+  "title": "SAARC",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "SAARC India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "role-of-ngo-above26",
+  "title": "Role of NGO",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "Role of NGO India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cer-cooperative-social-responsibility-above27",
+  "title": "CER - Cooperative Social Responsibility",
+  "category": "Society & Culture",
+  "band": "above",
+  "boards": [],
+  "query": "CER - Cooperative Social Responsibility India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-defense-budget-above66",
+  "title": "Indian Defense Budget",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Indian Defense Budget India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "green-house-effect-above28",
+  "title": "Green House Effect",
+  "category": "Environment & Geography",
+  "band": "above",
+  "boards": [],
+  "query": "Green House Effect India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "4g-mobile-communication-above67",
+  "title": "4G mobile Communication",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "4G mobile Communication India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "judiciary-constitution-reform-above29",
+  "title": "Judiciary & Constitution Reform",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "Judiciary & Constitution Reform India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-bhutan-relations-above68",
+  "title": "India-Bhutan Relations",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India-Bhutan Relations India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "genetic-mutation-above30",
+  "title": "Genetic Mutation",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Genetic Mutation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "unsc-above69",
+  "title": "UNSC",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "UNSC India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ethical-hacking-above31",
+  "title": "Ethical Hacking",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Ethical Hacking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ios-vs-android-above70",
+  "title": "iOS vs Android",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "iOS vs Android India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-foreign-policy-above32",
+  "title": "India Foreign Policy",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India Foreign Policy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-role-in-un-above33",
+  "title": "India Role in UN",
+  "category": "International Relations",
+  "band": "above",
+  "boards": [],
+  "query": "India Role in UN India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "space-warfare-above34",
+  "title": "Space warfare",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "Space warfare India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "afspa-above36",
+  "title": "AFSPA",
+  "category": "Defence & Security",
+  "band": "above",
+  "boards": [],
+  "query": "AFSPA India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "value-based-politics-above37",
+  "title": "Value Based Politics",
+  "category": "Polity & Governance",
+  "band": "above",
+  "boards": [],
+  "query": "Value Based Politics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cyber-security-above38",
+  "title": "Cyber Security",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Cyber Security India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "data-security-above39",
+  "title": "Data Security",
+  "category": "Science & Technology",
+  "band": "above",
+  "boards": [],
+  "query": "Data Security India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "food-adulteration-average40",
+  "title": "Food Adulteration",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Food Adulteration India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "swatch-bharat-abhiyan-average41",
+  "title": "Swatch Bharat Abhiyan",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Swatch Bharat Abhiyan India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "single-parenting-average1",
+  "title": "Single parenting",
+  "category": "Personal & Reflective",
+  "band": "average",
+  "boards": [],
+  "query": "Single parenting India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indo-china-average42",
+  "title": "Indo / China",
+  "category": "International Relations",
+  "band": "average",
+  "boards": [],
+  "query": "Indo / China India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "make-in-india-average2",
+  "title": "Make in India",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Make in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "inr-doller-average43",
+  "title": "INR / Doller",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "INR / Doller India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "social-networking-average3",
+  "title": "Social Networking",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Social Networking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "e-waste-average44",
+  "title": "E-Waste",
+  "category": "Science & Technology",
+  "band": "average",
+  "boards": [],
+  "query": "E-Waste India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "e-governance-average4",
+  "title": "e-Governance",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "e-Governance India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "global-energy-circes-average45",
+  "title": "Global Energy Circes",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Global Energy Circes India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "role-of-opposition-in-democracy-average5",
+  "title": "Role of opposition in Democracy",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Role of opposition in Democracy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "global-arm-race-average46",
+  "title": "Global Arm Race",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Global Arm Race India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "social-status-of-women-average6",
+  "title": "Social status of women",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Social status of women India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "vote-bank-politics-average47",
+  "title": "Vote Bank Politics",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Vote Bank Politics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "drdo-average7",
+  "title": "DRDO",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "DRDO India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "living-relation-average48",
+  "title": "Living Relation",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Living Relation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "inter-cast-marriage-average8",
+  "title": "Inter-Cast Marriage",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Inter-Cast Marriage India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "piracy-average49",
+  "title": "Piracy",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Piracy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "road-safety-average9",
+  "title": "Road Safety",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Road Safety India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-coast-line-average50",
+  "title": "Indian Coast Line",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Indian Coast Line India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "lok-sabha-rajya-sabha-average10",
+  "title": "Lok Sabha / Rajya Sabha",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Lok Sabha / Rajya Sabha India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "lifestyle-disease-average51",
+  "title": "Lifestyle Disease",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Lifestyle Disease India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "moral-policing-average11",
+  "title": "Moral Policing",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Moral Policing India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "it-revolution-average52",
+  "title": "IT Revolution",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "IT Revolution India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "religion-fundamental-average12",
+  "title": "Religion Fundamental",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Religion Fundamental India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "sarv-siksha-abhiyan-average53",
+  "title": "Sarv Siksha Abhiyan",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Sarv Siksha Abhiyan India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "mercy-killing-average13",
+  "title": "Mercy Killing",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Mercy Killing India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "value-education-average54",
+  "title": "Value Education",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Value Education India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "food-security-bill-average14",
+  "title": "Food Security Bill",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Food Security Bill India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "importance-of-diet-nutrition-average55",
+  "title": "Importance of Diet & Nutrition",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Importance of Diet & Nutrition India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "namani-ganga-project-average15",
+  "title": "Namani Ganga Project",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Namani Ganga Project India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "corruption-in-politics-average56",
+  "title": "Corruption in Politics",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Corruption in Politics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ayurveda-allopathy-average16",
+  "title": "Ayurveda / Allopathy",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Ayurveda / Allopathy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "rich-poor-average57",
+  "title": "Rich / Poor",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Rich / Poor India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "reservation-policy-average17",
+  "title": "Reservation Policy",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Reservation Policy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "golden-quadrilateral-average58",
+  "title": "Golden Quadrilateral",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Golden Quadrilateral India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "medical-tourism-average18",
+  "title": "Medical Tourism",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Medical Tourism India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "multitasking-average59",
+  "title": "Multitasking",
+  "category": "Personal & Reflective",
+  "band": "average",
+  "boards": [],
+  "query": "Multitasking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "education-reform-average19",
+  "title": "Education Reform",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Education Reform India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "national-security-council-average60",
+  "title": "National Security Council",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "National Security Council India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "honour-killing-average20",
+  "title": "Honour Killing",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Honour Killing India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "heart-mind-game-in-j-k-average61",
+  "title": "Heart mind game in J & K",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Heart mind game in J & K India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "rti-act-average21",
+  "title": "RTI Act",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "RTI Act India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ministry-of-defense-average62",
+  "title": "Ministry of Defense",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Ministry of Defense India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "uin-number-average22",
+  "title": "UIN (number)",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "UIN (number) India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "dress-code-average63",
+  "title": "Dress Code",
+  "category": "Personal & Reflective",
+  "band": "average",
+  "boards": [],
+  "query": "Dress Code India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cross-border-terrorism-average23",
+  "title": "Cross border Terrorism",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Cross border Terrorism India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "two-party-democracy-average64",
+  "title": "Two party democracy",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Two party democracy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "isis-average24",
+  "title": "ISIS",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "ISIS India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "oil-spill-average65",
+  "title": "Oil Spill",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Oil Spill India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "jan-lok-pal-bill-average25",
+  "title": "Jan Lok Pal bill",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Jan Lok Pal bill India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "gurukul-system-in-india-average66",
+  "title": "Gurukul System in India",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Gurukul System in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "fdi-average26",
+  "title": "FDI",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "FDI India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "mobile-banking-average67",
+  "title": "Mobile Banking",
+  "category": "Science & Technology",
+  "band": "average",
+  "boards": [],
+  "query": "Mobile Banking India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "rain-drain-average27",
+  "title": "Rain Drain",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Rain Drain India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "nuclear-weapons-average68",
+  "title": "Nuclear Weapons",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Nuclear Weapons India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "organ-donation-average28",
+  "title": "Organ Donation",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Organ Donation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "advertisement-average69",
+  "title": "Advertisement",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Advertisement India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "youth-in-politics-average29",
+  "title": "Youth in Politics",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Youth in Politics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "censorship-in-indian-cinema-average70",
+  "title": "Censorship in Indian Cinema",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Censorship in Indian Cinema India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "370-article-average30",
+  "title": "370 Article",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "370 Article India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "msp-average71",
+  "title": "MSP",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "MSP India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-democracy-average31",
+  "title": "Indian Democracy",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Indian Democracy India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "black-money-average72",
+  "title": "Black Money",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Black Money India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "ndrf-average32",
+  "title": "NDRF",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "NDRF India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "outsourcing-average73",
+  "title": "Outsourcing",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Outsourcing India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "distance-education-average33",
+  "title": "Distance Education",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Distance Education India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "library-system-average74",
+  "title": "Library System",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Library System India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "unrest-in-west-asia-average34",
+  "title": "Unrest in West Asia",
+  "category": "International Relations",
+  "band": "average",
+  "boards": [],
+  "query": "Unrest in West Asia India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "govt-emarket-place-average75",
+  "title": "Govt. eMarket Place",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Govt. eMarket Place India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "mgnrega-average35",
+  "title": "MGNREGA",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "MGNREGA India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "shopping-mall-average76",
+  "title": "Shopping Mall",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Shopping Mall India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "e-commerce-average36",
+  "title": "e-Commerce",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "e-Commerce India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "skill-development-average77",
+  "title": "Skill Development",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Skill Development India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "media-censorship-average37",
+  "title": "Media Censorship",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Media Censorship India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "health-insurance-average78",
+  "title": "Health Insurance",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Health Insurance India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "compulsory-military-average38",
+  "title": "Compulsory military",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Compulsory military India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "retirement-age-of-politics-average39",
+  "title": "Retirement Age of Politics",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Retirement Age of Politics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "smartphone-average79",
+  "title": "Smartphone",
+  "category": "Science & Technology",
+  "band": "average",
+  "boards": [],
+  "query": "Smartphone India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "journalism-average94",
+  "title": "Journalism",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Journalism India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "supreme-court-average80",
+  "title": "Supreme Court",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Supreme Court India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "pollution-average95",
+  "title": "Pollution",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Pollution India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "national-parks-average81",
+  "title": "National Parks",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "National Parks India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "digi-revolution-average96",
+  "title": "Digi-revolution",
+  "category": "Science & Technology",
+  "band": "average",
+  "boards": [],
+  "query": "Digi-revolution India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "start-ups-average82",
+  "title": "Start-ups",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Start-ups India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "women-s-safety-average97",
+  "title": "Women's Safety",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Women's Safety India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "social-distancing-average83",
+  "title": "Social Distancing",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Social Distancing India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "siachen-glacier-average98",
+  "title": "Siachen Glacier",
+  "category": "Defence & Security",
+  "band": "average",
+  "boards": [],
+  "query": "Siachen Glacier India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "national-disaster-management-plan-average84",
+  "title": "National Disaster Management Plan",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "National Disaster Management Plan India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "conditions-of-farmer-in-india-average99",
+  "title": "Conditions of farmer in India",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Conditions of farmer in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "aids-average100",
+  "title": "AIDS",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "AIDS India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "education-system-in-india-average101",
+  "title": "Education system in India",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Education system in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "olympics-average87",
+  "title": "Olympics",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Olympics India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-2050-average102",
+  "title": "India 2050",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "India 2050 India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "changing-weather-pattern-average88",
+  "title": "Changing Weather Pattern",
+  "category": "Environment & Geography",
+  "band": "average",
+  "boards": [],
+  "query": "Changing Weather Pattern India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "bharat-ratna-average103",
+  "title": "Bharat Ratna",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Bharat Ratna India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "agri-technologies-average89",
+  "title": "Agri Technologies",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Agri Technologies India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "land-mafia-average90",
+  "title": "Land Mafia",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Land Mafia India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "sex-education-average105",
+  "title": "Sex Education",
+  "category": "Education & Youth",
+  "band": "average",
+  "boards": [],
+  "query": "Sex Education India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "india-bangladesh-relation-average91",
+  "title": "India-Bangladesh relation",
+  "category": "International Relations",
+  "band": "average",
+  "boards": [],
+  "query": "India-Bangladesh relation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "human-right-average106",
+  "title": "Human Right",
+  "category": "Polity & Governance",
+  "band": "average",
+  "boards": [],
+  "query": "Human Right India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "women-safety-average92",
+  "title": "women safety",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "women safety India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "small-scale-industries-average107",
+  "title": "Small Scale Industries",
+  "category": "Economy & Business",
+  "band": "average",
+  "boards": [],
+  "query": "Small Scale Industries India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-postal-services-average93",
+  "title": "Indian Postal Services",
+  "category": "Society & Culture",
+  "band": "average",
+  "boards": [],
+  "query": "Indian Postal Services India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "public-transport-average23",
+  "title": "Public Transport",
+  "category": "Sports & Media",
+  "band": "average",
+  "boards": [],
+  "query": "Public Transport India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "real-estate-below24",
+  "title": "Real Estate",
+  "category": "Economy & Business",
+  "band": "below",
+  "boards": [],
+  "query": "Real Estate India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "road-accidents-below25",
+  "title": "Road Accidents",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Road Accidents India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "highway-safety-in-india-below26",
+  "title": "Highway safety in India",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Highway safety in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "my-favourite-teacher-below2",
+  "title": "My Favourite Teacher",
+  "category": "Education & Youth",
+  "band": "below",
+  "boards": [],
+  "query": "My Favourite Teacher India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "time-management-below27",
+  "title": "Time Management",
+  "category": "Personal & Reflective",
+  "band": "below",
+  "boards": [],
+  "query": "Time Management India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "unemployment-below3",
+  "title": "Unemployment",
+  "category": "Economy & Business",
+  "band": "below",
+  "boards": [],
+  "query": "Unemployment India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "should-smoking-be-banned-below4",
+  "title": "Should Smoking be banned",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Should Smoking be banned India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "indian-actors-in-hollywood-below5",
+  "title": "Indian actors in Hollywood",
+  "category": "Polity & Governance",
+  "band": "below",
+  "boards": [],
+  "query": "Indian actors in Hollywood India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "my-biggest-achievement-below6",
+  "title": "My Biggest Achievement",
+  "category": "Personal & Reflective",
+  "band": "below",
+  "boards": [],
+  "query": "My Biggest Achievement India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "dowry-system-below7",
+  "title": "Dowry System",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Dowry System India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "family-planning-below8",
+  "title": "Family Planning",
+  "category": "Personal & Reflective",
+  "band": "below",
+  "boards": [],
+  "query": "Family Planning India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "tourism-below9",
+  "title": "Tourism",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Tourism India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "cricket-hockey-national-sports-below10",
+  "title": "Cricket / Hockey National Sports",
+  "category": "Sports & Media",
+  "band": "below",
+  "boards": [],
+  "query": "Cricket / Hockey National Sports India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "global-warming-below11",
+  "title": "Global Warming",
+  "category": "Defence & Security",
+  "band": "below",
+  "boards": [],
+  "query": "Global Warming India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "yoga-below12",
+  "title": "Yoga",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Yoga India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "nuclear-joint-family-below13",
+  "title": "Nuclear / Joint Family",
+  "category": "Defence & Security",
+  "band": "below",
+  "boards": [],
+  "query": "Nuclear / Joint Family India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "child-father-of-man-below14",
+  "title": "Child Father of Man",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Child Father of Man India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "crime-against-women-below15",
+  "title": "Crime Against Women",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Crime Against Women India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "t20-1-day-cricket-below16",
+  "title": "T20 / 1 Day Cricket",
+  "category": "Sports & Media",
+  "band": "below",
+  "boards": [],
+  "query": "T20 / 1 Day Cricket India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "online-shopping-below17",
+  "title": "Online Shopping",
+  "category": "Science & Technology",
+  "band": "below",
+  "boards": [],
+  "query": "Online Shopping India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "phone-below18",
+  "title": "Phone",
+  "category": "Society & Culture",
+  "band": "below",
+  "boards": [],
+  "query": "Phone India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "deforestation-below19",
+  "title": "Deforestation",
+  "category": "Environment & Geography",
+  "band": "below",
+  "boards": [],
+  "query": "Deforestation India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "time-is-best-healer-below20",
+  "title": "Time is best healer",
+  "category": "Personal & Reflective",
+  "band": "below",
+  "boards": [],
+  "query": "Time is best healer India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "sports-as-a-career-in-india-below21",
+  "title": "Sports as a career in India",
+  "category": "Sports & Media",
+  "band": "below",
+  "boards": [],
+  "query": "Sports as a career in India India",
+  "addedOn": "2026-10-20"
+ },
+ {
+  "id": "forest-fire-below22",
+  "title": "Forest fire",
+  "category": "Environment & Geography",
+  "band": "below",
+  "boards": [],
+  "query": "Forest fire India",
+  "addedOn": "2026-10-20"
+ }
+]
