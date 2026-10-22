@@ -104,13 +104,17 @@ function main() {
       'bundled picture library  ' + packedImages + ' / ' + manifest.length + ' pictures'
   );
 
-  // The classic TAT set travels inside the asar as well.
+  // The classic TAT set travels inside the asar as well. Count the plates the
+  // manifest actually names - the set is not all JPEG (two of the plates are
+  // PNG), so a file-extension count would report a false mismatch.
   const classicManifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'data', 'tat-classic.json'), 'utf8')
   );
-  const packedClassic = asar
-    .listPackage(ASAR)
-    .filter((f) => /tat-classic.*\.jpg$/i.test(f)).length;
+  const packedFiles = asar.listPackage(ASAR);
+  const classicNames = classicManifest.map((r) => String(r.file || '').toLowerCase());
+  const packedClassic = classicNames.filter((name) =>
+    packedFiles.some((f) => f.replace(/\\/g, '/').toLowerCase().endsWith('/data/tat-classic/' + name))
+  ).length;
   const classicOk = packedClassic === classicManifest.length;
   if (!classicOk) failures++;
   console.log(

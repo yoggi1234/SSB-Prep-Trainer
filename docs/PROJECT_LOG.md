@@ -40,6 +40,12 @@ opened straight onto a blank window while it read its data.
 - **Shipped.** GitHub release `v1.0.2` (public), asset `SSB-Prep-Trainer-1.0.2-android.apk`,
   14,157,329 B, SHA-256 `7ecd67ed95b0637ded09a47a8fe4ee1305fe776c1837fe3cd8bfd5e4bb52f62d`. The
   same file is on the phone at `/sdcard/Download/`.
+- **Windows build rebuilt** so the PC app carries the same changes: `npm run dist`, then
+  `node tools/verify-package.js` (all files match, 43/43 classic plates, 2001/2001 museum pictures)
+  and the packaged smoke from inside the asar: 472 checks, 0 failures, 0 console errors.
+- **Verifier fixed, not weakened.** It counted classic plates with a `.jpg` filter, but two of the
+  43 plates are PNG, so it reported a false 41/43 mismatch. It now checks the manifest names against
+  the files actually packed, which is the stronger check.
 
 **Verified on the phone** (Pixel-class device, `in.ssbprep.trainer`, USB + CDP):
 
