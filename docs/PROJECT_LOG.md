@@ -53,9 +53,14 @@ dashboard; the app did not close.
 **Artifact.** APK 14,153,978 B, SHA-256 `760aa8cc…`; copied to `release/SSB-Prep-Trainer-1.0.0-debug.apk`
 and pushed to `/sdcard/Download/` on the phone so it can be shared from the file manager.
 
-**Not verified.** GitHub publication (see the note below the next entry). Headlines depend on Google
-News being reachable from the user's network. Commons pictures are general public-domain art, not
-curated SSB scenes, so some are weak TAT prompts. The APK is still an unsigned debug build.
+**Published.** Pushed to `github.com/yoggi1234/SSB-Prep-Trainer` (commit `286c8a7`) and attached to
+release **v1.0.1** as `SSB-Prep-Trainer-1.0.1-android.apk` (14,153,978 B, downloaded back over HTTPS
+byte-for-byte: HTTP 200, same size). The repository owner chose a public release with the full APK,
+including the user-supplied plates, after the NOTICE warning was put to them.
+
+**Not verified.** Headlines depend on Google News being reachable from the user's network. Commons
+pictures are general public-domain art, not curated SSB scenes, so some are weak TAT prompts. The
+APK is still an unsigned debug build and Play Protect will warn on install.
 
 ---
 

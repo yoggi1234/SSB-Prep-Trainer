@@ -30,6 +30,7 @@ Electron app, zero runtime npm dependencies. Python is only needed for the optio
 |--------|------|--------------|
 | **Portable .exe** | 200 MB | Single file. Put it anywhere and double-click. Nothing is installed. |
 | **Installer .exe** | 200 MB | Choose the folder; creates Desktop and Start Menu shortcuts, plus an uninstaller in Windows Settings. |
+| **Android APK** | 14 MB | [Download from Releases](https://github.com/yoggi1234/SSB-Prep-Trainer/releases/latest) and sideload it. Unsigned debug build; see *Build the Android app* below. |
 
 **Important:** The build is unsigned. Windows may show "Windows protected your PC" on first run. Click **More info → Run anyway** — this is expected and not a virus warning.
 
