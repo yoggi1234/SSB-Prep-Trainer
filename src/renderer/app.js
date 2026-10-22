@@ -937,11 +937,24 @@
       }
       updateBar(S.refs.bar, s.remaining / dur);
       S.refs.clock.textContent = clock(s.remaining);
-      var warn = s.phase === 'view' ? 10000 : 60000;
+      // The warning is a share of the phase, not a fixed minute: a 30-second
+      // practice write would otherwise be "one minute left" from the start.
+      var warn =
+        s.phase === 'view'
+          ? Math.min(10000, Math.max(3000, S.config.tatViewSec * 1000 * 0.34))
+          : Math.min(60000, Math.max(5000, S.config.tatWriteSec * 1000 * 0.25));
       S.refs.clock.classList.toggle('urgent', s.remaining <= warn);
-      if (S.refs.writeClockNum && S.refs.writeClock && !S.refs.writeClock.hidden) {
+      if (S.refs.writeClockNum && S.refs.writeStage && !S.refs.writeStage.hidden) {
         S.refs.writeClockNum.textContent = clock(s.remaining);
         S.refs.writeClockNum.classList.toggle('urgent', s.remaining <= warn);
+        // The warning sits a little above the digits, where the eye already
+        // is, so it does not need the clock itself to change colour.
+        var wn = document.getElementById('wsWarn');
+        if (wn) {
+          wn.hidden = s.remaining > warn;
+          wn.textContent =
+            s.remaining <= 10000 ? 'Ten seconds left' : warn <= 30000 ? 'Almost time' : 'One minute left';
+        }
       }
     }
   }
@@ -1230,6 +1243,7 @@
         '<div class="write-stage" id="writeStage" hidden>' +
         '<div class="ws-top"><span class="ws-phase">Writing</span><span class="ws-slide" id="wsSlide"></span></div>' +
         '<div class="ws-main">' +
+        '<div class="ws-warn" id="wsWarn" hidden>One minute left</div>' +
         '<div class="ws-num" id="writeClockNum">4:00</div>' +
         '<div class="ws-sub" id="wsSub">Write the story in your practice copy</div>' +
         '</div>' +

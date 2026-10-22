@@ -2594,3 +2594,19 @@ html[data-reduce-motion='true'] *::after {
 .dig-list li:first-child {
   border-top: 0;
 }
+
+/* The last-minute warning sits a little above the digits. */
+.ws-warn {
+  font-size: clamp(13px, 1.8vh, 18px);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+  background: var(--danger-bg);
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
+.ws-warn[hidden] {
+  display: none;
+}

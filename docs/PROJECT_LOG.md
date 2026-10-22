@@ -34,6 +34,12 @@ opened straight onto a blank window while it read its data.
 - **Phone News Digest.** The dead "Python is desktop-only" page is replaced by `digestOnPhone()` in
   `mobile/online.js`: twelve sections built from the same free Google News feeds through the native
   HTTP layer, cached in `ssb-digest-phone`, with a Refresh button and the last edition offline.
+- **Warning above the clock.** The last-minute warning sits a little above the digits, and the
+  threshold is a share of the phase, not a fixed minute — a 30-second practice write no longer
+  says "one minute left" from the start.
+- **Shipped.** GitHub release `v1.0.2` (public), asset `SSB-Prep-Trainer-1.0.2-android.apk`,
+  14,157,329 B, SHA-256 `7ecd67ed95b0637ded09a47a8fe4ee1305fe776c1837fe3cd8bfd5e4bb52f62d`. The
+  same file is on the phone at `/sdcard/Download/`.
 
 **Verified on the phone** (Pixel-class device, `in.ssbprep.trainer`, USB + CDP):
 
@@ -43,6 +49,8 @@ opened straight onto a blank window while it read its data.
 - Landscape (rotation forced, 1037×480): overlay fills the window, clock 144 px, Next 190×46 medium,
   picture hidden.
 - News Digest: 12 sections, 48 stories, edition `2026-10-22`, no console errors.
+- The warning line: hidden at 00:29 of a 30-second write, "TEN SECONDS LEFT" at 00:05 with the
+  digits in the urgent colour.
 - Desktop `npm run smoke`: 472 checks, 0 failures, 0 console errors.
 
 **Not verified.** The chimes were scheduled without an exception (console clean) but automation cannot
