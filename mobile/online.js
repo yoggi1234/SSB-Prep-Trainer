@@ -155,6 +155,42 @@
     return out;
   }
 
+  // One page per section, in the same order as the desktop digest.
+  var DIGEST_SECTIONS = [
+    { key: 'national', label: 'National', query: 'India government Parliament policy' },
+    { key: 'international', label: 'International', query: 'world news United Nations summit' },
+    { key: 'regional', label: 'Regional (States)', query: 'India state government news' },
+    { key: 'defence', label: 'Defence', query: 'Indian Armed Forces defence ministry' },
+    { key: 'politics', label: 'Politics', query: 'India politics election' },
+    { key: 'financial', label: 'Financial', query: 'Sensex rupee RBI markets' },
+    { key: 'economic', label: 'Economic', query: 'India economy growth exports' },
+    { key: 'neighbour', label: 'Neighbouring Countries', query: 'Pakistan China Nepal Bangladesh Sri Lanka' },
+    { key: 'science', label: 'Science', query: 'science research ISRO space' },
+    { key: 'geopolitical', label: 'Geopolitical', query: 'geopolitics Indo-Pacific strategy' },
+    { key: 'misc', label: 'Miscellaneous', query: 'India appointments awards exercise' },
+    { key: 'war', label: 'War Section', query: 'war conflict military operation' }
+  ];
+
+  function digestPhonePack(rec, cached, detail) {
+    var out = {
+      ok: true,
+      sections: (rec.sections || []).map(function (s) {
+        return {
+          key: s.key,
+          label: s.label,
+          items: (s.items || []).map(function (it) { return { title: it.title || it.text || '', link: it.link || '' }; })
+        };
+      }),
+      at: rec.at || 0,
+      checkedOn: isoDay(rec.at),
+      source: 'Google News (on the phone)',
+      cached: !!cached
+    };
+    if (detail === 'offline') out.offline = true;
+    else if (detail) out.detail = detail;
+    return out;
+  }
+
   function newsPack(rec, extra) {
     return Object.assign(
       { ok: true, items: rec.items || [], checkedAt: rec.checkedAt || 0, checkedOn: isoDay(rec.checkedAt) },
@@ -382,6 +418,37 @@
           if (cached) return newsPack(cached, { cached: true, offline: true });
           return { ok: false, error: err.message === 'empty' ? 'empty' : 'network' };
         });
+    },
+
+    // The Python digest engine cannot run in a WebView, but the thing the
+    // person actually wants - today's current affairs, twelve sections - can
+    // be built here from the same free Google News feeds. It is cached, so a
+    // lost connection still opens yesterday's edition instead of a dead form.
+    digestOnPhone: function (opts) {
+      var force = !!(opts && opts.force);
+      var cached = readJson('ssb-digest-phone');
+      if (!force && cached && cached.sections && Date.now() - (cached.at || 0) < 20 * 60 * 1000) {
+        return Promise.resolve(digestPhonePack(cached, true));
+      }
+      if (!onlineOn()) {
+        return Promise.resolve(cached ? digestPhonePack(cached, true, 'offline') : { ok: false, error: 'offline' });
+      }
+      var jobs = DIGEST_SECTIONS.map(function (sec) {
+        return googleNews(sec.query, 4).then(
+          function (rows) { return { key: sec.key, label: sec.label, items: rows.slice(0, 4) }; },
+          function () { return { key: sec.key, label: sec.label, items: [] }; }
+        );
+      });
+      return Promise.all(jobs).then(function (sections) {
+        var total = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
+        if (!total) throw new Error('empty');
+        var rec = { at: Date.now(), sections: sections };
+        writeJson('ssb-digest-phone', rec);
+        return digestPhonePack(rec, false);
+      }).catch(function (err) {
+        if (cached) return digestPhonePack(cached, true, err.message);
+        return { ok: false, error: err.message === 'empty' ? 'empty' : 'network', detail: err.message };
+      });
     },
 
     lecturesHot: function () {

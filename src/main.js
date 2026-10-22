@@ -96,6 +96,9 @@ function defaults() {
       // A user preference layered on top of the OS "reduce motion" setting:
       // true skips the tile orbit, the lecturette slides and the paging hops.
       reduceMotion: false,
+      // Chimes at the start, the writing phase and the end are synthesised in
+      // the renderer; this only decides whether they play.
+      soundOn: true,
       hideTatPromptWhileWriting: true,
       // On by default for fresh installs, but every feature falls back to
       // bundled or cached material when the connection drops.

@@ -11,6 +11,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- The app opens on this sheet while the store, TAT library, lecturette
+         set and dictionary are read. It is dark by default like the rest of
+         the app; app.js updates the label and the bar, then fades it out. -->
+    <div id="bootScreen" class="boot" role="status" aria-live="polite">
+      <div class="boot-card">
+        <div class="boot-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="boot-name">SSB Prep Trainer</div>
+        <div class="boot-note" id="bootNote">Starting…</div>
+        <div class="boot-bar"><i id="bootBar"></i></div>
+        <div class="boot-foot" id="bootFoot">Reading your data</div>
+      </div>
+    </div>
     <div id="app" class="app"></div>
     <div id="toast" class="toast" hidden></div>
     <script src="app.js"></script>

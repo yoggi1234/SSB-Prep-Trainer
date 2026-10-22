@@ -799,6 +799,9 @@
     };
 
     window.api.keepAwake(true);
+    // A cue at the start, and one at the end, so the test can be run with your
+    // eyes on the paper rather than the screen.
+    cue('start');
     S.view = 'run:' + test;
     if (test === 'wat') mountWat();
     else if (test === 'srt') mountSrt();
@@ -1211,10 +1214,6 @@
         '<div class="phase" id="phase">Viewing</div>' +
         '<div class="clocknum" id="clock">30</div>' +
         '<div id="slideContent"></div>' +
-        '<div class="write-clock" id="writeClock" hidden>' +
-        '<div class="wc-num" id="writeClockNum"></div>' +
-        '<div class="wc-lbl">Writing — in your practice copy</div>' +
-        '</div>' +
         '</div>' +
         '<div class="tat-copy"><b>Write the story in your practice copy.</b><span>Look at the picture for ' +
         S.config.tatViewSec + ' seconds. It is taken away when the viewing time ends, then you get ' +
@@ -1222,9 +1221,24 @@
         '</div>' +
         '<div class="footbar">' +
         '<span class="hint" id="hint"></span>' +
-        '<span class="right"><button class="btn primary sm" id="nextBtn">Next slide →</button></span>' +
+        '<span class="right"><button class="btn primary sm btn-next" id="nextBtn">Next slide →</button></span>' +
         '</div>' +
         '</div>' +
+        // Writing gets a sheet of its own over the whole window: no picture, no
+        // run bar, no slide counter - just the time, the slide number and the
+        // one button that moves on, exactly as the board works.
+        '<div class="write-stage" id="writeStage" hidden>' +
+        '<div class="ws-top"><span class="ws-phase">Writing</span><span class="ws-slide" id="wsSlide"></span></div>' +
+        '<div class="ws-main">' +
+        '<div class="ws-num" id="writeClockNum">4:00</div>' +
+        '<div class="ws-sub" id="wsSub">Write the story in your practice copy</div>' +
+        '</div>' +
+        '<div class="ws-actions">' +
+        '<button class="btn ghost" id="peekBtn2">Show prompt</button>' +
+        '<button class="btn primary btn-next" id="nextBtn2">Next slide →</button>' +
+        '</div>' +
+        '</div>' +
+        '<button class="btn primary peek-back" id="peekBack" hidden>Back to the clock</button>' +
         '</div>'
     );
 
@@ -1234,20 +1248,33 @@
       phase: document.getElementById('phase'),
       slideContent: document.getElementById('slideContent'),
       slidebox: document.getElementById('slidebox'),
-      writeClock: document.getElementById('writeClock'),
+      writeStage: document.getElementById('writeStage'),
       writeClockNum: document.getElementById('writeClockNum'),
       counter: document.getElementById('counter'),
       hint: document.getElementById('hint')
     };
 
-    document.getElementById('nextBtn').addEventListener('click', function () {
+    function nextSlide() {
+      if (!S.session) return;
       if (S.session.phase === 'view') toWritePhase();
       else advanceTat();
-    });
-    document.getElementById('peekBtn').addEventListener('click', function () {
-      S.refs.slideContent.hidden = false;
-      toast('Prompt shown again — in the real test it stays out of sight.');
-    });
+    }
+    document.getElementById('nextBtn').addEventListener('click', nextSlide);
+    document.getElementById('nextBtn2').addEventListener('click', nextSlide);
+    // The one deliberate exception: you asked to see the picture again. The
+    // clock steps aside, and a single button brings it back.
+    function togglePeek() {
+      var live = S.session;
+      if (!live || live.phase !== 'write') return;
+      live.peeking = !live.peeking;
+      applyTatPhase();
+      toast(live.peeking
+        ? 'Prompt shown again — in the real test it stays out of sight.'
+        : 'Back to the writing clock.');
+    }
+    document.getElementById('peekBtn').addEventListener('click', togglePeek);
+    document.getElementById('peekBtn2').addEventListener('click', togglePeek);
+    document.getElementById('peekBack').addEventListener('click', togglePeek);
     document.getElementById('pauseBtn').addEventListener('click', pauseResume);
     document.querySelector('[data-end]').addEventListener('click', function () { finish('manual'); });
 
@@ -1266,6 +1293,7 @@
     else content = '<div class="slide-text">' + esc(item.prompt) + '</div>';
     S.refs.slideContent.innerHTML = content;
     S.refs.counter.textContent = 'Slide ' + (s.index + 1) + ' / ' + s.items.length;
+    s.peeking = false;
     applyTatPhase();
   }
 
@@ -1273,31 +1301,37 @@
     var s = S.session;
     if (!s || !S.refs || s.test !== 'tat') return;
     var viewing = s.phase === 'view';
-    // Writing happens in a practice copy with the screen free: the clock takes
-    // the stage instead of a small number in the corner, so it can be read
-    // from across the room while you write.
-    var full = !viewing && S.config.hideTatPromptWhileWriting;
+    var peeking = !viewing && !!s.peeking;
     S.refs.phase.textContent = viewing ? 'Viewing' : 'Writing';
     S.refs.clock.textContent = viewing ? S.config.tatViewSec : clock(S.config.tatWriteSec * 1000);
-    S.refs.slideContent.hidden = !viewing && S.config.hideTatPromptWhileWriting;
-    if (S.refs.slidebox) S.refs.slidebox.classList.toggle('writing', full);
-    if (S.refs.writeClock) {
-      S.refs.writeClock.hidden = !full;
-      if (full) S.refs.writeClockNum.textContent = clock(Math.max(0, s.deadline - Date.now()));
+    // The picture is never on screen while the story is being written: the
+    // clock covers the whole window instead, which is what the board does.
+    S.refs.slideContent.hidden = !viewing && !peeking;
+    if (S.refs.writeStage) S.refs.writeStage.hidden = viewing || peeking;
+    if (S.refs.writeClockNum && !viewing) {
+      S.refs.writeClockNum.textContent = clock(Math.max(0, s.deadline - Date.now()));
     }
+    var slideLabel = document.getElementById('wsSlide');
+    if (slideLabel) slideLabel.textContent = 'Slide ' + (s.index + 1) + ' of ' + s.items.length;
+    var sub = document.getElementById('wsSub');
+    if (sub) sub.textContent = 'Write the story in your practice copy · ' + (S.config.tatWriteSec / 60) + ' minutes';
+    var back = document.getElementById('peekBack');
+    if (back) back.hidden = !peeking;
     S.refs.hint.innerHTML = viewing
       ? 'You have <b>' + S.config.tatViewSec + ' seconds</b> to look. Then the slide is taken away and you get <b>' +
         S.config.tatWriteSec / 60 + ' minutes</b> to write.'
       : 'Writing time. Aim for a clear beginning, a practical action and a settled ending.';
-    document.getElementById('peekBtn').style.display = viewing ? 'none' : '';
+    document.getElementById('peekBtn').style.display = 'none';
     if (!s.paused) updateBar(S.refs.bar, 1);
   }
 
   function toWritePhase() {
     var s = S.session;
     s.phase = 'write';
+    s.peeking = false;
     s.deadline = Date.now() + S.config.tatWriteSec * 1000;
     applyTatPhase();
+    cue('write');
   }
 
   function advanceTat() {
@@ -1322,6 +1356,7 @@
     // The situation you are looking at when you stop has been worked on too.
     if (s.test === 'srt') s.items[s.index].done = true;
     stopTick();
+    cue('end');
     window.api.keepAwake(false);
     s.endedAt = Date.now();
 
@@ -3486,7 +3521,7 @@
         '<div class="card">' +
         numField('Seconds to view each slide', 'Standard is 30 seconds.', 'tatViewSec', 5, 120, 'sec') +
         numField('Seconds to write each story', 'Standard is 4 minutes (240 seconds).', 'tatWriteSec', 30, 900, 'sec') +
-        toggleField('Keep the prompt hidden while writing', 'Faithful to the real test. Turn off if you want the scene visible.', 'hideTatPromptWhileWriting') +
+        toggleField('Sound cues', 'A short chime at the start, when writing begins and at the end. Synthesised, so there is no audio file to lose.', 'soundOn') +
         '</div>' +
 
         '<h2>Add your own practice set</h2>' +
@@ -3854,6 +3889,94 @@
     }
   }
 
+  // The phone has no Python, so this builds the same twelve sections from the
+  // free Google News feeds through the native HTTP layer, and keeps the last
+  // edition. A Generate button that can never succeed is not offered again.
+  function renderPhoneDigest() {
+    if (!DG.phoneBusy && !DG.phone) {
+      DG.phoneBusy = true;
+      Promise.resolve(window.api.digestOnPhone && window.api.digestOnPhone())
+        .then(function (res) {
+          DG.phoneBusy = false;
+          DG.phone = res || { ok: false, error: 'network' };
+          if (S.view === 'digest') renderDigest();
+        }, function (err) {
+          DG.phoneBusy = false;
+          DG.phone = { ok: false, error: 'network', detail: err && err.message };
+          if (S.view === 'digest') renderDigest();
+        });
+    }
+
+    var head =
+      '<h1>News Digest</h1>' +
+      '<p class="lead">Twelve sections of current affairs, collected here on the phone from the same free news feeds ' +
+      'the desktop engine reads. No Python, no account, no key — and the last edition stays readable without a connection.</p>';
+    var d = DG.phone;
+
+    if (!d) {
+      body(head + '<div class="empty">Collecting today\'s headlines…</div>');
+      return;
+    }
+
+    if (!d.ok) {
+      var why =
+        d.error === 'offline'
+          ? 'Online lookup is off. Turn it on in Settings, or read the last edition saved on this phone.'
+          : d.error === 'empty'
+            ? 'The feeds had nothing just now. Try again in a minute.'
+            : 'Could not reach the news feeds just now' + (d.detail ? ' (' + esc(d.detail) + ')' : '') + '.';
+      body(
+        head +
+          '<div class="note">' + why + '</div>' +
+          '<div class="row" style="margin-top:16px">' +
+          '<button class="btn primary" id="digBuild">Try again</button>' +
+          '<button class="btn ghost" id="digHome">Back to the dashboard</button></div>'
+      );
+      document.getElementById('digBuild').addEventListener('click', function () {
+        DG.phone = null;
+        renderDigest();
+      });
+      document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+      return;
+    }
+
+    var when = d.checkedOn ? 'Edition of ' + esc(d.checkedOn) : 'Latest edition';
+    var count = (d.sections || []).reduce(function (n, s) { return n + (s.items || []).length; }, 0);
+    var sections = (d.sections || [])
+      .map(function (sec) {
+        var items = (sec.items || [])
+          .map(function (it) { return '<li>' + esc(it.title) + '</li>'; })
+          .join('');
+        return (
+          '<section class="dig-sec">' +
+          '<h3>' + esc(sec.label) + '</h3>' +
+          (items ? '<ul class="dig-list">' + items + '</ul>' : '<p class="small muted">No items in this section just now.</p>') +
+          '</section>'
+        );
+      })
+      .join('');
+
+    body(
+      head +
+        '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<span class="chip ok">' + when + '</span>' +
+        '<span class="chip">' + count + ' stories</span>' +
+        '<span class="chip">' + (d.cached ? 'saved copy' : 'fresh') + '</span>' +
+        '<span class="spacer"></span>' +
+        '<button class="btn primary sm" id="digBuild">' + (DG.phoneBusy ? 'Building…' : 'Refresh') + '</button>' +
+        '<button class="btn ghost sm" id="digHome">Dashboard</button>' +
+        '</div>' +
+        '<div class="dig-grid">' + sections + '</div>' +
+        '<div class="note" style="margin-top:14px">Built from Google News headlines on this phone. The desktop app ' +
+        'adds your own newspaper PDFs and lays the same sections out as a 12-page PDF.</div>'
+    );
+    document.getElementById('digBuild').addEventListener('click', function () {
+      DG.phone = null;
+      renderDigest();
+    });
+    document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+  }
+
   function renderDigest() {
     wireDigestEvents();
     var st = DG.status;
@@ -3873,16 +3996,7 @@
       return;
     }
     if (st.unsupported) {
-      body(
-        '<h1>News Digest</h1>' +
-          '<p class="lead">The 12-page current-affairs digest is built by a separate Python engine, and that engine ' +
-          'belongs to the desktop app. The phone build carries the trainer itself.</p>' +
-          '<div class="note">On Windows, <b>News Digest</b> collects free feeds and your own newspaper PDFs into the ' +
-          'same PDF. Nothing here is lost by opening this on the phone: the digest keeps its own folder and never ' +
-          'reads the SSB store.</div>' +
-          '<div class="row" style="margin-top:16px"><button class="btn primary" id="digHome">Back to the dashboard</button></div>'
-      );
-      document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+      renderPhoneDigest();
       return;
     }
 
@@ -5303,6 +5417,56 @@
     document.documentElement.style.setProperty('--scale', s.toFixed(3));
   }
 
+  /* -------------------------------------------------------------- sound */
+
+  // Cues are synthesised, not shipped as audio files: a phone has no asset to
+  // lose, and the notes are the same on every platform. The audio context is
+  // created inside the click that starts the test, because mobile browsers
+  // only allow sound after a real touch.
+  var AUDIO = null;
+
+  function audioCtx() {
+    if (AUDIO) return AUDIO;
+    var Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    try {
+      AUDIO = new Ctor();
+    } catch (_) {
+      AUDIO = null;
+    }
+    return AUDIO;
+  }
+
+  function cue(kind) {
+    if (S.config && S.config.soundOn === false) return;
+    var ctx = audioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      try { ctx.resume(); } catch (_) {}
+    }
+    var notes = kind === 'end' ? [784, 587, 392] : kind === 'write' ? [659, 880] : [523, 659, 784];
+    var t0 = ctx.currentTime + 0.02;
+    for (var i = 0; i < notes.length; i++) {
+      var at = t0 + i * 0.16;
+      var dur = kind === 'end' ? 0.4 : 0.22;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = notes[i];
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.22, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+    }
+    // A phone also buzzes, so the cue lands even with the media volume down.
+    try {
+      if (navigator.vibrate) navigator.vibrate(kind === 'end' ? [120, 80, 120] : 60);
+    } catch (_) {}
+  }
+
   // Two palettes ship with the app: Mist (dark — the Windows 11 theme this
   // app now follows) and Alpine light (the sage paper one). The choice lives
   // in Settings, is saved like any other setting, and is applied before the
@@ -5337,36 +5501,80 @@
     });
   }
 
+  /* ------------------------------------------------------- opening sheet */
+
+  // The sheet in index.html is what you see before anything else. It names
+  // the piece of data being read, so a slow first launch on a phone is
+  // visible progress rather than a blank window.
+  function bootProgress(pct, note, foot) {
+    var bar = document.getElementById('bootBar');
+    var name = document.getElementById('bootNote');
+    var tail = document.getElementById('bootFoot');
+    if (bar) bar.style.width = Math.max(0, Math.min(100, pct)).toFixed(1) + '%';
+    if (name && note) name.textContent = note;
+    if (tail && foot) tail.textContent = foot;
+  }
+
+  function bootDone() {
+    var el = document.getElementById('bootScreen');
+    bootProgress(100, 'Ready', 'Opening the dashboard');
+    if (!el) return;
+    el.classList.add('done');
+    el.setAttribute('aria-hidden', 'true');
+    setTimeout(function () { el.hidden = true; }, 420);
+  }
+
   function boot() {
     fitScale();
     applyTheme();
     window.addEventListener('resize', fitScale);
-    Promise.all([
-      window.api.loadData(),
-      window.api.getConfig(),
-      window.api.listAttempts(),
-      window.api.listTatImages(),
-      window.api.tatLibrary(),
-      window.api.lecturesList(),
-      window.api.watHints(),
-      window.api.tatClassic(),
-      window.api.tatBin(),
-      window.api.tatGoneList()
-    ])
+
+    // Read one piece at a time, so each line on the opening sheet is true.
+    var steps = [
+      ['Opening your store', function () { return window.api.loadData(); }, 'data'],
+      ['Reading your settings', function () { return window.api.getConfig(); }, 'config'],
+      ['Loading attempt history', function () { return window.api.listAttempts(); }, 'attempts'],
+      ['Indexing your TAT pictures', function () { return window.api.listTatImages(); }, 'images'],
+      ['Reading the TAT library', function () { return window.api.tatLibrary(); }, 'library'],
+      ['Loading lecturettes', function () { return window.api.lecturesList(); }, 'lectures'],
+      ['Opening WAT hints', function () { return window.api.watHints(); }, 'hints'],
+      ['Reading the classic set', function () { return window.api.tatClassic(); }, 'classic'],
+      ['Checking removed pictures', function () { return window.api.tatBin(); }, 'bin'],
+      ['Checking deleted pictures', function () { return window.api.tatGoneList(); }, 'gone']
+    ];
+    var got = {};
+    var at = 0;
+
+    function nextStep() {
+      if (at >= steps.length) return Promise.resolve(got);
+      var step = steps[at];
+      at++;
+      bootProgress(4 + ((at - 1) / steps.length) * 88, step[0], 'Step ' + at + ' of ' + steps.length);
+      return Promise.resolve()
+        .then(step[1])
+        .then(function (value) {
+          got[step[2]] = value;
+          return nextStep();
+        });
+    }
+
+    nextStep()
       .then(function (res) {
-        S.data = res[0] || S.data;
-        S.config = res[1] || {};
+        S.data = res.data || S.data;
+        S.config = res.config || {};
         applyTheme();
-        S.attempts = res[2] || [];
-        S.tatImages = res[3] || [];
-        S.tatLibrary = res[4] || [];
-        S.lectures = res[5] || [];
-        S.hints = res[6] || {};
-        S.tatClassic = res[7] || [];
-        S.tatBin = res[8] || [];
-        S.tatGoneItems = res[9] || [];
+        S.attempts = res.attempts || [];
+        S.tatImages = res.images || [];
+        S.tatLibrary = res.library || [];
+        S.lectures = res.lectures || [];
+        S.hints = res.hints || {};
+        S.tatClassic = res.classic || [];
+        S.tatBin = res.bin || [];
+        S.tatGoneItems = res.gone || [];
         S.tatGone = S.tatGoneItems.length;
+        bootProgress(96, 'Drawing the dashboard');
         render();
+        bootDone();
         // Headlines for the sixth WAT example. Off the clock and never fatal.
         loadNewsIndex(false);
         // Honest online/offline indicator. Non-blocking and cached; a failed
@@ -5375,9 +5583,12 @@
         refreshLiveStatus();
       })
       .catch(function (err) {
+        var msg = err && err.message ? err.message : String(err);
+        bootProgress(100, 'Startup problem', msg);
         appEl.innerHTML =
           '<div class="scroll"><div class="wrap"><h1>Startup problem</h1>' +
-          '<div class="note">' + esc(err && err.message ? err.message : String(err)) + '</div></div></div>';
+          '<div class="note">' + esc(msg) + '</div></div></div>';
+        appEl.hidden = false;
       });
   }
 

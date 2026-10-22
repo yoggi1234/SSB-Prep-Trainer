@@ -5,6 +5,56 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-10-22 — Full-screen writing clock, sound cues, opening sheet, glass tiles, phone digest
+
+**Why.** From the phone again: during TAT writing the picture still filled the frame, so the test did
+not feel like the board; there was no sound at the start or the end; the phone's News Digest page was
+an explanation rather than a digest; and the dashboard asked for a green glass look. The app also
+opened straight onto a blank window while it read its data.
+
+**Changed.**
+
+- **Writing is a sheet of its own.** `mountTat()` now renders `#writeStage`, a fixed overlay covering
+  the whole window: slide number, phase, `04:00` at up to 300 px, and two buttons. The picture is
+  hidden for the whole writing phase (`#slideContent[hidden]`, never a small clock beside it).
+  "Show prompt" is the single deliberate peek; it steps the sheet aside and "Back to the clock"
+  returns. The old `hideTatPromptWhileWriting` toggle is gone from Settings because the overlay
+  always wins; the stored key is still accepted.
+- **Clock fits the screen.** `font-size: clamp(72px, min(30vh, 26vw), 300px)` plus `white-space:
+  nowrap` — at 30vh the digits were clipped to `04:0` on a 508 px-wide phone, caught by screenshot.
+- **Next button.** `.btn-next` is full-width and 70 px tall in portrait, a 190 px medium button in
+  landscape, on both the writing sheet and the TAT footbar.
+- **Sound cues.** `cue()` synthesises three short chimes with Web Audio (start, writing begins, end)
+  and a vibration; no audio files ship. Settings has a **Sound cues** switch (`soundOn`, default on).
+- **Opening sheet.** `index.html` carries `#bootScreen`; `boot()` reads the store, settings, attempts,
+  TAT library, lecturettes and hints one step at a time and reports each line and a progress bar,
+  then fades it out. Dark before the saved theme is applied, so no white flash.
+- **Glass.** New tokens (`--glass-1`, `--glass-2`, `--glass-edge`, `--glass-sheen`, `--glass-glow`) in
+  both palettes; `.card` and every dashboard tile are frosted green panes with an inset highlight.
+- **Phone News Digest.** The dead "Python is desktop-only" page is replaced by `digestOnPhone()` in
+  `mobile/online.js`: twelve sections built from the same free Google News feeds through the native
+  HTTP layer, cached in `ssb-digest-phone`, with a Refresh button and the last edition offline.
+
+**Verified on the phone** (Pixel-class device, `in.ssbprep.trainer`, USB + CDP):
+
+- UI scenario 8/8 — back from Settings lands on the dashboard with 10 tiles, back on the dashboard is
+  left to Android, overlay rect 508×1037 equals the viewport, clock 300 px and counting, picture
+  hidden, Next 464×70 full width.
+- Landscape (rotation forced, 1037×480): overlay fills the window, clock 144 px, Next 190×46 medium,
+  picture hidden.
+- News Digest: 12 sections, 48 stories, edition `2026-10-22`, no console errors.
+- Desktop `npm run smoke`: 472 checks, 0 failures, 0 console errors.
+
+**Not verified.** The chimes were scheduled without an exception (console clean) but automation cannot
+hear them; volume and the phone's silent mode are untested. The TAT plate itself was not re-photographed
+this round. Landscape was forced through `adb`, not by turning the device.
+
+**Still open.** 52 of 334 lecturette topics carry a full script; the other 282 are skeletons and are
+labelled "Outline" in the list — content, not delivery, is what is missing. The "warning slightly
+above" request was not specific enough to act on.
+
+---
+
 ## 2026-10-22 — Back button, full-screen writing clock, and the phone's online features switched on
 
 **Why.** Straight from the phone: the hardware back button closed the app instead of returning to the

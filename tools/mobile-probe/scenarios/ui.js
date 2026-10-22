@@ -11,6 +11,14 @@ module.exports = async function (page) {
     await page.sleep(400);
   };
 
+  // Start from a known screen: a previous run may have left a session open.
+  await page.ev('setTimeout(function(){location.reload()},50), 1');
+  await page.sleep(600);
+  for (let i = 0; i < 40; i++) {
+    if (await page.ev('!!document.querySelector(\'[data-tile="settings"]\')')) break;
+    await page.sleep(300);
+  }
+
   // Back from a section: handled, and the dashboard is showing.
   page.step('back from settings');
   await page.ev('document.querySelector(\'[data-tile="settings"]\').click()');
@@ -29,22 +37,48 @@ module.exports = async function (page) {
   page.step('writing clock');
   await page.ev('window.api.setConfig({tatViewSec:2}).then(()=>1)');
   await page.ev('setTimeout(function(){location.reload()},50), 1');
-  await page.sleep(4500);
-  await page.ev('document.querySelector(\'[data-tile="tat"]\').click()');
-  await page.sleep(900);
+  // The opening sheet now reads each piece of data in turn, so wait for the
+  // dashboard instead of guessing at a fixed delay.
+  for (let i = 0; i < 40; i++) {
+    if (await page.ev('!!document.querySelector(\'[data-tile="tat"]\')')) break;
+    await page.sleep(300);
+  }
+  // The dashboard can re-render while the online probe settles, so keep asking
+  // for the TAT sheet until its Start button is really there.
+  for (let i = 0; i < 20; i++) {
+    if (await page.ev('!!document.getElementById("go")')) break;
+    await page.ev('(document.querySelector(\'[data-tile="tat"]\')||{click(){}}).click()');
+    await page.sleep(400);
+  }
   await page.ev('document.getElementById("go").click()');
   await page.sleep(3200);
 
   out.clock = JSON.parse(
     await page.ev(
-      'JSON.stringify({phase:document.getElementById("phase").innerText, clockHidden:document.getElementById("writeClock").hidden, num:document.getElementById("writeClockNum").innerText, cls:document.getElementById("slidebox").className, pictureHidden:document.getElementById("slideContent").hidden, font:getComputedStyle(document.getElementById("writeClockNum")).fontSize})'
+      'JSON.stringify({phase:document.getElementById("phase").innerText,' +
+        'overlayHidden:document.getElementById("writeStage").hidden,' +
+        'num:document.getElementById("writeClockNum").innerText,' +
+        'pictureHidden:document.getElementById("slideContent").hidden,' +
+        'font:getComputedStyle(document.getElementById("writeClockNum")).fontSize,' +
+        'rect:(function(){var r=document.getElementById("writeStage").getBoundingClientRect();return {w:Math.round(r.width),h:Math.round(r.height)};})(),' +
+        'view:{w:innerWidth,h:innerHeight},' +
+        'next:(function(){var r=document.getElementById("nextBtn2").getBoundingClientRect();return {w:Math.round(r.width),h:Math.round(r.height)};})()})'
     )
   );
-  check('writing clock is visible while writing', out.clock.clockHidden === false, out.clock);
+  check('the writing clock fills the screen', out.clock.overlayHidden === false, out.clock);
+  check(
+    'the clock sheet covers the whole window',
+    out.clock.rect.w >= out.clock.view.w - 1 && out.clock.rect.h >= out.clock.view.h - 1,
+    out.clock
+  );
   check('writing clock counts down', /^\d?\d:\d\d$/.test(out.clock.num), out.clock.num);
-  check('the stage is in writing mode', /writing/.test(out.clock.cls), out.clock.cls);
-  check('the picture stays hidden while writing', out.clock.pictureHidden === true);
-  check('the clock is rendered large', parseFloat(out.clock.font) >= 40, out.clock.font);
+  check('the picture is gone while writing', out.clock.pictureHidden === true);
+  check('the clock is rendered large', parseFloat(out.clock.font) >= 80, out.clock.font);
+  check(
+    'Next is a full-width thumb button in portrait',
+    out.clock.next.w >= out.clock.view.w * 0.85 && out.clock.next.h >= 56,
+    out.clock.next
+  );
   await page.shot('screenshots/mobile/tat-writing-full.png');
 
   await page.ev('document.querySelector("[data-end]").click()');

@@ -22,7 +22,12 @@ Electron app, zero runtime npm dependencies. Python is only needed for the optio
 | **SRT** — Situation Reaction Test | 60 situations in 30 min, one running total clock, written in your copy | 3 situation sets |
 | **Lecturette** — three-minute talk | 30 s intro + 2 min body + 30 s conclusion, clock phases auto-advance | 334 topics offline, search/filter, Facts tab, current points |
 | **Word library** | Dictionary with search, meanings, sentiment tabs, random words | 147,417 words, 146,410 with offline meanings; optional Datamuse lookup |
-| **News Digest** | 12-page current-affairs PDF from free feeds | Requires Python 3.9+ + `reportlab`, `pypdf`, `feedparser`, `trafilatura` |
+| **News Digest** | 12-page current-affairs PDF from free feeds (desktop); twelve sections of today's headlines on the phone | Desktop needs Python 3.9+ + `reportlab`, `pypdf`, `feedparser`, `trafilatura`; the phone builds from the same free feeds itself |
+
+TAT writing takes over the whole screen: the picture goes away and a large clock fills the window,
+with a full-width **Next slide** button in portrait and a medium one in landscape. A short chime marks
+the start, the move to writing, and the end (switch it off in Settings). A brief opening sheet shows
+what is being read on launch. The dashboard tiles are frosted green glass.
 
 ## Download the app
 
