@@ -3,7 +3,9 @@
 Read this before changing anything. It is the short version; details are in `docs/`.
 
 **Stack:** Electron 44 + vanilla JS renderer. Windows. **No runtime npm dependencies and no build
-step.** Python 3.9+ is used only by the optional News Digest compartment.
+step.** Python 3.9+ is used only by the optional News Digest compartment. The same renderer also
+ships as an Android APK through Capacitor (`@capacitor/*` are devDependencies), with
+`mobile/api.js` standing in for the Electron bridge.
 
 ## Read in this order
 
@@ -70,6 +72,8 @@ and run the packaged smoke. Never weaken a check to make it pass — a failing c
 | Classic plates + manifest | `data/tat-classic/`, `data/tat-classic.json` |
 | Digest engine (copied) | `digest-tool/` |
 | Verifier | `tools/verify-package.js` |
+| Android bridge (localStorage + bundled data) | `mobile/api.js`, `tools/build-mobile.js` |
+| On-device scenario over adb/CDP | `tools/mobile-probe/` |
 | Import tools | `tools/build-tat-classic.py`, `tools/build-tat-images.js` |
 | Runtime log | `%APPDATA%\SSB Prep Trainer\logs\app.log` |
 

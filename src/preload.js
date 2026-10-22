@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Plain meanings and model sentences for the built-in WAT words.
   watHints: () => ipcRenderer.invoke('wat:hints'),
+  // Negative / Positive / Neutral action verbs, with their offline meanings.
+  connectors: () => ipcRenderer.invoke('connectors:list'),
 
   // Diagnostics and the on-disk log (for debugging and handover).
   logTail: (n) => ipcRenderer.invoke('log:tail', n),
@@ -86,6 +88,8 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   exportText: (payload) => ipcRenderer.invoke('export:text', payload),
+  // Whole practice history as CSV or JSON, through a save dialog in main.
+  attemptsExport: (format) => ipcRenderer.invoke('attempts:export', format),
   keepAwake: (on) => ipcRenderer.invoke('power:block', on),
   openExternal: (url) => ipcRenderer.invoke('shell:open', url),
 

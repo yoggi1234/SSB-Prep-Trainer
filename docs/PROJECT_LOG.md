@@ -5,6 +5,296 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-10-22 — Back button, full-screen writing clock, and the phone's online features switched on
+
+**Why.** Straight from the phone: the hardware back button closed the app instead of returning to the
+dashboard, the writing phase kept a small clock in the corner, and every online extra still answered
+"offline" on Android. The TAT pictures had already been fixed and were re-checked here.
+
+**Changed**
+
+- `mobile/online.js` (new) — a real network layer for the phone: Datamuse meanings and related
+  words, Google News headlines parsed straight from its RSS, lecture points built from those
+  headlines, and public-domain TAT pictures from **Wikimedia Commons**, kept in IndexedDB so they
+  survive a restart. Online is the default on the phone.
+- `capacitor.config.json` — `CapacitorHttp` enabled, so the page's `fetch()` runs through the native
+  HTTP stack. That is what makes Google News and the picture APIs reachable: a WebView's own
+  `fetch` is subject to CORS, which is why every attempt before this ended in "Failed to fetch".
+- `tools/build-mobile.js` — copies `online.js` and adds only the hosts the extras use to the CSP.
+- `src/renderer/app.js` — `window.__ssbBack`: a section returns to the dashboard, a running test
+  asks before it is discarded, and only the dashboard lets the press leave the app. The TAT writing
+  phase now fills the stage with a large countdown.
+- `src/renderer/styles.css` — `.write-clock`, `.slidebox.writing`, and `#slideContent[hidden]`
+  (the flex display added for the phone was beating the `hidden` attribute, so the picture stayed
+  on screen beside the clock — caught on a screenshot, not by the DOM check).
+- `mobile/api.js` — @capacitor/app `backButton` listener wired to `__ssbBack`, `minimizeApp` only
+  when the dashboard is showing; `onlineEnabled` defaults to true.
+- `package.json` — `@capacitor/app` 8.1.2 as a devDependency (the APK side of the back button).
+
+**Tried and rejected.** The Art Institute API and the rss2json bridge both answer this network with
+a Cloudflare challenge (403, no CORS headers). Wikimedia Commons and native HTTP replaced them.
+
+**Verified on the device** — Motorola edge 50 fusion, Android 16:
+
+- `online.js` scenario: **11/11 checks** — switch reports enabled, Datamuse probe online, meaning for
+  *serendipity*, 12 related words, **18 headlines**, **12 lecture points**, **2 Commons pictures**
+  stored and one decoded at 960×753, header reads "online".
+- `ui.js` scenario: **8/8 checks** — back from Settings handled and lands on the dashboard, back on
+  the dashboard is left to Android, writing clock visible with a live `03:59`, stage in writing
+  mode, picture hidden, clock rendered at 81 px.
+- `phone.js` scenario re-run on this build: **38/38 checks, 0 console errors**.
+- Real hardware key: `adb shell input keyevent 4` on Settings kept the same PID and showed the
+dashboard; the app did not close.
+- Screenshot `screenshots/mobile/tat-writing-full.png` shows the picture gone and the large clock.
+
+**Verified on the desktop** — `node --check` on every file and `npm run smoke`: **472 checks,
+0 failures, 0 console errors**.
+
+**Artifact.** APK 14,153,978 B, SHA-256 `760aa8cc…`; copied to `release/SSB-Prep-Trainer-1.0.0-debug.apk`
+and pushed to `/sdcard/Download/` on the phone so it can be shared from the file manager.
+
+**Not verified.** GitHub publication (see the note below the next entry). Headlines depend on Google
+News being reachable from the user's network. Commons pictures are general public-domain art, not
+curated SSB scenes, so some are weak TAT prompts. The APK is still an unsigned debug build.
+
+---
+
+## 2026-10-22 — The Android build tried on a real phone, and the broken screens fixed
+
+**Why.** A phone was connected over USB debugging, so the APK that had only been built before was
+finally run. Most sections worked, but four were broken on the device and the TAT test — the
+headline feature — silently ran without pictures.
+
+**What was actually broken, and why**
+
+- **TAT showed text scenes, never a plate.** `mobile/api.js` built its classic-set records without
+the `file` field. `tatPool()` de-duplicates by `p.id || p.file`, so every record collapsed to the
+single key `undefined`, `pickTatPictures(11)` returned nothing, and `buildTatSlides()` fell back to
+`data/tat.json` captions. The shim now gives each record `file: 'data/tat-classic/…'`.
+- **Plates that did load had a `file:///data/…` URL.** `fileUrl()` prefixed every relative path with
+  `file:///`, which is right for a Windows path and wrong for a page-relative one. It now leaves
+  `data:`, `blob:`, `http(s):`, `file:`, `content:` and page-relative paths alone, and only turns an
+  absolute Windows path into `file://`. This also fixed the 43 plate thumbnails on the Add screen.
+- **A landscape plate covered the VIEWING label and the clock.** `#slideContent` was a flex item
+  with the default `min-width:auto`, so `max-width:100%` on the image resolved against the image's
+  own intrinsic width. It got `min-width:0; max-width:100%` and the two labels got `z-index:2`.
+- **The Bin crashed with `bin.map is not a function`.** The shim answered `tatBin()` with
+  `{items, gone}` while `main.js` returns an array; the Bin screen threw and dropped back to the
+dashboard, the dashboard tile read "undefined waiting", and Add read "Open bin (undefined)".
+- **The word library read 0 words, 0 meanings, 0 positive, 0 negative.** `dictInfo()` returned the
+  module's zeroed counters without loading the file; it now loads the dictionary first. On the phone
+  it reports 147,417 / 146,410 / 1,175 / 2,203.
+- **"Add pictures…" crashed the Add screen.** The shim answered `pickTatImages()` with an error
+  object, and the renderer assigned it to `S.tatImages` and then called `.map()`. The shim now opens
+  the phone's own file picker and keeps object URLs for the session; Add says so out loud.
+- **Export claimed to save a file that never existed.** An Android WebView has no download handler,
+  so the `<a download>` click did nothing while the toast said "Saved to …txt". It now copies the
+  text to the clipboard and says "Saved to clipboard".
+- **News Digest looked like a working form** whose Generate button could only fail. `digestStatus()`
+  now marks the screen `unsupported` and the renderer shows a desktop-only explanation instead.
+- **Two smaller lies.** The dashboard said online extras were on while the build is offline (the
+  copy now follows `onlineEnabled`), and Diagnostics reported 0 classic plates (now the real 43).
+
+**New tooling**
+
+- `tools/mobile-probe/drive.js` + `scenarios/phone.js` — drives the running WebView over the Chrome
+  DevTools Protocol through `adb forward`, so the phone build is tested, not eyeballed. 38 checks
+  covering every section and all three tests, screenshots written to `screenshots/mobile/`.
+- The runner retries an evaluation after a reload destroys the execution context, and takes
+  screenshots with `adb exec-out screencap -p` because `Page.captureScreenshot` hung whenever a
+  screen was animating.
+
+**Verified on the device** — Motorola edge 50 fusion, Android 16, WebView Chrome 155: scenario
+**38/38 checks, 0 console errors**, including a plate decoding at natural width inside the stage,
+the writing phase removing the picture, slide 2 loading another plate, the result gallery keeping
+thumbnails, WAT/SRT runs saving, the lecturette advancing its phases, 43 classic plates on Add, the
+Bin screen, the 147k word library with search and Action verbs, and the clipboard export.
+
+**Verified on the desktop** — `node --check` on all files and `npm run smoke`: **472 checks,
+0 failures, 0 console errors**, 35 distinct screenshots. The renderer is shared, so the `fileUrl`
+and CSS changes were re-checked there; the digest screen still renders its form on Windows.
+
+**Artifact.** `android/app/build/outputs/apk/debug/app-debug.apk` (14,153,201 B, SHA-256
+`b17f5fc3…`), copied to `release/SSB-Prep-Trainer-1.0.0-debug.apk` for sideloading. It carries the
+43/43 plates and the 22.6 MB web bundle.
+
+**Not verified.** The phone's file picker was opened but no image was actually chosen through the
+system dialog (automation cannot drive it); the session-only picture flow is therefore exercised up
+to the picker, not through it. The APK is still an unsigned debug build. Alerts (notifications),
+rotation, and background/resume behaviour were not tested. Screenshots are checked by eye here, not
+numerically.
+
+---
+
+## 2026-10-21 — Action-verb list, two user drawings, a sheet WAT set, and an Android APK
+
+**Why.** Two requests together: add the handwritten **Negative / Positive / Neutral** verb list
+(the tone a WAT or SRT sentence opens with) and two TAT-style drawings the user supplied, then get
+the whole trainer onto an Android phone.
+
+**Changed**
+
+- `data/connectors.json` — the verb list, transcribed from the user's photo into three groups
+  (19 negative, 27 positive, 21 neutral) with a one-line hint each. Loaded like every other data
+  file through the IPC bridge, so no new channel shape was invented (`connectors()` in preload).
+- `src/renderer/app.js` — the Word library gained a fourth tab, **Action verbs**, which lists the
+  three groups with their hints; `libraryConnectors()` loads it on first use, like the word pages.
+  The tab assertion in the smoke suite was updated from three tabs to four.
+- `data/tat-classic.json` + `data/tat-classic/user-extra-01.png`, `user-extra-02.png` — the two
+  drawings as plates 41 and 42 (`classic-041`, `classic-042`), titled and marked
+  "user-supplied, check rights before redistributing" like the rest of the set.
+- `data/wat.json` — a fifth set, **Your sheet — words 21 to 40**, transcribed from the user's
+  typed word sheet (20 words).
+- `mobile/api.js` — a `window.api` implementation for a plain browser/WebView, backed by
+  `localStorage` and `fetch()` of the bundled data files. Every renderer call the app actually
+  makes is covered; unsupported main-process features degrade to no-ops instead of throwing.
+- `tools/build-mobile.js` — copies the renderer, the data the phone needs (including all 43
+  plates and the hint files) into `mobile/www/`.
+- `capacitor.config.json` — `in.ssbprep.trainer`, webDir `mobile/www`, Mist ground colour so the
+  splash never flashes white.
+- `android/` — generated by `npx cap add android` (Capacitor 8.5.3, AGP 8.13, Gradle 8.14.3,
+  compileSdk 36, minSdk 24). Git-ignored along with `mobile/www/`; both are rebuilt on demand.
+
+**Toolchain installed on this PC.** OpenJDK 21 (Microsoft build) and Android Studio were already
+present via winget; the **Android SDK itself was not**. Provisioned at
+`%LOCALAPPDATA%\Android\Sdk`: command-line tools 13114758, `platforms;android-36`,
+`build-tools;36.0.0`, `platform-tools`, all licences accepted. One Gradle wrapper download died
+mid-transfer (connection reset) and was re-fetched with `curl -C -` into the wrapper cache.
+
+**Verified.** `npm run smoke` (source): **0 failures, 0 console errors**. `node --check` on all
+three renderer/main files passes. `gradlew assembleDebug`: **BUILD SUCCESSFUL**, producing
+`app-debug.apk` (14,089,324 B, SHA-256 `34aa265e…`). Checked with `aapt dump badging`: package
+`in.ssbprep.trainer`, minSdk 24, targetSdk 36. Listed the APK contents: renderer, `connectors.json`,
+all five WAT sets (sheet included), and **43 of 43** TAT plates including both drawings. Copied to
+`release/SSB-Prep-Trainer-1.0.0-debug.apk` for sideloading.
+
+**Not verified, plainly.** The APK has **not been run on a real Android device** — no phone was
+connected over adb during this session. The `mobile/api.js` shim was exercised only to the extent
+the build needed it; it has no smoke suite of its own. The two ssbace.com / SBWINGS screenshots the
+user also sent were **not** added: they carry visible watermarks and belong to those sites, so they
+went the same way as the classic set's own rights note — kept out unless the user confirms the
+rights. The News Digest compartment is desktop-only (it needs Python and the filesystem).
+
+---
+
+## 2026-10-21 — Word list cleaned of numbers, ordinals and dotted forms
+
+**Why.** The **All words** tab still listed entries that are not practice words: bare numbers
+(`14`), ordinals (`14th`), catalogue codes (`u308`, `wordnet3.1`, `y2k`), dated names (`war of
+1812`, `vitamin b12`, `1 kings`), calibres (`.22 caliber`) and dotted initials or abbreviations
+(`a. a. milne`, `a.m.`, `anon.`). They came straight out of WordNet, which is a lexical database,
+not a word-practice list.
+
+**Changed**
+
+- `data/dictionary.json` + `data/dictionary-meta.json` — rebuilt from the committed original with
+  one rule: strip WordNet's adjective/participle annotation (`afraid(p)` → `afraid`), then drop any
+  key containing a digit or a period, and any key that is not a Latin-letter headword with the
+  space, hyphen or apostrophe a real headword carries. **149,003 → 147,417 words** (146,410 with
+  meanings, 1,175 positive, 2,203 negative). 1,070 keys dropped and 516 annotated forms folded into
+  a headword that already existed.
+  - Accents are kept (`naïve`), as is a leading apostrophe (`'hood`, `'tween`).
+  - Null-prototype maps were needed for the merge: `constructor` and `toString` are themselves
+    headwords, and a plain `{}` hands back `Object.prototype` for them (this crashed the first
+    pass).
+- `tools/build-dictionary.js` — the same cleaner (`cleanWord()`) now runs while reading the synsets
+  and the AFINN list, so a future rebuild cannot bring the junk back. Meta counts are computed from
+  what was actually kept.
+- Counts corrected wherever they are quoted: the Word library tile chip (`app.js`), `README.md`,
+  `docs/ARCHITECTURE.md` and the screenshot gallery caption.
+- `src/main.js` — a new smoke step asserts that **no** dictionary key contains a digit or a period,
+  and reports up to ten offenders when one does.
+
+**Verified.** `npm run smoke`: **469 checks, 0 failures, 0 console errors**, exit 0, with the new
+step reporting an empty junk list. Data checked directly: key count equals `meta.words` (147,417),
+recomputed definitions/positive/negative match the meta (146,410 / 1,175 / 2,203), and the surviving
+keys contain **0** digits, periods, parentheses and slashes. Spot-checked that real words survived
+the filter, including the ones that only existed in annotated form: `afraid`, `afloat`, `abed`,
+`adrift`, `naïve`, `'hood`, plus the WAT staples (`duty`, `courage`, `discipline`, `guts`,
+`blunder`, `calibre`).
+
+**Not verified.** The builder was not re-run end to end: `node_modules/wordnet-db` and
+`afinn-165` are not installed here, so the shipped JSON was filtered from the committed original
+rather than regenerated from WordNet; the builder's cleaner is type-checked (`node --check`) and
+mirrors the rule that produced the data, but a full rebuild is untested. No package was rebuilt, so
+`release/download.html` still quotes the previous build's 149,003-word dictionary and must be
+refreshed with the next `npm run dist`.
+
+---
+
+## 2026-10-21 — Reduce-motion switch, your own WAT sentences, batch history export
+
+**Why.** Four suggestions were taken up together: a real in-app reduce-motion switch, a place to
+write your own five sentences for each WAT word and keep them beside the built-in models, a batch
+export of the whole practice history, and lazy dictionary loading. The fourth turned out to be
+already true — the 149,003-word library has always loaded on the first Word-library use, not at
+startup — so nothing there needed changing.
+
+**Changed**
+
+- `src/main.js`
+  - `defaults()` gains `reduceMotion: false` (a toggle on top of the OS setting, off so the shipped
+    motion stays) and `watSentences: {}`, keyed by word: `{natural, positive, leadership, factual,
+    general}`.
+  - `attempts:export` writes the saved attempts — the store already caps them at 300 — as CSV or
+    JSON through the same `showSaveDialog` flow a single export uses, so the file lands where the
+    person chooses. CSV cells are quoted when they contain a comma, quote or newline; the duration
+    is written `m:ss` by a small local helper, because the renderer's `clock()` does not exist here.
+  - `datamuse()` retries once, 400 ms apart, when the connection itself fails. A tested failure was
+    `fetch failed` on the themed word list while the same URL answered from Node in 50–500 ms; the
+    online extras are best-effort and a dropped connection should not read as "offline". An HTTP
+    status error is still reported immediately instead of being retried.
+  - The dictionary handlers were left exactly as they were. A rewrite that made `dict:info` return
+    zeros until a separate `dict:load` ran, and registered `dict:load` a second time inside
+    `createWindow()` (which throws "Attempted to register a second handler" and takes the window
+    down), was reverted in full.
+- `src/preload.js` — added `attemptsExport(format)`; no `dictLoad` (there is no such channel).
+- `src/renderer/app.js`
+  - **Settings → Appearance → Reduce motion**: the existing `toggleField()` renders it and the shared
+    `[data-toggle]` handler persists it; the handler now also calls `applyMotion()` so the change is
+    immediate. `applyMotion()` sets `data-reduce-motion` on `<html>` from `applyTheme()`, so it is
+    applied before the first paint and after the config arrives.
+  - `motionReduced()` also reads `prefers-reduced-motion`. `wireDash()` uses it twice: the highlight
+    starts stationary and the 4.5 s walk is not scheduled at all when movement is unwelcome.
+  - `modelSentencesHtml()` appends `mySentencesHtml(word)`: your saved lines as `My natural` …
+    `My general`, then a collapsed "Write my own five sentences" editor with one input per style and
+    a Save button. `wireMySentences()` saves through `setConfig({ watSentences })` and re-renders.
+    These lines use `.mine-row` / `.mine-tag`, deliberately **not** `.model-row` / `.model-tag`, so
+    the built-in five-per-word set stays exactly countable.
+  - **Settings → Export** now calls `attemptsExport('csv' | 'json')` and reports the path or the
+    error. The previous version built a `Blob` download link and called a preload function that was
+    never exposed; it could not have worked.
+  - The SRT run screen gained the `.srt-copy` note the stylesheet already described ("Write your
+    reaction in your practice copy"). The markup had been lost while the box was removed, so the
+    screen said nothing about where the answer goes and the smoke check for that note was failing.
+- `src/renderer/styles.css` — `html[data-reduce-motion='true']` stops every animation and transition,
+  the same rule the OS media query uses; `.mine*` styles for the saved/edited sentences, all from
+  tokens (no literal colours).
+- `.gitignore` — `graphify-out/` (generated knowledge-graph artifacts, not source).
+
+**Verified.** Source `npm run smoke`: **468 checks, 0 failures, 0 console errors**, exit 0. The
+suite's existing reductions still hold: the five built-in sentences per word are counted exactly
+(`rows === words * 5`, tags exactly the five styles), the WAT run screen still has no typing field,
+and the theme/contrast checks are unchanged. Reduced motion is verified by the CSS rules and by
+`motionReduced()` gating the dashboard walk; the suite does not toggle the new switch.
+
+**Not verified, plainly.** No packaged build was made for this change, so `npm run dist`,
+`verify-package.js` and the packaged `--smoke` are untested here; `release/download.html` was not
+refreshed. The batch export writes through the real handler but the smoke run does not press its
+buttons, so the CSV/JSON text is unexercised by the suite. The retry only covers a dropped
+connection, not a persistent block (for example a proxy that refuses Electron's requests while
+Node's succeed — the reason the retry was added at all). No Android build exists; see the note at
+the end of this entry.
+
+**Android.** An APK cannot be produced from this codebase as it stands. Electron targets Windows;
+Android needs a different runtime (Capacitor/Cordova or a native shell), and this renderer is built
+entirely on `window.api` IPC calls that do not exist there. A port is a project, not a packaging
+step: every preload call needs an Android-side implementation, the Node-dependent features (file
+pickers, the Python digest engine, the on-disk log, `powerSaveBlocker`) need replacements or
+removal, and the build needs the Android SDK/JDK toolchain. Nothing was built or promised here.
+
+---
+
 ## 2026-10-20 — Mist dark palette, a theme switch, and the SRT without a typing box
 
 **Why.** The user supplied the Windows 11 "Mist" theme (preview PNG + ZIP by WinX Customization)

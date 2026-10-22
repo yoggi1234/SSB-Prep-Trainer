@@ -93,10 +93,16 @@ function defaults() {
       // theme; "alpine" keeps the sage paper one. Applied in the renderer by
       // applyTheme(), and used here so the window itself never flashes white.
       theme: 'mist',
+      // A user preference layered on top of the OS "reduce motion" setting:
+      // true skips the tile orbit, the lecturette slides and the paging hops.
+      reduceMotion: false,
       hideTatPromptWhileWriting: true,
       // On by default for fresh installs, but every feature falls back to
       // bundled or cached material when the connection drops.
-      onlineEnabled: true
+      onlineEnabled: true,
+      // Your own WAT sentences, keyed by word: {natural, positive, leadership,
+      // factual, general}. Written on the result screen, kept on this machine.
+      watSentences: {}
     },
     attempts: [],
     tatImages: [],
@@ -1089,6 +1095,68 @@ ipcMain.handle('export:text', async (_e, payload) => {
   }
 });
 
+// One row per saved attempt, for a mentor or a spreadsheet. Written through
+// the same save dialog as a single export, so the file lands where the person
+// chooses instead of a download folder the renderer cannot see.
+function csvCell(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function durationText(ms) {
+  const total = Math.max(0, Math.round(Number(ms) / 1000) || 0);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+ipcMain.handle('attempts:export', async (_e, format) => {
+  const fmt = format === 'json' ? 'json' : 'csv';
+  const attempts = getStore().attempts || [];
+  const rows = attempts.map((a) => ({
+    test: String(a.test || '').toUpperCase(),
+    set: a.setName || '',
+    startedAt: a.startedAt || '',
+    endedAt: a.endedAt || '',
+    duration: durationText(a.durationMs),
+    endedBecause: a.reason || '',
+    answered: Number(a.answered) || 0,
+    total: Number(a.total) || 0
+  }));
+
+  let bodyText;
+  if (fmt === 'json') {
+    bodyText = JSON.stringify(rows, null, 2);
+  } else {
+    const head = ['Test', 'Set', 'Started', 'Ended', 'Duration', 'Ended because', 'Answered', 'Total'];
+    bodyText = [head]
+      .concat(
+        rows.map((r) => [r.test, r.set, r.startedAt, r.endedAt, r.duration, r.endedBecause, r.answered, r.total])
+      )
+      .map((cells) => cells.map(csvCell).join(','))
+      .join('\r\n');
+  }
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save practice history',
+    defaultPath: path.join(app.getPath('documents'), 'SSB-attempts-' + stamp + '.' + fmt),
+    filters: [
+      fmt === 'json'
+        ? { name: 'JSON file', extensions: ['json'] }
+        : { name: 'CSV file', extensions: ['csv'] }
+    ]
+  });
+  if (res.canceled || !res.filePath) return { saved: false, cancelled: true };
+  try {
+    fs.writeFileSync(res.filePath, bodyText, 'utf8');
+    appLog('export', 'attempts saved', { path: res.filePath, count: rows.length, format: fmt });
+    return { saved: true, path: res.filePath, count: rows.length, format: fmt };
+  } catch (err) {
+    return { saved: false, error: err.message };
+  }
+});
+
 ipcMain.handle('power:block', (_e, on) => {
   try {
     if (on) {
@@ -1296,13 +1364,23 @@ function onlineAllowed() {
 }
 
 async function datamuse(pathAndQuery) {
-  const res = await fetch('https://api.datamuse.com' + pathAndQuery, {
-    signal: AbortSignal.timeout(7000),
-    headers: { Accept: 'application/json' }
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const body = await res.json();
-  return Array.isArray(body) ? body : [];
+  // One retry on a dropped connection: this is a best-effort extra and the
+  // network this ships onto is often shared or flaky. An HTTP status error is
+  // deterministic, so it is reported straight away instead of being retried.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch('https://api.datamuse.com' + pathAndQuery, {
+        signal: AbortSignal.timeout(7000),
+        headers: { Accept: 'application/json' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const body = await res.json();
+      return Array.isArray(body) ? body : [];
+    } catch (err) {
+      if (attempt >= 1 || /^HTTP \d/.test(err.message)) throw err;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
 }
 
 ipcMain.handle('online:status', () => ({ enabled: onlineAllowed() }));
@@ -1835,6 +1913,37 @@ function readWatHints() {
 
 ipcMain.handle('wat:hints', () => readWatHints());
 
+// The user's own Negative / Positive / Neutral action-verb list (handwritten
+// photo, 2026-10-21). Kept as data so the wording stays theirs, with the
+// offline meaning attached wherever the dictionary has one.
+let connectorsCache = null;
+
+function readConnectors() {
+  if (connectorsCache) return connectorsCache;
+  try {
+    connectorsCache = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'connectors.json'), 'utf8'));
+  } catch (err) {
+    appLog('data', 'connectors.json unreadable', { error: err.message });
+    connectorsCache = { source: '', note: '', groups: [] };
+  }
+  return connectorsCache;
+}
+
+ipcMain.handle('connectors:list', () => {
+  loadDictionary();
+  const data = readConnectors();
+  return {
+    source: data.source || '',
+    note: data.note || '',
+    groups: (data.groups || []).map((g) => ({
+      key: String(g.key || ''),
+      label: String(g.label || ''),
+      hint: String(g.hint || ''),
+      items: (g.words || []).map((w) => briefEntry(String(w || '').toLowerCase().trim()))
+    }))
+  };
+});
+
 /* ------------------------------------------------------------------ smoke */
 
 async function ipcClear() {
@@ -2040,6 +2149,29 @@ async function runSmoke() {
     results.push({ step: 'library has a positive section', result: !!libInfo && libInfo.positive > 500 });
     results.push({ step: 'library has a negative section', result: !!libInfo && libInfo.negative > 500 });
     results.push({ step: 'dictionary loads fast enough to feel instant', result: !!libInfo && libInfo.loadMs < 5000 });
+    // WordNet also carries bare numbers ("14"), ordinals ("14th"), catalogue
+    // codes ("u308") and dotted forms ("a.m.", ".22 caliber"). They are not
+    // practice words and used to clutter the All-words list.
+    const junkWords = (dictKeys || []).filter((w) => /[0-9.]/.test(w));
+    results.push({
+      step: 'the word list carries no numbers, ordinals or dotted abbreviations',
+      result: junkWords.length === 0,
+      junk: junkWords.slice(0, 10)
+    });
+    // The user's handwritten Negative / Positive / Neutral verb list lives as
+    // a fourth tab, with the dictionary meaning attached to every word.
+    const conn = await js('window.__smoke.libraryConnectors()', 'the action-verb list');
+    results.push({
+      step: 'the Action-verbs tab keeps all three tone groups, each with meanings',
+      result:
+        !!conn &&
+        conn.groups === 3 &&
+        conn.labels.join(',') === 'Negative,Positive,Neutral' &&
+        conn.counts.every((c) => c >= 15) &&
+        conn.rows >= 60,
+      got: conn
+    });
+    await js('window.__smoke.libraryTab("all")', 'back to All words');
     await takeShot('09-library');
 
     const searchRes = await js('window.__smoke.librarySearch("brav")', 'search "brav"');
@@ -2056,7 +2188,8 @@ async function runSmoke() {
     results.push({ step: 'library renders word rows', result: !!libLayout && libLayout.rowCount > 0 });
     results.push({ step: 'library rows do not overlap', result: !!libLayout && libLayout.overlappingRows === 0 });
     results.push({ step: 'Meaning button sits inside its row', result: !!libLayout && libLayout.buttonInsideRow === true });
-    results.push({ step: 'library shows three tabs', result: !!libLayout && libLayout.tabs === 3 });
+    // All words, Positive, Negative and the Action-verbs tab.
+    results.push({ step: 'library shows its four tabs', result: !!libLayout && libLayout.tabs === 4 });
     results.push({ step: 'library search box renders', result: !!libLayout && !!libLayout.searchBox && libLayout.searchBox.h > 20 });
 
     const pos = await js('window.__smoke.libraryTab("positive")', 'positive tab');
@@ -3094,7 +3227,10 @@ async function runSmoke() {
     const diagInfo = await js('window.__smoke.diagInfo()', 'diagnostics data counts');
     results.push({
       step: 'diagnostics reports the same data the app is using',
-      result: !!diagInfo && diagInfo.data.classicPictures === 41 && diagInfo.data.watHints === 238 && diagInfo.data.museumPictures === 2001,
+      // 43 = the 41 bundled plates plus the two drawings the user supplied on
+      // 2026-10-21. This is a literal on purpose: the check is that diagnostics
+      // reports real numbers, not numbers read back from the same function.
+      result: !!diagInfo && diagInfo.data.classicPictures === 43 && diagInfo.data.watHints === 238 && diagInfo.data.museumPictures === 2001,
       got: diagInfo && diagInfo.data
     });
     await takeShot('16-diagnostics');

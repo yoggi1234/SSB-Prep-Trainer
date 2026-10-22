@@ -21,7 +21,7 @@ Electron app, zero runtime npm dependencies. Python is only needed for the optio
 | **WAT** — Word Association Test | 60 words, 15 s each, no typing, one large clock + plain meaning | 4 word sets, 5 model sentences per word, news lines when online |
 | **SRT** — Situation Reaction Test | 60 situations in 30 min, one running total clock, written in your copy | 3 situation sets |
 | **Lecturette** — three-minute talk | 30 s intro + 2 min body + 30 s conclusion, clock phases auto-advance | 334 topics offline, search/filter, Facts tab, current points |
-| **Word library** | Dictionary with search, meanings, sentiment tabs, random words | 149,003 words, 147,982 with offline meanings; optional Datamuse lookup |
+| **Word library** | Dictionary with search, meanings, sentiment tabs, random words | 147,417 words, 146,410 with offline meanings; optional Datamuse lookup |
 | **News Digest** | 12-page current-affairs PDF from free feeds | Requires Python 3.9+ + `reportlab`, `pypdf`, `feedparser`, `trafilatura` |
 
 ## Download the app
@@ -52,11 +52,35 @@ Output lands in `release/`:
 
 The build is unsigned, so Windows SmartScreen may show "Windows protected your PC" the first time. Choose **More info → Run anyway**.
 
+## Build the Android app
+
+The same renderer runs on a phone through Capacitor; `mobile/api.js` replaces the Electron bridge,
+serving the bundled data and keeping settings and history in `localStorage`.
+
+```bash
+node tools/build-mobile.js      # copy the renderer and the data into mobile/www
+npx cap sync android
+cd android && ./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+The debug APK is unsigned and meant for sideloading. The phone build carries the trainer itself:
+TAT with all 43 classic plates, WAT, SRT, lecturette, the whole word library, action verbs and
+history. The hardware back button returns to the dashboard (it only leaves the app from the
+dashboard), and the TAT writing phase fills the stage with a large countdown.
+
+Online extras work on the phone too: word meanings and related words from Datamuse, current
+headlines for the WAT and lecturette screens, and public-domain pictures fetched from Wikimedia
+Commons. The page's requests run through Capacitor's native HTTP, so no browser CORS rule blocks
+them. The Python News Digest engine stays desktop-only, and an export copies to the clipboard
+instead of writing a file. The Add screen says that pictures picked from the gallery last until
+the app is closed.
+
 ## Using each test
 
 **TAT.** You get 30 seconds to look at the picture, then it is taken away and the four-minute clock starts. The clock advances you automatically. There is **no typing box**: you write the story in your practice copy. "Re-show prompt" puts the picture back on screen if you need it. Structure your story around: what led to this → what is happening → what the main character thinks and does → how it ends. Slide 12 is blank, exactly as at the board. The result screen and history keep a gallery of the slides you practised.
 
-**WAT.** A word appears beside one **large countdown**, and its plain meaning sits underneath it. There is **no answer box**: you write in your own practice copy, exactly as you would at the board. The word changes on its own after 15 seconds. Never leave one blank; a short, positive sentence is enough. When the set ends, the result screen shows **five ready sentences for every word** — one natural, one positive, one leadership, one factual and one general. Compare them against what you wrote and note the shapes you missed.
+**WAT.** A word appears beside one **large countdown**, and its plain meaning sits underneath it. There is **no answer box**: you write in your own practice copy, exactly as you would at the board. The word changes on its own after 15 seconds. Never leave one blank; a short, positive sentence is enough. When the set ends, the result screen shows **five ready sentences for every word** — one natural, one positive, one leadership, one factual and one general. Compare them against what you wrote and note the shapes you missed. Under each word, **Write my own five sentences** keeps your own version beside the models, and your lines are saved on this computer for next time.
 
 **SRT.** The whole set has one countdown (30 minutes), as in the real test — there is no per-situation clock. Like WAT and TAT, there is **no typing box**: read the situation, write your reaction in your own practice copy, then move on. The right-hand grid counts the situations you have been through and lets you jump around, and the whole run is saved with its timing.
 
@@ -94,9 +118,20 @@ When a lecturette opens, news for that topic is fetched in the background and sh
 
 Deleted pictures are hidden from every TAT source — classic set, museum library and your own — so a wrong plate never appears in the middle of a test again.
 
+## Settings
+
+- **Appearance** — Mist dark or Alpine light, and a **Reduce motion** switch that stops the
+tile orbit, the lecturette slides and the paging transitions. Windows' own "Animation effects"
+setting is always respected as well.
+- **Timings** — seconds per WAT word, SRT total minutes, TAT view/write seconds, shuffling.
+- **Export** — write your whole practice history (up to the last 300 attempts) as **CSV** or
+**JSON** through a normal save dialog. A single attempt can still be exported as `.txt` from its
+result screen or from History.
+- **Diagnostics** — environment, data counts and the live log, for debugging or handover.
+
 ## Where your data lives
 
-- `%APPDATA%\SSB Prep Trainer\ssb-prep-store.json` — settings, custom sets, added picture paths, the TAT bin and the last 300 attempts
+- `%APPDATA%\SSB Prep Trainer\ssb-prep-store.json` — settings (including Reduce motion), custom sets, added picture paths, your own WAT sentences, the TAT bin and the last 300 attempts
 - `%APPDATA%\SSB Prep Trainer\live-data\` — saved lecturette points (one small file per topic, plus `index.json` and `_news-index.json`), kept for three months
 - `%APPDATA%\SSB Prep Trainer\tat-bin\` — a copy of each bundled picture moved to the bin, so it can be restored. **Delete forever** removes the copy and remembers the picture's id so it cannot come back.
 
@@ -109,7 +144,7 @@ data/             practice sets (WAT words, SRT situations, TAT scenes)
 src/main.js       Electron main process: window, storage, dialogs, export, smoke test
 src/preload.js    the only bridge between the app and the window
 data/tat-images/  the bundled public-domain picture library (2,001 files)
-data/tat-classic/ the classic TAT set (41 plates, user-supplied; see NOTICE.txt)
+data/tat-classic/ the classic TAT set (43 plates, user-supplied; see NOTICE.txt)
 data/wat-hints/   plain meanings + five model sentences for every built-in WAT word
 digest-tool/      the separate Python news-digest engine (shipped outside the asar)
 src/renderer/     the interface: index.html, styles.css, app.js
@@ -122,3 +157,18 @@ AGENTS.md         handover instructions for the next developer or AI
 ## Verifying a change
 
 ```bash
+node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js
+npm run smoke                     # all checks, 0 failures, 0 console errors
+node tools/build-mobile.js && npx cap sync android
+cd android && ./gradlew assembleDebug
+```
+
+On a phone connected over USB debugging, the build can be exercised for real:
+
+```bash
+adb forward tcp:9223 localabstract:webview_devtools_remote_$(adb shell pidof in.ssbprep.trainer)
+node tools/mobile-probe/drive.js tools/mobile-probe/scenarios/phone.js
+```
+
+The scenario walks every section and prints a PASS/FAIL line per check, with screenshots under
+`screenshots/mobile/`.

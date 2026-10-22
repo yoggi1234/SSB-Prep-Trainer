@@ -22,6 +22,27 @@ const OUT_DIR = path.join(__dirname, '..', 'data');
 
 const POS_BY_TYPE = { n: 'noun', v: 'verb', a: 'adjective', s: 'adjective', r: 'adverb' };
 
+// WordNet carries material that is noise in a word-practice library: bare
+// numbers ("14"), ordinals ("14th"), catalogue codes ("u308", "wordnet3.1"),
+// dated names ("war of 1812", "vitamin b12") and dotted forms (initials like
+// "a. a. milne", abbreviations like "a.m.", calibres like ".22 caliber").
+// None of them is something you would write a WAT sentence from, and they used
+// to sit in the "All words" list.
+//
+// It also tags adjective and participle forms as "afraid(p)" / "aged(a)" in the
+// synset line. That suffix is a WordNet annotation, not part of the word, so it
+// is stripped: "afraid(p)" and "afraid" then fold into one headword.
+//
+// Accented Latin letters are kept ("naive" and "naive" are both real), as is a
+// leading apostrophe ("'tween"), because those are genuine headwords.
+function cleanWord(raw) {
+  let s = String(raw || '').trim().toLowerCase().replace(/_/g, ' ');
+  s = s.replace(/\((?:a|p|ip|ap)\)$/, '').trim();
+  if (!s) return '';
+  if (/[0-9.]/.test(s)) return '';
+  return /^'?[a-z\u00c0-\u024f][a-z\u00c0-\u024f' -]*$/.test(s) ? s : '';
+}
+
 function parseDataFile(file) {
   const raw = fs.readFileSync(file, 'utf8');
   const out = [];
@@ -43,9 +64,10 @@ function parseDataFile(file) {
     // Word/lex_id pairs follow the count field.
     const words = [];
     for (let i = 0; i < wCnt; i++) {
-      const w = fields[4 + i * 2];
-      if (w) words.push(w.replace(/_/g, ' ').toLowerCase());
+      const w = cleanWord(fields[4 + i * 2]);
+      if (w) words.push(w);
     }
+    if (!words.length) continue;
     // Gloss = definition; drop trailing example sentences in quotes for cleanliness
     // but keep them if the definition itself is short.
     gloss = gloss.replace(/\s+/g, ' ').trim();
@@ -95,7 +117,7 @@ function main() {
   const afinn = afinnMod.afinn165 || afinnMod;
   let added = 0;
   for (const [w, score] of Object.entries(afinn)) {
-    const key = String(w).toLowerCase().trim();
+    const key = cleanWord(w);
     if (!key) continue;
     let e = words.get(key);
     if (!e) {
@@ -130,11 +152,12 @@ function main() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const outPath = path.join(OUT_DIR, 'dictionary.json');
+  const kept = Object.keys(out).length;
   const meta = {
     source: 'WordNet 3.1 (Princeton University) + AFINN-165',
     license: 'WordNet licence (permissive, see NOTICE) / AFINN ODbL',
     generated: new Date().toISOString().slice(0, 10),
-    words: sortedKeys.length,
+    words: kept,
     withDefinitions: withDefs,
     positive,
     negative,

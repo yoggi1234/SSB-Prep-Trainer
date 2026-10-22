@@ -58,11 +58,17 @@
     return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
   }
 
+  // A picture can arrive as an absolute path on this computer, as a URL the
+  // page can load as-is (the Android bundle uses 'data/tat-classic/…'), or as
+  // a data:/blob: URL from the phone's own picker. Only a Windows path needs
+  // turning into a file:// URL; the rest must be left alone or the picture
+  // silently fails to load.
   function fileUrl(p) {
-    var s = String(p).replace(/\\/g, '/');
+    var s = String(p == null ? '' : p).replace(/\\/g, '/');
+    if (/^(data:|blob:|https?:|file:|content:)/i.test(s)) return s;
     if (/^[a-zA-Z]:\//.test(s)) return 'file:///' + s;
     if (s.charAt(0) === '/') return 'file://' + s;
-    return 'file:///' + s;
+    return s;
   }
 
   function shuffle(arr) {
@@ -361,7 +367,7 @@
     if (t.id === 'library') {
       return {
         code: t.code,
-        chip: '149,003 words',
+        chip: '147,417 words',
         blurb: 'Every word with a plain meaning, search, sentiment tabs and a random-word drill.',
         rows:
           '<li><span>Lookup</span><b>offline + online</b></li>' +
@@ -502,7 +508,9 @@
     stopDashTimer();
     S.dashSel = Math.min(S.dashSel || 0, tiles.length - 1);
     selectTile(S.dashSel);
-    S.dashAuto = true;
+    // The highlight only walks on its own when movement is welcome; a person
+    // who asked for less motion keeps the first tile until they move it.
+    S.dashAuto = !motionReduced();
     tiles.forEach(function (b, i) {
       b.addEventListener('mouseenter', function () {
         S.dashAuto = false;
@@ -520,10 +528,12 @@
       document.addEventListener('keydown', onDashKey);
       S.dashKeysBound = true;
     }
-    S.dashTimer = setInterval(function () {
-      if (!S.dashAuto || S.view !== 'home') return;
-      selectTile(S.dashSel + 1);
-    }, 4500);
+    if (!motionReduced()) {
+      S.dashTimer = setInterval(function () {
+        if (!S.dashAuto || S.view !== 'home') return;
+        selectTile(S.dashSel + 1);
+      }, 4500);
+    }
   }
 
   function renderHome() {
@@ -547,7 +557,10 @@
       '<div class="dashhead">' +
       '<div>' +
       '<h1>SSB psychology test trainer</h1>' +
-      '<p class="lead">Everything for the board on one dashboard. Online extras are on and fall back to what is already saved on this computer, so a lost connection never stops a session. ' +
+      '<p class="lead">Everything for the board on one dashboard. ' +
+      (S.config.onlineEnabled
+        ? 'Online extras are on and fall back to what is already saved on this computer, so a lost connection never stops a session. '
+        : 'This copy runs offline: every test uses the material already saved here, so nothing waits on a connection. ') +
       'Move with <b>← ↑ ↓ →</b> and open with <b>Enter</b>: the highlight walks the tiles until you take over.</p>' +
       '</div>' +
       '<div class="dashbadge"><b>' + TILES.length + '</b><span>sections</span></div>' +
@@ -923,6 +936,10 @@
       S.refs.clock.textContent = clock(s.remaining);
       var warn = s.phase === 'view' ? 10000 : 60000;
       S.refs.clock.classList.toggle('urgent', s.remaining <= warn);
+      if (S.refs.writeClockNum && S.refs.writeClock && !S.refs.writeClock.hidden) {
+        S.refs.writeClockNum.textContent = clock(s.remaining);
+        S.refs.writeClockNum.classList.toggle('urgent', s.remaining <= warn);
+      }
     }
   }
 
@@ -1089,6 +1106,10 @@
         '<div class="runbody">' +
         '<div class="srt-grid">' +
         '<div class="srt-main">' +
+        // The real test gives you a booklet and a pen, not a text box: the run
+        // screen points at the practice copy instead of collecting typing.
+        '<div class="srt-copy"><b>Write your reaction in your practice copy</b>' +
+        '<span>One line per situation, in the same order as the numbers. This screen keeps the situation and the clock only.</span></div>' +
         '<div class="situation" id="situation"></div>' +
         '<div class="footbar">' +
         '<button class="btn sm" id="prevBtn">← Previous</button>' +
@@ -1190,6 +1211,10 @@
         '<div class="phase" id="phase">Viewing</div>' +
         '<div class="clocknum" id="clock">30</div>' +
         '<div id="slideContent"></div>' +
+        '<div class="write-clock" id="writeClock" hidden>' +
+        '<div class="wc-num" id="writeClockNum"></div>' +
+        '<div class="wc-lbl">Writing — in your practice copy</div>' +
+        '</div>' +
         '</div>' +
         '<div class="tat-copy"><b>Write the story in your practice copy.</b><span>Look at the picture for ' +
         S.config.tatViewSec + ' seconds. It is taken away when the viewing time ends, then you get ' +
@@ -1209,6 +1234,8 @@
       phase: document.getElementById('phase'),
       slideContent: document.getElementById('slideContent'),
       slidebox: document.getElementById('slidebox'),
+      writeClock: document.getElementById('writeClock'),
+      writeClockNum: document.getElementById('writeClockNum'),
       counter: document.getElementById('counter'),
       hint: document.getElementById('hint')
     };
@@ -1246,9 +1273,18 @@
     var s = S.session;
     if (!s || !S.refs || s.test !== 'tat') return;
     var viewing = s.phase === 'view';
+    // Writing happens in a practice copy with the screen free: the clock takes
+    // the stage instead of a small number in the corner, so it can be read
+    // from across the room while you write.
+    var full = !viewing && S.config.hideTatPromptWhileWriting;
     S.refs.phase.textContent = viewing ? 'Viewing' : 'Writing';
     S.refs.clock.textContent = viewing ? S.config.tatViewSec : clock(S.config.tatWriteSec * 1000);
     S.refs.slideContent.hidden = !viewing && S.config.hideTatPromptWhileWriting;
+    if (S.refs.slidebox) S.refs.slidebox.classList.toggle('writing', full);
+    if (S.refs.writeClock) {
+      S.refs.writeClock.hidden = !full;
+      if (full) S.refs.writeClockNum.textContent = clock(Math.max(0, s.deadline - Date.now()));
+    }
     S.refs.hint.innerHTML = viewing
       ? 'You have <b>' + S.config.tatViewSec + ' seconds</b> to look. Then the slide is taken away and you get <b>' +
         S.config.tatWriteSec / 60 + ' minutes</b> to write.'
@@ -1331,6 +1367,69 @@
     return (S.hints || {})[String(word || '').toLowerCase().trim()] || null;
   }
 
+  // Your own five sentences for a word, saved on this machine. Kept beside the
+  // built-in models so you can compare what you wrote with what the app offers.
+  function savedSentencesFor(word) {
+    var all = (S.config && S.config.watSentences) || {};
+    return all[String(word || '').toLowerCase().trim()] || null;
+  }
+
+  function mySentencesHtml(word) {
+    var key = String(word || '').toLowerCase().trim();
+    var saved = savedSentencesFor(word) || {};
+    var mine = SENTENCE_STYLES.map(function (st) {
+      var v = saved[st.key];
+      if (!v) return '';
+      return (
+        '<div class="mine-row">' +
+        '<span class="mine-tag">My ' + st.label.toLowerCase() + '</span>' +
+        '<span class="mine-text">' + esc(v) + '</span>' +
+        '</div>'
+      );
+    }).join('');
+
+    var fields = SENTENCE_STYLES.map(function (st) {
+      return (
+        '<label class="mine-field"><span>' + st.label + '</span>' +
+        '<input type="text" data-wsent="' + esc(key) + '" data-wstyle="' + st.key + '" value="' + esc(saved[st.key] || '') + '" spellcheck="false" placeholder="' + st.label + ' sentence" />' +
+        '</label>'
+      );
+    }).join('');
+
+    return (
+      '<div class="mine">' +
+      mine +
+      '<details class="mine-edit">' +
+      '<summary>' + (mine ? 'Edit my sentences' : 'Write my own five sentences') + '</summary>' +
+      '<div class="mine-fields">' + fields + '</div>' +
+      '<div class="row" style="margin-top:10px">' +
+      '<button class="btn sm" data-wsave="' + esc(key) + '">Save my sentences</button>' +
+      '</div>' +
+      '</details>' +
+      '</div>'
+    );
+  }
+
+  // Saves are wired after each render, on the buttons that are on screen.
+  function wireMySentences() {
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-wsave]'), function (b) {
+      b.addEventListener('click', function () {
+        var key = b.getAttribute('data-wsave');
+        var set = {};
+        Array.prototype.forEach.call(appEl.querySelectorAll('[data-wsent]'), function (f) {
+          if (f.getAttribute('data-wsent') !== key) return;
+          set[f.getAttribute('data-wstyle')] = String(f.value || '').trim();
+        });
+        S.config.watSentences = S.config.watSentences || {};
+        S.config.watSentences[key] = set;
+        window.api.setConfig({ watSentences: S.config.watSentences }).then(function () {
+          toast('Saved your sentences for \u201c' + key + '\u201d');
+          render();
+        });
+      });
+    });
+  }
+
   function modelSentencesHtml(word) {
     var h = hintFor(word);
     if (!h) return '';
@@ -1365,6 +1464,7 @@
       (h.simple ? '<span class="small muted">' + esc(h.simple) + '</span>' : '') +
       '</div>' +
       lines +
+      mySentencesHtml(word) +
       '</div>'
     );
   }
@@ -1478,6 +1578,7 @@
     });
     document.getElementById('toHistory').addEventListener('click', function () { goto('history'); });
     document.getElementById('home').addEventListener('click', function () { goto('home'); });
+    wireMySentences();
   }
 
   function attemptToText(r) {
@@ -2649,7 +2750,10 @@
         '<ul style="list-style:none;margin:0;padding:0">' + setList + '</ul>' +
         '</div>' +
 
-        '<p class="small muted" style="margin-top:16px">Pictures you add are used only on this computer. ' +
+        '<p class="small muted" style="margin-top:16px">' +
+        (window.api && window.api.android
+          ? 'Pictures you add on the phone stay until the app is closed — the classic plates are always there. '
+          : 'Pictures you add are used only on this computer. ') +
         'The classic set is user-supplied practice material and is not redistributed with the app.</p>'
     );
 
@@ -2796,6 +2900,7 @@
         busy: false,
         started: false,
         open: {},
+        connectors: null,
         online: null,
         theme: 'duty',
         fetching: false,
@@ -2836,7 +2941,8 @@
     return [
       ['all', 'All words'],
       ['positive', 'Positive'],
-      ['negative', 'Negative']
+      ['negative', 'Negative'],
+      ['connectors', 'Action verbs']
     ]
       .map(function (t) {
         return (
@@ -2947,6 +3053,33 @@
     var host = document.getElementById('libList');
     if (!host) return;
     var L = libState();
+    if (L.tab === 'connectors') {
+      var C = L.connectors;
+      if (!C) {
+        host.innerHTML = '<div class="empty">' + (L.busy ? 'Reading the verb list…' : 'No verb list found.') + '</div>';
+        return;
+      }
+      host.innerHTML =
+        (C.note ? '<p class="lead small">' + esc(C.note) + '</p>' : '') +
+        (C.groups || [])
+          .map(function (g) {
+            return (
+              '<div class="conn-group">' +
+              '<h3 class="conn-head">' + esc(g.label) + '</h3>' +
+              '<p class="small muted" style="margin:0 0 8px">' + esc(g.hint) + '</p>' +
+              (g.items || []).map(libRowHtml).join('') +
+              '</div>'
+            );
+          })
+          .join('') +
+        (C.source ? '<p class="small muted" style="margin-top:16px">' + esc(C.source) + '</p>' : '');
+      Array.prototype.forEach.call(host.querySelectorAll('[data-meaning]'), function (b) {
+        b.addEventListener('click', function () {
+          toggleMeaning(b.getAttribute('data-meaning'));
+        });
+      });
+      return;
+    }
     if (!L.items.length) {
       host.innerHTML = '<div class="empty">' + (L.busy ? 'Reading the library…' : 'No words match that search.') + '</div>';
     } else {
@@ -2968,6 +3101,19 @@
 
   function loadLib(reset) {
     var L = libState();
+    if (L.tab === 'connectors') {
+      if (L.connectors) {
+        paintList();
+        return;
+      }
+      L.busy = true;
+      window.api.connectors().then(function (res) {
+        L.connectors = res || { groups: [] };
+        L.busy = false;
+        paintList();
+      });
+      return;
+    }
     if (L.busy) return;
     L.busy = true;
     if (reset) {
@@ -3273,6 +3419,7 @@
         });
       });
     }
+    wireMySentences();
   }
 
   /* ------------------------------------------------------ settings view */
@@ -3318,6 +3465,8 @@
         '<button class="btn sm' + (S.config.theme === 'alpine' ? '' : ' primary') + '" id="themeMist">Mist dark</button>' +
         '<button class="btn sm' + (S.config.theme === 'alpine' ? ' primary' : '') + '" id="themeAlpine">Alpine light</button>' +
         '</div></div>' +
+        toggleField('Reduce motion', 'Skip the tile orbit, lecturette slides and paging transitions. ' +
+          'Windows\' own "Animation effects" setting is always respected as well.', 'reduceMotion') +
         '</div>' +
 
 
@@ -3372,6 +3521,18 @@
         'Nothing is uploaded anywhere.</p>' +
         '</div>' +
 
+        '<h2>Export</h2>' +
+        '<div class="card">' +
+        '<p class="small muted" style="margin:0">' +
+        'Batch-export your last 300 attempts as CSV or JSON. ' +
+        'Use this to share your practice history with mentors or for personal records.' +
+        '</p>' +
+        '<div class="row" style="margin-top:12px">' +
+        '<button class="btn sm" id="exportCsv">Export as CSV</button>' +
+        '<button class="btn sm ghost" id="exportJson">Export as JSON</button>' +
+        '</div>' +
+        '</div>' +
+
         '<h2>Diagnostics</h2>' +
         '<div class="card">' +
         '<p class="small muted">Environment, data counts, the working flow and the live log — for debugging or handing the project to someone else.</p>' +
@@ -3411,6 +3572,10 @@
         var patch = {};
         patch[key] = S.config[key];
         window.api.setConfig(patch);
+        if (key === 'reduceMotion') {
+          applyMotion();
+          toast(S.config.reduceMotion ? 'Motion reduced' : 'Motion restored');
+        }
       });
     });
 
@@ -3423,6 +3588,26 @@
         renderSettings();
       });
     });
+
+    var exportCsv = document.getElementById('exportCsv');
+    if (exportCsv) {
+      exportCsv.addEventListener('click', function () {
+        window.api.attemptsExport('csv').then(function (res) {
+          if (res && res.saved) toast('Saved ' + res.count + ' attempt(s) to ' + res.path);
+          else if (res && res.error) toast('Could not save the export: ' + res.error);
+        });
+      });
+    }
+
+    var exportJson = document.getElementById('exportJson');
+    if (exportJson) {
+      exportJson.addEventListener('click', function () {
+        window.api.attemptsExport('json').then(function (res) {
+          if (res && res.saved) toast('Saved ' + res.count + ' attempt(s) to ' + res.path);
+          else if (res && res.error) toast('Could not save the export: ' + res.error);
+        });
+      });
+    }
 
     var add = document.getElementById('addCustom');
     if (add) {
@@ -3679,6 +3864,26 @@
         DG.files = (s && s.files) || [];
         if (S.view === 'digest') renderDigest();
       });
+    }
+
+    // The Python engine cannot run inside the Android WebView. Say so plainly
+    // instead of showing a form whose Generate button could only fail.
+    if (!st) {
+      body('<h1>News Digest</h1><div class="empty">Checking the digest engine…</div>');
+      return;
+    }
+    if (st.unsupported) {
+      body(
+        '<h1>News Digest</h1>' +
+          '<p class="lead">The 12-page current-affairs digest is built by a separate Python engine, and that engine ' +
+          'belongs to the desktop app. The phone build carries the trainer itself.</p>' +
+          '<div class="note">On Windows, <b>News Digest</b> collects free feeds and your own newspaper PDFs into the ' +
+          'same PDF. Nothing here is lost by opening this on the phone: the digest keeps its own folder and never ' +
+          'reads the SSB store.</div>' +
+          '<div class="row" style="margin-top:16px"><button class="btn primary" id="digHome">Back to the dashboard</button></div>'
+      );
+      document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+      return;
     }
 
     var pyOk = !!(st && st.python);
@@ -4349,6 +4554,30 @@
 
     libraryInfo: function () {
       return window.api.dictInfo();
+    },
+    // The Action-verbs tab loads its own list, not a word page, so it needs
+    // its own probe rather than waiting for L.items to fill.
+    libraryConnectors: function () {
+      var b = document.querySelector('[data-libt="connectors"]');
+      if (!b) return Promise.resolve(null);
+      b.click();
+      return new Promise(function (resolve) {
+        var tries = 0;
+        var iv = setInterval(function () {
+          tries++;
+          var L = libState();
+          if (L.connectors || tries > 100) {
+            clearInterval(iv);
+            var C = L.connectors || { groups: [] };
+            resolve({
+              groups: C.groups.length,
+              labels: C.groups.map(function (g) { return g.label; }),
+              counts: C.groups.map(function (g) { return (g.items || []).length; }),
+              rows: document.querySelectorAll('.conn-group [data-meaning]').length
+            });
+          }
+        }, 100);
+      });
     },
     librarySearch: function (q) {
       var L = libState();
@@ -5078,9 +5307,24 @@
   // app now follows) and Alpine light (the sage paper one). The choice lives
   // in Settings, is saved like any other setting, and is applied before the
   // first paint so the ground never flashes the wrong colour.
+  // Reduce motion is a preference on top of the operating system's own
+  // "Animation effects" switch, never a replacement for it: the stylesheet
+  // honours this attribute and the prefers-reduced-motion media query.
+  function motionReduced() {
+    if (S.config && S.config.reduceMotion) return true;
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function applyMotion() {
+    var on = !!(S.config && S.config.reduceMotion);
+    document.documentElement.setAttribute('data-reduce-motion', on ? 'true' : 'false');
+    return on;
+  }
+
   function applyTheme() {
     var name = S.config && S.config.theme === 'alpine' ? 'alpine' : 'mist';
     document.documentElement.setAttribute('data-theme', name);
+    applyMotion();
     return name;
   }
 
@@ -5148,6 +5392,31 @@
       window.api.logAppend('renderer', 'unhandledRejection: ' + ((e.reason && (e.reason.message || e.reason)) || ''));
     } catch (_) {}
   });
+
+
+  // The Android hardware back button asks this before Capacitor closes the
+  // app. A screen returns to the dashboard; a running test asks before it is
+  // thrown away; only the dashboard lets the press leave the app.
+  window.__ssbBack = function () {
+    if (S.view === 'home') return false;
+    var running = !!S.session;
+    var lect = S.view === 'lecturette' && lectState().run;
+    if (running || lect) {
+      var ok = window.confirm('Leave this practice session? The attempt will not be saved.');
+      if (!ok) return true;
+      stopTick();
+      stopLectTimer();
+      if (S.view === 'lecturette') {
+        lectState().run = null;
+        lectState().mode = 'list';
+      }
+      S.session = null;
+      S.refs = null;
+      window.api.keepAwake(false);
+    }
+    goto('home');
+    return true;
+  };
 
   boot();
 })();

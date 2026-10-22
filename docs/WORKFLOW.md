@@ -72,7 +72,7 @@ node tools/verify-package.js
 ```
 
 It unpacks `release/win-unpacked/resources/app.asar` in memory and compares every tracked file
-with the working tree, then counts classic plates (41), museum pictures (2001) and digest engine
+with the working tree, then counts classic plates (43), museum pictures (2001) and digest engine
 files. It exits non-zero on any mismatch. Common cause of a mismatch: the build started before the
 last edit. Rebuild, do not adjust the check.
 
@@ -95,6 +95,43 @@ sha256sum release/*.exe
 ```
 
 Then open it with `register_preview` (path inside the workspace) so the user can download.
+
+### The Android build
+
+```bash
+node tools/build-mobile.js       # renderer + data -> mobile/www (43/43 plates, 22.6 MB)
+npx cap sync android
+cd android && ./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+`android/` and `mobile/www/` are generated and git-ignored; `android/local.properties` needs a
+`sdk.dir` line and is regenerated whenever the Android tree is recreated. On this PC the SDK lives
+at `%LOCALAPPDATA%\Android\Sdk`.
+
+The phone build shares `app.js` and `styles.css` with the desktop app and swaps only the bridge
+(`mobile/api.js`). That means a renderer change must be checked twice: `npm run smoke` for
+desktop, and the device scenario below for the phone. The two bridges must keep the same shapes —
+`tatBin()` returns an array on both sides, because the renderer calls `.length` and `.map()` on it.
+
+### Exercise the phone build
+
+With the phone connected over USB debugging and the app running:
+
+```bash
+adb forward tcp:9223 localabstract:webview_devtools_remote_$(adb shell pidof in.ssbprep.trainer)
+node tools/mobile-probe/drive.js tools/mobile-probe/scenarios/phone.js
+```
+
+Each check prints PASS/FAIL and a description; screenshots land in `screenshots/mobile/`. The
+scenario drives the real WebView over the Chrome DevTools Protocol, so it sees the same page a
+person does. Two traps it already handles: `location.reload()` destroys the execution context
+(the runner retries), and `Page.captureScreenshot` can hang while a screen animates (the runner
+uses `adb exec-out screencap -p` instead).
+
+What is still desktop-only on the phone: the museum library, folder imports, the Python digest
+engine, and saving a file (exports copy to the clipboard). The APK is an unsigned debug build —
+not a Play Store release.
 
 ## 6. Rebuilding bundled data
 

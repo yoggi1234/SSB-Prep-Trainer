@@ -525,9 +525,95 @@ button {
   padding-top: 3px;
 }
 
+/* Action verbs, grouped by the tone they set (Word library tab). */
+.conn-group {
+  margin-bottom: 22px;
+}
+
+.conn-group:last-child {
+  margin-bottom: 0;
+}
+
+.conn-head {
+  margin: 0 0 4px;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+
 .model-tag.positive { color: var(--ok); }
 .model-tag.leadership { color: var(--heading); }
 .model-tag.factual { color: var(--warn); }
+
+/* Your own sentences for a word, written on the result screen. Deliberately
+   separate classes from .model-row/.model-tag: the built-in five stay a fixed,
+   countable set, and your lines sit underneath them. */
+.mine {
+  margin-top: 8px;
+}
+
+.mine-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.mine-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-top: 3px;
+}
+
+.mine-text {
+  color: var(--ink);
+}
+
+.mine-edit {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mine-edit summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.mine-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.mine-field input {
+  font: inherit;
+  font-size: 13.5px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  min-width: 0;
+}
 
 @media (max-width: 900px) {
   .wat-stage {
@@ -562,6 +648,7 @@ button {
   position: absolute;
   top: 14px;
   right: 18px;
+  z-index: 2;
   font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -761,6 +848,22 @@ textarea.answer:disabled {
   user-select: text;
 }
 
+/* The picture sits in its own flex item. Without min-width:0 that item keeps
+   the picture's intrinsic width, so a landscape plate ignored max-width and
+   spilled over the phase label and clock on a narrow (phone) screen. */
+#slideContent {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The flex display above would otherwise beat the hidden attribute, and the
+   picture would stay on screen next to the writing clock. */
+#slideContent[hidden] {
+  display: none;
+}
+
 .slide-img {
   width: auto;
   max-width: 100%;
@@ -778,10 +881,48 @@ textarea.answer:disabled {
   font-style: italic;
 }
 
+/* Writing phase: the picture is away, so the clock fills the stage and stays
+   readable from across the room while the story is written on paper. */
+.slidebox.writing {
+  flex: 1 1 auto;
+  min-height: 46vh;
+}
+
+.write-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  text-align: center;
+}
+
+.wc-num {
+  font-size: clamp(56px, 16vw, 132px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.wc-num.urgent {
+  color: var(--danger);
+}
+
+.wc-lbl {
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .phase {
   position: absolute;
   top: 14px;
   left: 18px;
+  z-index: 2;
   font-size: 12px;
   letter-spacing: 1.4px;
   text-transform: uppercase;
@@ -2091,6 +2232,16 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* The same stop for the in-app switch in Settings, so a person who wants less
+   movement gets it even when the OS setting is left alone. */
+html[data-reduce-motion='true'] *,
+html[data-reduce-motion='true'] *::before,
+html[data-reduce-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
 /* ------------------------------------------------- SRT: no typing box */

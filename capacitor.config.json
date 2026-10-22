@@ -1,0 +1,14 @@
+{
+  "appId": "in.ssbprep.trainer",
+  "appName": "SSB Prep Trainer",
+  "webDir": "mobile/www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0e1a15"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
