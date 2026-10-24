@@ -110,7 +110,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 at `%LOCALAPPDATA%\Android\Sdk`.
 
 The phone build shares `app.js` and `styles.css` with the desktop app and swaps only the bridge
-(`mobile/api.js`). That means a renderer change must be checked twice: `npm run smoke` for
+(the `mobile/*.js` modules, assembled into `window.api` by `mobile/api.js`). A new bridge function
+goes in the module that owns its concern and nowhere else: the facade throws at boot if two modules
+define the same key. That means a renderer change must be checked twice: `npm run smoke` for
 desktop, and the device scenario below for the phone. The two bridges must keep the same shapes —
 `tatBin()` returns an array on both sides, because the renderer calls `.length` and `.map()` on it.
 

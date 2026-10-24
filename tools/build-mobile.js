@@ -2,7 +2,7 @@
  * Assembles the Android build's web assets into mobile/www.
  *
  * The renderer is the same app.js/styles.css the desktop app uses; only the
- * bridge changes (mobile/api.js implements window.api in the page). Practice
+ * bridge changes (the modules in mobile/ implement window.api in the page). Practice
  * data is copied in full except the museum picture library, which is 92 MB and
  * not useful on a phone: the 43 bundled plates are the TAT pool there.
  *
@@ -16,6 +16,10 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'src', 'renderer');
 const OUT = path.join(ROOT, 'mobile', 'www');
+
+// The phone bridge, in load order: each module puts its own window.api keys on
+// SSB, and api.js last assembles them. A module may rely on anything above it.
+const BRIDGE = ['store.js', 'net.js', 'material.js', 'online.js', 'digest.js', 'museum.js', 'platform.js', 'api.js'];
 
 function copy(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
@@ -44,17 +48,17 @@ function main() {
       /content="default-src[^"]*"/,
       // Only the few hosts the online extras use are allowed. Everything else
       // stays locked out, exactly like the desktop CSP's connect-src 'none'.
-      'content="default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: https://upload.wikimedia.org https://www.artic.edu; font-src \'self\' data:; connect-src \'self\' https://api.datamuse.com https://commons.wikimedia.org https://upload.wikimedia.org https://api.rss2json.com; object-src \'none\'; base-uri \'none\'; form-action \'none\'"'
+      // img-src needs blob: because the pictures you add are shown as object URLs.
+      'content="default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: blob: https://upload.wikimedia.org https://www.artic.edu; font-src \'self\' data:; connect-src \'self\' https://api.datamuse.com https://commons.wikimedia.org https://upload.wikimedia.org https://en.wikipedia.org; object-src \'none\'; base-uri \'none\'; form-action \'none\'"'
     )
     .replace(
       '<script src="app.js"></script>',
-      '<script src="api.js"></script>\n    <script src="online.js"></script>\n    <script src="app.js"></script>'
+      BRIDGE.map((f) => `<script src="${f}"></script>`).join('\n    ') + '\n    <script src="app.js"></script>'
     );
   fs.writeFileSync(path.join(OUT, 'index.html'), html);
   copy(path.join(SRC, 'styles.css'), path.join(OUT, 'styles.css'));
   copy(path.join(SRC, 'app.js'), path.join(OUT, 'app.js'));
-  copy(path.join(ROOT, 'mobile', 'api.js'), path.join(OUT, 'api.js'));
-  copy(path.join(ROOT, 'mobile', 'online.js'), path.join(OUT, 'online.js'));
+  for (const f of BRIDGE) copy(path.join(ROOT, 'mobile', f), path.join(OUT, f));
 
   // Practice data. The 19 MB dictionary is included so the Word library is
   // whole on the phone; it is fetched on first use, not at boot.
@@ -67,6 +71,10 @@ function main() {
     'dictionary.json',
     'lectures.json',
     'lecturettes.json',
+    // Bundled reference edition for the phone's News Digest tab: twelve
+    // sections of standing context, so the tab still shows a real edition with
+    // no connection and no saved copy.
+    'digest-offline.json',
     'wat-hints/set-1.json',
     'wat-hints/set-2.json',
     'wat-hints/set-3.json',

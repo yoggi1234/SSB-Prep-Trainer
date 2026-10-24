@@ -1,17 +1,19 @@
+<p align="center"><img src="docs/logo.png" alt="Prep SSB logo" width="320"></p>
+
 # SSB Prep Trainer
 
 **Offline SSB interview practice: TAT, WAT, SRT, lecturette, word library and a News Digest compartment.**
 
 Electron app, zero runtime npm dependencies. Python is only needed for the optional News Digest tab.
 
-![Mist dark theme](screenshots/screenshot-dark.png)
-![Alpine light theme](screenshots/screenshot-light.png)
+![The dashboard](screenshots/01-home.png)
+![A lecturette in progress](screenshots/14c-lecturette-run.png)
 
 ## Quick links
 
-- [Download release](https://github.com/yoggi1234/SSB-Prep-Trainer/releases/tag/v1.0.0)
+- [Download the latest release (Windows and Android)](https://github.com/yoggi1234/SSB-Prep-Trainer/releases/latest)
 - [GitHub repo](https://github.com/yoggi1234/SSB-Prep-Trainer)
-- [Smoke test report](screenshots/index.html)
+- [Screenshots from the smoke test](screenshots/)
 
 ## What's in this build
 
@@ -60,8 +62,9 @@ The build is unsigned, so Windows SmartScreen may show "Windows protected your P
 
 ## Build the Android app
 
-The same renderer runs on a phone through Capacitor; `mobile/api.js` replaces the Electron bridge,
-serving the bundled data and keeping settings and history in `localStorage`.
+The same renderer runs on a phone through Capacitor; the modules in `mobile/` replace the Electron
+bridge (data, online lookups, digest, museum art, device glue) and `mobile/api.js` assembles them
+into `window.api`, serving the bundled data and keeping settings and history in `localStorage`.
 
 ```bash
 node tools/build-mobile.js      # copy the renderer and the data into mobile/www
@@ -111,6 +114,14 @@ The **Lecturette** tab is built for the spoken three-minute talk: **30 s intro +
 | Conclusion (30 s) | future possibilities, challenges, precautions, your own clear opinion |
 
 **334 topics ship offline**, every one filed under one of ten themes. Each card has a **Facts** tab with quick-revision cues.
+
+### Write a lecturette for any topic
+
+Type a topic under **Your own topic**, or press **Write it for me** on any outline topic. With online lookup on, the app
+reads the matching Wikipedia article (the India one when it exists) and the latest headlines, and writes a 350–420-word
+talk in the three-minute pattern: introduction, a body under short headings (present situation, causes, advantages,
+challenges, India, government steps) and a conclusion with a closing line. Facts are quoted, never invented, and every
+source is listed with its date and a **Check** button. Scripts are saved on the device and open as one readable page.
 
 ### Current points, refreshed every three months
 

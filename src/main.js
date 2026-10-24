@@ -22,6 +22,11 @@ const smokeSheet = []; // urls handed to shell.openExternal
 let smokePickFiles = []; // what the folder dialog "chooses"
 
 if (SMOKE) {
+  // The suite clears attempts and pictures and adds test images; it must never
+  // touch the person's real profile. A fresh throwaway profile on every run.
+  const smokeProfile = path.join(os.tmpdir(), 'ssb-smoke-profile');
+  fs.rmSync(smokeProfile, { recursive: true, force: true });
+  app.setPath('userData', smokeProfile);
   dialog.showOpenDialog = async () => ({ canceled: false, filePaths: smokePickFiles.slice() });
   dialog.showSaveDialog = async () => ({ canceled: false, filePath: SMOKE_EXPORT });
   shell.openExternal = async (url) => {
@@ -180,7 +185,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
       // A timed test must keep ticking even when the window is not focused.
       backgroundThrottling: false
@@ -202,6 +207,13 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
+  });
+  // The preload's window.api must only ever serve the app's own page: a link or
+  // drop that would load another page in this window goes to the browser instead.
+  mainWindow.webContents.on('will-navigate', (ev, url) => {
+    if (url === mainWindow.webContents.getURL()) return;
+    ev.preventDefault();
+    if (/^https?:/i.test(url)) shell.openExternal(url);
   });
 }
 
@@ -907,7 +919,8 @@ function clearLive(id) {
 // Headlines are "Story headline - Publisher" on Google News; split them so the
 // bullet reads as a point and the paper is credited separately.
 function cleanHeadline(raw) {
-  let text = String(raw || '').trim();
+  // Callers pass googleNews() rows ({title, link, date}); a bare string still works.
+  let text = String((raw && raw.title) || raw || '').trim();
   let publisher = '';
   const dash = text.lastIndexOf(' - ');
   if (dash > 20) {
@@ -1078,6 +1091,58 @@ ipcMain.handle('lectures:hot', async () => {
     };
   } catch (err) {
     return { ok: false, error: 'network', detail: err.message };
+  }
+});
+
+// Background facts for the lecturette writer: the closest Wikipedia article as
+// plain text, with the date it was last edited so the screen can say how
+// current it is. No key and no account; main process only, behind the switch.
+async function wikiJson(query) {
+  const res = await fetch('https://en.wikipedia.org/w/api.php?format=json&formatversion=2&' + query, {
+    signal: AbortSignal.timeout(9000),
+    headers: { Accept: 'application/json', 'User-Agent': AIC_UA }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// The lecturette wants the Indian angle: of the top hits for "<topic> in India",
+// one whose title names India and holds every main word of the topic wins
+// ("Women in the Indian Armed Forces"); otherwise the plain best match is used.
+async function wikiArticle(q) {
+  const search = async (s, n) => {
+    const found = await wikiJson('action=query&list=search&srprop=&srlimit=' + n + '&srsearch=' + encodeURIComponent(s));
+    return (found.query && found.query.search) || [];
+  };
+  const stems = (s) => (String(s).toLowerCase().match(/[a-z]{4,}/g) || []).map((w) => w.slice(0, 5));
+  if (!/\bindia/i.test(q)) {
+    const want = stems(q);
+    const hit = (await search(q + ' in India', 5)).find(
+      (h) => /\bIndia/.test(h.title) && want.every((w) => stems(h.title).indexOf(w) >= 0)
+    );
+    if (hit) return hit;
+  }
+  return (await search(q, 1))[0] || null;
+}
+
+ipcMain.handle('lectures:facts', async (_e, topic) => {
+  const q = String(topic || '').trim().slice(0, 120);
+  if (!q) return { ok: false, error: 'no-query' };
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  try {
+    const hit = await wikiArticle(q);
+    if (!hit) return { ok: false, error: 'not-found' };
+    const page = await wikiJson(
+      // No exchars: the API caps it at 1,200 characters, one paragraph.
+      'action=query&prop=extracts|info|revisions&explaintext=1&inprop=url&rvprop=timestamp&titles=' +
+        encodeURIComponent(hit.title)
+    );
+    const p = page.query && page.query.pages && page.query.pages[0];
+    if (!p || !p.extract) return { ok: false, error: 'not-found' };
+    const rev = (p.revisions || [])[0] || {};
+    return { ok: true, title: p.title, url: p.fullurl || '', updated: rev.timestamp || '', text: p.extract.slice(0, 20000) };
+  } catch (err) {
+    return { ok: false, error: /HTTP 429|too many/i.test(err.message) ? 'busy' : 'network', detail: err.message };
   }
 });
 
@@ -2097,7 +2162,8 @@ async function runSmoke() {
     const bundledDrawn = await js('window.__smoke.tatImageLoaded()', 'whether the bundled picture really rendered');
     results.push({
       step: 'the TAT slide points at a bundled picture',
-      result: typeof bundledSrc === 'string' && /tat-(images|classic)/.test(bundledSrc) && /\.jpg$/.test(bundledSrc),
+      // The classic set ships .jpg and .png plates; the slide may land on either.
+      result: typeof bundledSrc === 'string' && /tat-(images|classic)/.test(bundledSrc) && /\.(jpe?g|png)$/i.test(bundledSrc),
       src: bundledSrc ? bundledSrc.replace(/^.*(tat-(?:images|classic))/, '$1') : null
     });
     const tatUi = await js('window.__smoke.tatScreen()', 'the TAT screen');
@@ -2307,14 +2373,15 @@ async function runSmoke() {
     const models = await js('window.__smoke.modelSentenceInfo()', 'model sentences on the WAT result');
     results.push({
       step: 'the WAT result lists model sentences for its words',
-      result: !!models && models.words > 0 && models.rows === models.words * 5,
+      // Five styles per word, plus a sixth "News" line for a word found in today's headlines.
+      result: !!models && models.words > 0 && models.rows >= models.words * 5 && models.rows <= models.words * 6,
       words: models && models.words,
       rows: models && models.rows
     });
     const styleSet = models && models.tags ? Array.from(new Set(models.tags)).sort().join(',') : '';
     results.push({
       step: 'each word carries all five sentence styles',
-      result: styleSet === 'Factual,General,Leadership,Natural,Positive',
+      result: /^Factual,General,Leadership,Natural,(News,)?Positive$/.test(styleSet),
       styles: styleSet
     });
     await takeShot('12c-result');
@@ -2684,15 +2751,17 @@ async function runSmoke() {
     const scriptTopic = await js('window.__smoke.lectureStartByTopic("Indigenisation")', 'open a drafted lecturette');
     await wait(500);
     const scriptText = await js('window.__smoke.lectureScriptText()', 'the drafted script');
-    const scriptBody = await js('window.__smoke.lectureBodyText()', 'the phase panel beside the script');
     results.push({
-      step: 'a drafted topic shows the spoken script for the phase',
+      step: 'a drafted topic reads as one page with its three timed parts',
       result:
         !!scriptTopic &&
         scriptTopic.source === 'draft' &&
         scriptText.length > 250 &&
-        /also touch/i.test(scriptBody),
-      got: { script: scriptText.length, body: scriptBody.length }
+        /Introduction — 30 seconds/.test(scriptText) &&
+        /Body — 2 minutes/.test(scriptText) &&
+        /Conclusion — 30 seconds/.test(scriptText) &&
+        /speaking now/i.test(scriptText),
+      got: { script: scriptText.length }
     });
     await takeShot('14f-lecturette-script');
 

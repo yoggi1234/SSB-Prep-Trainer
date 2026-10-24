@@ -27,3 +27,6 @@ graphify-out/
 # data on demand; only `capacitor.config.json` and the build tool are tracked.
 android/
 mobile/www/
+
+# Smoke-run report: holds local file paths, so it stays on this machine.
+screenshots/report.json

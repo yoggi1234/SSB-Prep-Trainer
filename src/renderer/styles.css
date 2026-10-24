@@ -1836,6 +1836,41 @@ a {
   padding-right: 6px;
 }
 
+/* A full script, laid out like a prepared talk. */
+.lectessay .lectpart {
+  margin: 22px 0 8px;
+}
+.lectessay .lectpart:first-child {
+  margin-top: 0;
+}
+.lectessay .lectpart.now {
+  color: var(--accent);
+}
+.lectessay .lecthead {
+  margin: 14px 0 4px;
+  color: var(--heading);
+}
+.lectessay .lectpara {
+  margin: 0 0 10px;
+}
+
+/* The lecturette reads as one page: the script, the facts and the current
+   points are shown in full and the page scrolls, not boxes inside it. The run
+   bar with the clock stays pinned above. */
+.runbody.lectpage {
+  overflow-y: auto;
+}
+.lectpage .lect-grid {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.lectpage .lect-main,
+.lectpage .lect-side,
+.lectpage .lectlivedock {
+  overflow: visible;
+  max-height: none;
+}
+
 .lecttopic {
   margin: 0 0 14px;
 }

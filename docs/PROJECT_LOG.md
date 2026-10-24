@@ -5,6 +5,259 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
+
+**Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is
+the app icon: `build/icon.png` for Windows, every `mipmap-*` launcher size for Android (the Android tree is
+generated and untracked, so a fresh `npx cap add android` needs the icons copied again); the full logo is
+`docs/logo.png` at the top of the README. README screenshots pointed at files that never existed and the
+release link at v1.0.0 — both corrected. Lecture essay view, smoke checks updated (see the entry below).
+
+**Signing.** The APK is a release build signed with a project key (`apksigner`, v2 + v3; the key and its
+password live outside the repo and must be backed up — losing them means updates cannot install over this
+APK). The installer and portable `.exe` carry a timestamped signature from a self-made certificate; Windows
+trusts it only on a machine where the owner imports that certificate, so other PCs still see SmartScreen.
+
+**Repo audit (public).** No keys, passwords, tokens or personal data in tracked files. The only finding was
+`screenshots/report.json` holding local Windows paths; it is no longer tracked (old copies remain in git
+history). The six phone bridge modules and `data/digest-offline.json` had never been committed, so the
+published `mobile/api.js` could not build — they are committed now. The release carries the classic TAT
+plates inside both apps; publishing them publicly was the owner's explicit decision.
+
+**Verified.** `npm run dist` (exit 0), `tools/verify-package.js` — all packaged files match source, 43/43
+plates; packaged `--smoke`: 0 failures, 0 console errors; old 1.0.0 uninstalled from Program Files and
+1.0.3 installed per user (Start menu + desktop shortcuts). `apksigner verify`: v2/v3 true, one signer;
+`aapt2 dump badging`: `in.ssbprep.trainer` 1.0.3 (4). **Not verified:** install on the phone (not
+connected at build time).
+
+---
+
+## 2026-10-24 — Digest proven on Android, phone parity (bin, pictures, diagnostics), lecturette writer, smoke isolation
+
+**Why.** The digest fallback had never been driven end to end; the phone answered `unsupported` for the TAT
+bin and diagnostics and lost your pictures on close; `--smoke` ran against the person's real profile; the
+desktop news points read "[object Object]"; and the user asked for "type a topic, get a 3-minute lecturette".
+
+**Changed.**
+
+- **Digest Refresh** (`renderPhoneDigest`): Refresh now passes `{force: true}`; before, inside 20 minutes it
+  made no request and only relabelled the chip "saved copy". The dead-end copy no longer promises a saved
+  edition that does not exist. Stale probe assertion in `scenarios/phone.js` replaced with the new contract.
+- **Phone TAT bin** (`mobile/platform.js`, `store.js`, `material.js`, `museum.js`): remove / restore / delete
+  forever / undo / empty, same rules as `src/main.js`, kept in localStorage; every source hides binned ids.
+- **Your pictures persist on the phone**: kept as Blobs in IndexedDB (`ssb-mine`), recorded in the bin by a
+  stable key. Found while testing: the bundle CSP had no `blob:` in `img-src`, so picked pictures never
+  displayed at all — `tools/build-mobile.js` adds it.
+- **Phone diagnostics**: Save copies the report to the clipboard instead of `unsupported`.
+- **Lecturette writer** (both builds): `lectureFacts` (`lectures:facts` in main, `online.js` on the phone)
+  reads the closest Wikipedia article — an India-titled one when its title holds every main word of the
+  topic — with its last-edited date; `lectCompose` in the renderer lays it out as intro 30 s / body 2 min
+  (present situation, causes, advantages, challenges, India, government steps) / conclusion 30 s, 350–420
+  words, plus memory cues, a closing line and dated sources. "Your own topic" field; "Write it for me" on the
+  282 outlines; saved in config (`lectWritten`, `lectOwn`). Full scripts now read as one page, not boxes.
+- **Lecture screen** scrolls as one page (`.lectpage`); the run bar with the clock stays pinned.
+- **Desktop**: `--smoke` now uses a throwaway profile in `%TEMP%` (it was clearing the real attempts and
+  pictures and adding the rainbow test BMPs to "My pictures"); `sandbox: true`; `will-navigate` guard;
+  `cleanHeadline()` read `String(row)` → every news point was "[object Object]" (lecture points and WAT
+  news examples). Two smoke checks that encoded that bug / a .jpg-only plate were corrected.
+
+**Verified.** Served `mobile/www` (Chrome) and the **Android emulator** (`ssb33`, booted this time):
+digest offline → reference edition 12 sections/48 stories `bundled offline`; offline + saved copy → saved
+copy; online on the emulator → **Google News native route**, 12 requests, 48 stories, `fresh`, cache
+written; Refresh → 12 new requests; feeds blocked → saved copy, else reference; bundled file blocked →
+corrected dead-end copy. Phone scenario on the served build 44/45 (clipboard is denied to headless Chrome;
+the same check passed on the emulator): picture survives reload and decodes (64 px), bin round trip,
+restore, delete forever, undo. Writer driven on the served build and inside the desktop app (temp profile;
+real store mtime unchanged): 398–419-word scripts with dated sources. `npm run smoke`: 0 failures, 0 console
+errors. APK rebuilt (`gradle_exit=0`) and contains every change.
+
+**Not verified.** On the user's Motorola Edge 50 Fusion the APK installed and launched, but every scenario
+stalled when the USB/adb link dropped — no phone result is claimed. Writer quality depends on Wikipedia
+having an article matching the topic name; it quotes, it does not paraphrase into polished prose. Export is
+still clipboard-only on the phone. The installed desktop `.exe` was not rebuilt.
+
+---
+
+## 2026-10-23 — The phone bridge split by concern, with one owner per surface
+
+**Why.** `mobile/online.js` had grown to ~700 lines owning word lookups, museum art, news feeds and
+the digest at once, while `mobile/api.js` still defined ten functions (`onlineStatus`, `onlineProbe`,
+`onlineMeaning`, `onlineWords`, `newsIndex`, `lecturesHot`, `lecturesLive`, `lecturesLiveStatus`,
+`tatLibrary`, `tatOnline`) that `online.js` then silently overwrote through an
+`Object.assign(window.api, online)` retry loop. Nothing in the file that defined a function told a
+reader whether it was the one that won, and the online switch was read from `ssb-config` in three
+places.
+
+**Changed.** The bridge is now one module per concern, assembled by a thin facade. `store.js`
+(localStorage, settings, attempts), `net.js` (fetch/JSON/RSS, timeouts, `checkedOn` labels),
+`material.js` (bundled data and dictionary), `online.js` (Datamuse, live news, per-topic points and
+the online switch), `digest.js` (the phone edition, its cache, fallback chain and the desktop-only
+answers), `museum.js` (Commons art in IndexedDB), `platform.js` (gallery pictures, clipboard, wake
+lock, back button, diagnostics) and `api.js` (the facade). Each module exposes `SSB.<name>.api`;
+the facade merges those fragments into `window.api` and throws at boot on a missing module or a key
+owned twice, so a duplicate cannot silently win again. The ten shadowed stubs were deleted, and the
+digest surface moved wholesale into `digest.js`. Policy that was duplicated is now in one place:
+`SSB.online.enabled()` is the only reader of the online switch, used by the digest and museum too.
+`tools/build-mobile.js` copies the eight files in load order and injects the same order into the
+bundle's `index.html`. One correction to the brief: `digestStatus` was never shadowed — it was the
+lone owner — so it was moved into the digest module rather than deleted; the ten `online*`/`tat*`
+functions really were defined twice and their `api.js` copies are gone.
+
+**Verified.** The `window.api` contract is byte-identical in shape: 60 keys at boot, the same sorted
+set as before the split, every one a function except `android: true`, and `SSB` now also holds the
+seven modules. Driving the bundle served from `mobile/www`: Lecturette reports 334 topics /
+12 curated / 40 draft / 282 outline, opens "Agnipath Scheme…" (`agnipath`) with its 841-character
+body at 00:30 intro, and "370 Article" with its 265-character outline; the digest opens the bundled
+reference edition offline (12 sections, 48 stories, "bundled offline"), then after turning online on
+`Refresh` builds the live Wikipedia edition ("Edition of 2026-10-23", 19 stories, 12 sections under
+the portal's own headings), and the second call inside 20 minutes returns `cached: true`; TAT walks
+view → write with the plates loading (`data/tat-classic/classic-040.jpg`), the prompt hidden while
+writing, and both clock elements (#clock, #writeClockNum) counting down 03:37 → 03:36. Datamuse
+still answers (8 senses for "duty", 10 related words for "courage"); `newsIndex` and `lecturesLive`
+still return `error: 'network'` in a browser, which is the native-HTTP transport behaving as before.
+Dictionary (147,417 words), connectors (3 groups), 43 plates, 238 hint words, attempts add/list/
+delete and `exportText` → clipboard all unchanged. The facade guard was exercised directly in Node:
+clean merge assembles 7 keys, a missing module throws `SSB module missing: museum`, a duplicate
+throws `api key owned twice: onlineStatus (online, museum)`. Bundle and APK rebuilt (BUILD
+SUCCESSFUL, `gradle_exit=0`); the APK contains all eight bridge files, the same script order in
+`assets/public/index.html`, `data/lecturettes.json` (720,355 bytes) and `data/digest-offline.json`.
+Desktop `npm run smoke`: 472 checks, `failureCount: 0`, 0 console errors.
+
+**Not verified.** No device or emulator here, so the Capacitor WebView and the native-HTTP news
+routes are still exercised only as bundled assets in a browser. `mobile/www` and `android/` are
+build output and were regenerated; the debug APK is unchanged in kind and was not renamed into
+`release/`.
+
+---
+
+## 2026-10-23 — The phone shows all 334 lecturettes, not twelve
+
+**Why.** The APK bundles `assets/public/data/lecturettes.json` (334 topics: 12 curated, 40 drafted, 282
+outlines), but the phone's Lecturette screen reported "12 topics · 0 with a full script · 12 as
+outlines": `lecturesList()` in `mobile/api.js` read `lectures.json`, the old twelve-topic file, and
+never looked at the catalogue it ships. The desktop has always tried `lecturettes.json` first
+(`readLecturettes()` in `src/main.js`), so the two surfaces disagreed about the same data folder.
+
+**Changed.** `mobile/api.js` `lecturesList()` now reads `lecturettes.json` and keeps `lectures.json`
+as a fallback, mirroring the desktop order. That is the whole fix — the entries already carry the
+fields the shared renderer reads (`source`, `intro`, `body`, `conclusion`), so no shapes, screens or
+other files changed.
+
+**Verified.** On the bundle served from `mobile/www` in a cache-free browser: the list reports
+"334 topics · 52 with a full script · 282 as outlines", `lectureStats` agrees (curated 12, draft 40,
+outline 282), 25 boards, 10 categories, and 334 Practise rows. Opened a curated topic ("Agnipath
+Scheme…", id `agnipath`): 841 characters of scripted body and the clock running from 00:30 at the
+intro phase. Opened an outline topic ("370 Article", id `370-article-average30`): it opens with its
+265-character speaking scaffold and is labelled `outline` in the list, because that is what the
+bundled data actually holds — 282 of the 334 have no full script, and the row chips say
+Outline / Draft script / Hand-written per topic. Network log shows only local `data/lecturettes.json`
+(no external request), so every entry opens with no network. Boundary check: removing
+`lecturettes.json` from the served bundle drops the screen back to the twelve-row `lectures.json`
+fallback instead of an empty list, then restoring it returns 334. Rebuilt the APK
+(`npx cap sync android`, `./gradlew assembleDebug`, BUILD SUCCESSFUL) and confirmed it contains
+`assets/public/data/lecturettes.json` (720,355 bytes), the new `api.js`, and that the News Digest fix
+from the previous entry is still inside. Desktop smoke: 472 checks, 0 failures, 0 console errors.
+
+**Not verified.** Still no device or emulator here, so the Capacitor WebView path is exercised only
+as its bundled assets in a browser. The rebuilt APK is the unsigned debug build; it was not renamed
+into `release/` or published.
+
+---
+
+## 2026-10-23 — Android News Digest always opens an edition, and its live path works
+
+**Why.** On the APK's own assets the digest tab still dead-ended: with online off it said "turn online
+on", and with online on every one of the twelve feed requests failed — `news.google.com` was not in
+the bundle's `connect-src`, and `api.rss2json.com` answers cross-origin calls without
+`Access-Control-Allow-Origin`. A reference edition written earlier at `data/digest-offline.json` was
+referenced by nothing and never copied into the bundle.
+
+**Changed.**
+
+- **Bundled edition.** `tools/build-mobile.js` now copies `data/digest-offline.json` into
+  `mobile/www/data/`. It is the fallback of last resort, so the tab can never fail to open.
+- **Fallback order.** `digestOnPhone()` (mobile/online.js) answers with: fresh feeds → saved copy →
+  bundled reference edition → only then an error. `digestFallback()` owns that order; the old code
+  returned `{ok:false}` whenever no cache existed.
+- **A live path that survives CSP/CORS.** Browsers use Wikipedia's Current Events portal day pages
+  (`action=parse`, `origin=*`; wikitext, ~1 KB, no key, no proxy). Stories are grouped under the
+  portal's own subject headings — the first attempt classified them into the app's twelve
+  India-centric sections by keyword and misfiled "West Bank" under Financial and a Mercury Prize
+  under War, so that classifier was deleted rather than tuned. Devices keep Google News through
+  CapacitorHttp, which is the only transport that feed allows.
+- **CSP.** `connect-src` swaps the dead `api.rss2json.com` for `https://en.wikipedia.org`; no other
+  host was loosened.
+- **Screen.** `renderPhoneDigest()` labels the bundled edition "Reference edition / bundled offline"
+  and prints its note, and names the live source, instead of always claiming Google News.
+- **Removed.** `data/lectures-batch-01.json` — invalid JSON (`government\'s`), read by nothing, and
+  picked up by `data/**/*` in the next package.
+
+**Verified.** Served `mobile/www` from a cache-free browser at 390x844 (the APK's own assets, since no
+device or emulator exists here): online off → 12 sections, 48 stories, chips "Reference edition",
+"48 stories", "bundled offline", with the standing-context note; online on → "Edition of 2026-10-23",
+19 stories under 12 portal headings ("2026 drone incidents in Romania", "Middle Eastern crisis",
+"Sudanese civil war", "2026 Tibet earthquake", …), source "Wikipedia Current Events"; with live
+feeds forced to fail and the cache cleared → the reference edition again, no error page; after
+switching offline with a saved edition → "saved copy", same 19 stories. APK rebuilt
+(`npx cap sync android`, `./gradlew assembleDebug`, BUILD SUCCESSFUL in 22 s) and checked to contain
+`assets/public/data/digest-offline.json`, `online.js` with the new transport, and the new CSP.
+Desktop smoke: 472 checks, 0 failures, 0 console errors. `node --check` on every changed file.
+
+**Not verified.** No device or emulator is installed (`adb devices` empty, no AVD), so the
+device-only Google News transport remains unexercised — the browser path is what was driven. The new
+APK is an unsigned debug build (`versionCode 1`, `versionName "1.0"`); it was not renamed into
+`release/`, not published, and `release/download.html` is untouched. The header's "online off" badge
+can still disagree with the setting for a moment — pre-existing, observed again while testing, left
+alone as it is outside this feature.
+
+---
+
+## 2026-10-23 — Clean Expo workspace for the phone app (`mobile-app/`)
+
+**Why.** The Capacitor build under `mobile/` is one large vanilla-JS renderer shared with the
+Electron app, which makes phone-only changes slow and risky. The ask was a separate folder built in
+the language native Android development actually uses, with the app part rewritten there, tidy,
+commented, and web-previewable on the PC. This entry covers only the scaffold; the digest port and
+the feature rewrites come after it.
+
+**Changed.** New `mobile-app/`: Expo SDK 58 + React Native 0.88 + TypeScript (strict), `expo/AppEntry`
+replaced by a hand-written `index.ts`. No navigation router, no icon font, no native-only plugins, so
+there is nothing that can be missing in a browser. Files: `App.tsx` (shell + screen switch + phone
+frame + status-bar inset), `components/` (Tile, PrimaryButton, ScreenHeader), `screens/` (Home
+paragraph tiles, working WAT timer, TAT plate browser, ComingSoon placeholder), `constants/` (theme
+tokens, layout rules, navigation vocabulary), `lib/platform.ts` (web/localStorage + Web Audio cue,
+native/in-memory fallbacks). Scripts: `start`, `web`, `android`, `ios`, `typecheck`. `mobile-app/README.md`
+has the layout and the Windows commands.
+
+**Bugs fixed while building it** (all caught in the browser, not by reading code):
+
+- The previous attempt's `metro.config.js` passed `'./app.json'` to `getDefaultConfig()`, which
+expects the project root; `expo start --web` could not bundle. Now `getDefaultConfig(__dirname)`.
+- Three screens would not parse at all: CSS-in-JS keys such as `tile:hover`, unquoted style keys,
+`objectFit`, and one line of literal nonsense in the WAT effect. Rewritten from scratch.
+- RN 0.88 removed the `StatusBar backgroundColor` prop (edge-to-edge); typecheck caught it.
+- Tiles wrapped to one column: fixed pixel widths from window width could not see the frame's 1px
+borders, so 2 x 173px + 12px gap overflowed a 356px box. Measuring with `onLayout` fixed that but
+kept a stale width after a rotate, collapsing the grid again. The grid is now percentage cells
+(`100/columns%`), which cannot overflow and follow any resize.
+
+**Verified.** `npx tsc --noEmit` clean on TypeScript 6.0.3; `npx expo install --check` reports
+"Dependencies are up to date"; Metro bundles `index.ts` (232 modules) and serves it at
+`http://localhost:8081`. In the browser at 390x844: six tiles in 2 columns, no horizontal overflow,
+ground `rgb(14,26,21)` with 15.19:1 body-text contrast, zero white backgrounds, no console errors.
+Resizing to 844x390 re-flows to 3 columns in a 760px frame, and back — live, without a reload. Clicking
+WAT counts 15s down to 5s over 10s of wall clock, then advances to word 2 after the deadline; TAT
+shows 12 plates, selection works, and the header Back returns to the dashboard.
+
+**Not verified.** Nothing has been run on a real Android device or emulator yet, so the native branch
+of `lib/platform.ts` (in-memory storage, silent cue) is untested. `npm audit` reports 15 high-severity
+advisories in the Expo/Metro toolchain's dev dependencies; they are build-time only and no production
+bundle was produced. The APK is still the Capacitor build in `mobile/` — `mobile-app/` is not wired
+into `npm run dist` or `release/download.html`. The six dashboard tiles beyond WAT and TAT open a
+placeholder, and no TAT plates, WAT word list, lecturettes or digest engine are bundled here yet.
+
+---
+
 ## 2026-10-22 — Full-screen writing clock, sound cues, opening sheet, glass tiles, phone digest
 
 **Why.** From the phone again: during TAT writing the picture still filled the frame, so the test did

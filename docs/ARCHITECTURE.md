@@ -84,6 +84,27 @@ Everything the renderer can do, by channel prefix:
 Two event channels push from main to renderer: `digest:log` and `digest:done` (wired in
 `wireDigestEvents()` through preload's `onDigestLog` / `onDigestDone`).
 
+## Android bridge
+
+The phone has no main process, so `window.api` is assembled in the page from one module per concern.
+`tools/build-mobile.js` copies them in this order and injects the same order into `mobile/www/index.html`:
+
+| File | Owns |
+| --- | --- |
+| `mobile/store.js` | localStorage mechanism, settings, saved attempts |
+| `mobile/net.js` | fetch/JSON/XML with timeouts, Google News RSS, `checkedOn` day labels |
+| `mobile/material.js` | the bundled data: WAT/SRT/TAT sets, classic plates, lecturettes, hints, connectors, dictionary |
+| `mobile/online.js` | Datamuse lookups, live news, per-topic live points, and the online switch (`SSB.online.enabled()`) |
+| `mobile/digest.js` | the phone's twelve-section edition, its 20-minute cache, the reference-edition fallback, and the desktop-only digest answers |
+| `mobile/museum.js` | public-domain plates from Wikimedia Commons, kept in IndexedDB |
+| `mobile/platform.js` | gallery pictures, clipboard export, wake lock, hardware back button, diagnostics |
+| `mobile/api.js` | the facade: merges the modules' `api` fragments into `window.api` |
+
+Each module registers `SSB.<name> = { api: {…} }`; helper exports (`SSB.net.getJson`,
+`SSB.online.enabled`) are for the other modules, never for the renderer. The facade owns nothing but
+the assembly and `android: true`, and it throws at boot if a module is missing or two modules define
+the same key — that is how a status can have exactly one owner.
+
 ## Storage layout
 
 ```

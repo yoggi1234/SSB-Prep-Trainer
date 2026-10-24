@@ -1743,6 +1743,8 @@
   // Where this topic's material came from. The app ships three kinds, and the
   // screen says which one you are looking at instead of pretending they match.
   function lectSourceLabel(t) {
+    if (t.written) return 'Written for you';
+    if (t.source === 'own') return 'Your topic';
     if (t.source === 'curated') return 'Hand-written';
     if (t.source === 'draft') return 'Draft script';
     if (t.outline) return 'Outline';
@@ -1750,6 +1752,7 @@
   }
 
   function lectSourceNote(t) {
+    if (t.written) return 'Written for you from the dated sources listed above. Read them once before you speak — facts change.';
     if (t.source === 'curated') return 'Hand-written for this app: it carries a figure and a quote.';
     if (t.source === 'draft') return 'A full drafted script. No figures were supplied with it, so quote only what you have checked yourself.';
     return 'A speaking outline, not a script. Fill it with the current points below and your own examples.';
@@ -1784,10 +1787,22 @@
       rows.push('<div class="fact"><b>' + esc(f.label || '') + '</b><span>' + esc(f.value || '') + '</span></div>');
     });
 
+    if (t.line) rows.push('<div class="fact"><b>Closing line</b><span>' + esc(t.line) + '</span></div>');
+    // A written script names every source it quotes, with the date, so each
+    // fact can be checked before it is spoken.
+    asList(t.sources).forEach(function (s) {
+      rows.push(
+        '<div class="fact"><b>Source</b><span>' + esc(s.label || '') +
+        (s.date ? ' <span class="muted">· ' + esc(s.date) + '</span>' : '') +
+        (s.link ? ' <button class="btn sm ghost" data-external="' + esc(s.link) + '">Check</button>' : '') +
+        '</span></div>'
+      );
+    });
+
     var words = asList(t.keywords);
     return (
       '<div class="lectfacts">' +
-      '<h3>Facts to quote</h3>' +
+      '<h3>' + (t.written ? 'Facts and sources' : 'Facts to quote') + '</h3>' +
       (rows.length ? rows.join('') : '<div class="small muted">No figures come bundled with this topic. Use the current points below, and quote only what you have read yourself.</div>') +
       (words.length
         ? '<div class="fact"><b>Cues</b><span>' + esc(words.join(' · ')) + '</span></div>'
@@ -1851,6 +1866,10 @@
       source: topic.source || '',
       outline: !!topic.outline,
       speech: topic.speech || null,
+      words: topic.words || 0,
+      line: topic.line || '',
+      written: !!topic.written,
+      sources: topic.sources || [],
       keywords: topic.keywords || [],
       topic: topic.topic || 'Untitled topic',
       theme: topic.theme || '',
@@ -1865,6 +1884,245 @@
       link: (extra && extra.link) || ''
     };
     return t;
+  }
+
+  /* ---------------------------------------------- lecturette writer */
+
+  // Writes a three-minute script from two dated sources: the closest Wikipedia
+  // article for the background and the latest news points for "where it stands
+  // today". Facts are quoted, never invented, and the script lists its sources
+  // with their dates. About 380 words: 30 s intro, 2 min body, 30 s conclusion.
+  var LECT_PLAIN = [
+    [/\bapproximately\b/gi, 'about'], [/\butili[sz]e[sd]?\b/gi, 'use'], [/\bcommenced\b/gi, 'began'],
+    [/\bsubsequently\b/gi, 'later'], [/\bin order to\b/gi, 'to'], [/\bnumerous\b/gi, 'many'],
+    [/\bprior to\b/gi, 'before'], [/\bpurchase[sd]?\b/gi, 'buy'], [/\bdemonstrate[sd]?\b/gi, 'show']
+  ];
+
+  function lectSentences(text) {
+    var main = String(text || '').split(/\n==\s*(See also|References|Notes|External links|Further reading)\s*==/)[0];
+    var out = [];
+    main.split('\n').forEach(function (line) {
+      if (/^\s*==/.test(line)) return;
+      var clean = line;
+      // Nested brackets come off from the inside out.
+      for (var k = 0; k < 3; k++) clean = clean.replace(/\s*\([^()]*\)/g, '');
+      clean = clean.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+      // A sentence ends at . ! ? followed by a capital, so "4.9%" stays whole.
+      clean.replace(/([.!?])\s+(?=[A-Z"])/g, '$1\n').split('\n').forEach(function (s) {
+        s = s.trim();
+        var words = s.split(' ').length;
+        // The opening sentence is the definition, so it is kept even when long.
+        var limit = out.length ? 32 : 60;
+        if (words < 6 || words > limit || !/^[A-Z0-9"]/.test(s) || !/[.!?]$/.test(s) || /may refer to|;|:$/.test(s)) return;
+        // "They…", "This…" and the like mean nothing once lifted out of their paragraph.
+        if (out.length && /^(They|These|This|It|Its|He|She|His|Her|Such|Those|Their|However|But|And|Also)\b/.test(s)) return;
+        LECT_PLAIN.forEach(function (r) {
+          s = s.replace(r[0], function (m) { return /^[A-Z]/.test(m) ? r[1].charAt(0).toUpperCase() + r[1].slice(1) : r[1]; });
+        });
+        if (out.indexOf(s) < 0) out.push(s);
+      });
+    });
+    return out;
+  }
+
+  function lectWordCount(paras) {
+    return paras.join(' ').split(/\s+/).filter(Boolean).length;
+  }
+
+  // Takes sentences off the front of the list until roughly `words` are used.
+  function lectTake(list, words) {
+    var out = [];
+    while (list.length && lectWordCount(out) < words) out.push(list.shift());
+    return out.join(' ');
+  }
+
+  // Sentences that carry one kind of point, taken out of the pool so no fact is
+  // said twice. Nothing is forced: a kind with no matching sentence is skipped.
+  function lectPick(pool, re, n) {
+    var out = [];
+    for (var i = 0; i < pool.length && out.length < n; i++) {
+      if (re.test(pool[i])) out.push(pool.splice(i--, 1)[0]);
+    }
+    return out.join(' ');
+  }
+
+  var LECT_STOP = ('about after again also among been before being between both but could during each from have into ' +
+    'its many more most much only other over said same such than that their them then there these they this those ' +
+    'through under until very were what when where which while will with would your first second third known called ' +
+    'including became since later used made part well within based however people years year world').split(' ');
+
+  // Five to seven memory cues: the words the facts lean on most.
+  function lectCues(topic, text) {
+    var count = {};
+    var own = String(topic).toLowerCase();
+    (String(text).toLowerCase().match(/[a-z][a-z-]{4,}/g) || []).forEach(function (w) {
+      if (LECT_STOP.indexOf(w) < 0 && own.indexOf(w) < 0) count[w] = (count[w] || 0) + 1;
+    });
+    return Object.keys(count)
+      .sort(function (a, b) { return count[b] - count[a]; })
+      .slice(0, 6)
+      .concat([topic]);
+  }
+
+  // The SSB pattern: intro 30 s (greeting, meaning, history), body 2 min
+  // (present status, causes, both sides, India, a dated fact or news example,
+  // government steps, a quote only if a real one is bundled), conclusion 30 s
+  // (summary, future and challenges, precautions, opinion, closing line).
+  // 350–420 words. Every fact comes from a dated source; nothing is invented.
+  function lectCompose(base, facts, live) {
+    var topic = base.topic;
+    var pool = lectSentences(facts.text);
+    var points = ((live && live.ok && live.points) || []).slice(0, 3);
+    var sources = [{ label: 'Wikipedia — ' + facts.title, date: String(facts.updated || '').slice(0, 10), link: facts.url || '' }];
+
+    var meaning = pool.shift() || '';
+    var history = lectPick(pool, /\b(1[89]\d\d|20\d\d|founded|established|began|introduced|launched|origin|history)\b/i, 2);
+    var intro = [
+      'Good morning, respected members of the board. My topic today is ' + topic + '. ' + meaning,
+      (history ? 'A little background. ' + history + ' ' : '') +
+        'In the next three minutes, I will talk about where it stands today, its two sides, what it means for India, and the way ahead.'
+    ];
+
+    var news = points
+      .map(function (p) {
+        sources.push({ label: p.source || 'News', date: p.date || '', link: p.link || '' });
+        var t = String(p.text || '').replace(/\s+[-–—]\s+[^-–—]+$/, '').replace(/[.!?]*$/, '');
+        return t + (p.source ? ', as reported by ' + p.source : '') + '.';
+      })
+      .join(' ');
+    // A "positive" that says "not successful" is not one.
+    var plus = lectPick(pool, /^(?!.*\b(not|never|no|fail\w*|unsuccessful|lack\w*)\b).*\b(benefit|improv|growth|success|strength|boost|achiev|increase)/i, 1);
+    var minus = lectPick(pool, /\b(critici|concern|challenge|problem|risk|oppos|controvers|threat|shortage|delay|declin|unsuccessful|failed)/i, 1);
+    var govt = lectPick(pool, /\b(government|ministry|scheme|policy|programme|mission|parliament)\b/i, 1);
+    var india = lectPick(pool, /\bIndia/, 2);
+    var quote = base.quote && base.quote.text ? '"' + base.quote.text + '"' + (base.quote.who ? ' — ' + base.quote.who + '.' : '') : '';
+
+    // Body paragraphs carry a short heading each, so the script reads like a
+    // prepared talk; a paragraph with nothing true to say is left out.
+    var body = [];
+    var heads = [];
+    var add = function (head, text) {
+      if (!text) return;
+      heads.push(head);
+      body.push(text);
+    };
+    add('Present situation', (news ? 'In recent news, ' + news + ' ' : '') + lectTake(pool, news ? 25 : 55));
+    add('Background and causes', lectTake(pool, 40));
+    add('Advantages', plus);
+    add('Challenges and concerns', minus);
+    add('What it means for India', india);
+    add('Government initiatives and the way forward', govt);
+    if (quote) add('In the words of others', quote);
+
+    var closing = 'Handled with vision and discipline, ' + topic + ' can become a source of strength for India.';
+    var conclusion = [
+      'To sum up, ' + topic + ' matters to every citizen, and to every future officer. ' +
+        'In the years ahead, the chances are real, but so are the challenges, and both need careful planning. ' +
+        'We must stay well informed, check facts before we act, and take practical steps at every level. ' +
+        'In my opinion, India should build on its strengths here, learn from others, and move with both speed and care. ' +
+        closing + ' Thank you.'
+    ];
+
+    // Fill to about three minutes with background the pool still holds, never past 420 words.
+    var speech = { intro: intro, body: body, conclusion: conclusion, heads: heads };
+    var all = function () { return speech.intro.concat(speech.body, speech.conclusion); };
+    while (lectWordCount(all()) < 350 && pool.length && lectWordCount(all()) + pool[0].split(' ').length <= 420) {
+      speech.body[0] += ' ' + pool.shift();
+    }
+    // Over 420 words: drop the last sentence of the longest body paragraph,
+    // never a paragraph's opening line.
+    for (var guard = 0; lectWordCount(all()) > 420 && guard < 20; guard++) {
+      var at = 0;
+      speech.body.forEach(function (p, i) { if (p.length > speech.body[at].length) at = i; });
+      var parts = speech.body[at].replace(/([.!?])\s+(?=[A-Z"])/g, '$1\n').split('\n');
+      if (parts.length < 3) break;
+      parts.pop();
+      speech.body[at] = parts.join(' ');
+    }
+    return {
+      speech: speech,
+      words: lectWordCount(all()),
+      keywords: lectCues(topic, facts.text),
+      line: closing,
+      sources: sources,
+      writtenAt: new Date().toISOString()
+    };
+  }
+
+  function lectSlug(text) {
+    return 'own-' + String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+  }
+
+  // The bundled catalogue plus your own topics, with any script written for you
+  // laid over the topic it belongs to. Kept in Settings, so it survives restarts.
+  function lectWithWritten(base) {
+    var cfg = S.config || {};
+    var written = cfg.lectWritten || {};
+    var own = (cfg.lectOwn || []).map(function (o) {
+      return { id: o.id, topic: o.topic, query: o.topic, theme: 'Your topic', category: 'Your topics', boards: [], source: 'own' };
+    });
+    return own.concat(base).map(function (t) {
+      var w = written[t.id];
+      return w
+        ? Object.assign({}, t, {
+            speech: w.speech, words: w.words, sources: w.sources, line: w.line || '',
+            keywords: w.keywords || t.keywords, written: true
+          })
+        : t;
+    });
+  }
+
+  function lectWriteError(r) {
+    if (!r) return 'Nothing came back.';
+    if (r.error === 'offline') return 'Turn online lookup on in Settings to write a lecture — it needs the latest facts.';
+    if (r.error === 'not-found') return 'No reliable article was found for that topic. Try a shorter or more common name.';
+    if (r.error === 'network') return 'Could not reach Wikipedia just now. Try again in a minute.';
+    if (r.error === 'busy') return 'Wikipedia is busy and asked us to slow down. Try again in a minute or two.';
+    return 'Could not write it (' + (r.error || 'unknown') + ').';
+  }
+
+  function writeLecture(topic) {
+    var L = lectState();
+    var text = String(topic.topic || '').trim();
+    if (!text || L.writing) return;
+    var id = topic.id || lectSlug(text);
+    L.writing = id;
+    render();
+    Promise.all([
+      window.api.lectureFacts(topic.query || text),
+      window.api.lecturesLive({ id: id, query: topic.query || text, force: true }).catch(function () { return null; })
+    ])
+      .then(function (r) {
+        if (!r[0] || !r[0].ok) {
+          L.writing = null;
+          toast(lectWriteError(r[0]));
+          render();
+          return;
+        }
+        var cfg = S.config || {};
+        var written = Object.assign({}, cfg.lectWritten || {});
+        written[id] = lectCompose(Object.assign({}, topic, { topic: text }), r[0], r[1]);
+        var patch = { lectWritten: written };
+        if (!topic.id) {
+          var own = (cfg.lectOwn || []).filter(function (o) { return o.id !== id; });
+          own.unshift({ id: id, topic: text });
+          patch.lectOwn = own;
+        }
+        return window.api.setConfig(patch).then(function (next) {
+          S.config = next;
+          S.lectures = lectWithWritten(S.lecturesBase || []);
+          L.writing = null;
+          toast('Lecture written — ' + written[id].words + ' words');
+          var done = S.lectures.filter(function (t) { return t.id === id; })[0];
+          if (done) startLecture(done, null);
+          else render();
+        });
+      })
+      .catch(function (err) {
+        L.writing = null;
+        toast('Could not write it: ' + ((err && err.message) || 'error'));
+        render();
+      });
   }
 
   function randomLecture(shown) {
@@ -2095,7 +2353,7 @@
 
     var shown = lectFiltered();
     var withScript = topics.filter(function (t) {
-      return t.source === 'curated' || t.source === 'draft';
+      return t.source === 'curated' || t.source === 'draft' || t.written;
     }).length;
 
     var cards = shown
@@ -2117,6 +2375,10 @@
           '</div>' +
           '<div class="row" style="margin:0">' +
           '<button class="btn sm ghost" data-lectfacts="' + idx + '">' + (open ? 'Hide facts' : 'Facts') + '</button>' +
+          (t.speech && !t.written
+            ? ''
+            : '<button class="btn sm" data-lectwrite="' + idx + '"' + (L.writing ? ' disabled' : '') + '>' +
+              (L.writing === t.id ? 'Writing…' : t.written ? 'Rewrite with latest facts' : 'Write it for me') + '</button>') +
           '<button class="btn primary sm" data-lectstart="' + idx + '">Practise</button>' +
           '</div>' +
           '</div>' +
@@ -2140,6 +2402,11 @@
       '<div class="field" style="margin-top:14px"><label for="lectSearch">Find a topic<br><span class="small muted">' +
       'Type a topic, a theme or a cue word — the list narrows as you type</span></label>' +
       '<div class="ctl"><input id="lectSearch" type="search" placeholder="e.g. inflation, navy, youth" value="' + esc(L.q || '') + '"></div></div>' +
+      '<div class="field" style="margin-top:14px"><label for="lectOwn">Your own topic<br><span class="small muted">' +
+      'Type any topic and the app writes a three-minute lecturette in simple words, from the latest facts, with every source dated</span></label>' +
+      '<div class="ctl"><input id="lectOwn" type="text" maxlength="120" placeholder="e.g. Operation Sindoor, Make in India, cyber security">' +
+      '<button class="btn primary" id="lectOwnWrite"' + (L.writing ? ' disabled' : '') + '>' +
+      (L.writing && L.writing.indexOf('own-') === 0 ? 'Writing…' : 'Write my lecture') + '</button></div></div>' +
       '<div class="small muted">Pattern: <b>' + esc(LECT_PHASES[0].label) + ' ' + LECT_PHASES[0].secs + 's</b> → ' +
       '<b>' + esc(LECT_PHASES[1].label) + ' ' + LECT_PHASES[1].secs / 60 + ' min</b> → ' +
       '<b>' + esc(LECT_PHASES[2].label) + ' ' + LECT_PHASES[2].secs + 's</b>. ' +
@@ -2201,6 +2468,25 @@
         if (t) startLecture(t, null);
       });
     });
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectwrite]'), function (b) {
+      b.addEventListener('click', function () {
+        var t = topics[parseInt(b.getAttribute('data-lectwrite'), 10)];
+        if (t) writeLecture(t);
+      });
+    });
+
+    var ownBtn = document.getElementById('lectOwnWrite');
+    var ownIn = document.getElementById('lectOwn');
+    if (ownBtn && ownIn) {
+      var writeOwn = function () {
+        var text = ownIn.value.trim();
+        if (text.length < 3) return toast('Type a topic first');
+        writeLecture({ topic: text });
+      };
+      ownBtn.addEventListener('click', writeOwn);
+      ownIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') writeOwn(); });
+    }
 
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectfacts]'), function (b) {
       b.addEventListener('click', function () {
@@ -2282,7 +2568,7 @@
           '<button class="btn sm" id="lectNext">Next phase →</button>' +
           '<button class="btn primary sm" id="lectFinish">Finish</button>' +
           '</div>' +
-          '<div class="runbody">' +
+          '<div class="runbody lectpage">' +
           '<div class="progress"><i id="lectBar"></i></div>' +
           '<div class="lect-cue" id="lectCue"></div>' +
           '<div class="lect-grid">' +
@@ -2344,13 +2630,6 @@
     }
   }
 
-  // The phase cue string is already the checklist, written as "a · b · c".
-  function lectCueList(id) {
-    var phase = LECT_PHASES.filter(function (p) { return p.id === id; })[0];
-    return phase
-      ? phase.cue.split('·').map(function (s) { return s.trim(); }).filter(Boolean)
-      : [];
-  }
 
   function lectPhaseBodyHtml(t, phaseIdx) {
     var id = LECT_PHASES[phaseIdx].id;
@@ -2383,21 +2662,31 @@
       );
     }
 
-    // A drafted script is spoken as written, with the phase checklist beside it
-    // so it still reads as guidance rather than something to recite.
-    var script = t.speech && t.speech[id];
-    if (script && script.length) {
+    // A full script reads as one page, like a prepared talk: the three parts
+    // with their times, body paragraphs under short headings, and the part
+    // being spoken now marked rather than the others hidden.
+    if (t.speech && t.speech.intro && t.speech.intro.length) {
+      var heads = t.speech.heads || [];
+      var part = function (n, key, title) {
+        var paras = (t.speech[key] || [])
+          .map(function (p, i) {
+            return (key === 'body' && heads[i] ? '<h4 class="lecthead">' + esc(heads[i]) + '</h4>' : '') +
+              '<p class="lectpara">' + esc(p) + '</p>';
+          })
+          .join('');
+        return (
+          '<h3 class="lectpart' + (key === id ? ' now' : '') + '">' + n + '. ' + title +
+          (key === id ? ' <span class="chip ok">speaking now</span>' : '') + '</h3>' + paras
+        );
+      };
       return (
-        '<div class="lectblock lectscript"><div class="lectlabel">Say it like this — the drafted script</div>' +
-        script.map(function (p) { return '<p class="lectpara">' + esc(p) + '</p>'; }).join('') +
-        (t.words && phaseIdx === 0
-          ? '<div class="small muted">' + t.words + ' words in all — about three minutes at a calm pace.</div>'
-          : '') +
+        '<div class="lectessay">' +
+        part(1, 'intro', 'Introduction — 30 seconds') +
+        part(2, 'body', 'Body — 2 minutes') +
+        part(3, 'conclusion', 'Conclusion — 30 seconds') +
+        (t.words ? '<p class="small muted">' + t.words + ' words — about three minutes at a calm pace.</p>' : '') +
         '</div>' +
-        '<div class="lectblock"><div class="lectlabel">Also touch, in your own words</div><ul>' +
-        lectBullets(lectCueList(id)) +
-        '</ul></div>' +
-        (phaseIdx === 0 ? lectKeywordsHtml(t) : '')
+        lectKeywordsHtml(t)
       );
     }
 
@@ -2801,7 +3090,7 @@
 
         '<p class="small muted" style="margin-top:16px">' +
         (window.api && window.api.android
-          ? 'Pictures you add on the phone stay until the app is closed — the classic plates are always there. '
+          ? 'Pictures you add are kept on this phone, even after the app is closed. '
           : 'Pictures you add are used only on this computer. ') +
         'The classic set is user-supplied practice material and is not redistributed with the app.</p>'
     );
@@ -3775,6 +4064,61 @@
       var bk = document.getElementById('diagBack');
       if (bk) bk.addEventListener('click', function () { goto('settings'); });
 
+      // Android device tests: exercise native HTTP, gallery save, and back button
+      if (window.api && window.api.android) {
+        var tests = document.createElement('div');
+        tests.innerHTML =
+          '<h2>Device tests (Android)</h2>' +
+          '<p class="small muted">Exercise native paths on this device.</p>' +
+          '<div class="row">' +
+          '<button class="btn sm" id="devTestHttp">Test native HTTP</button>' +
+          '<button class="btn sm" id="devTestGallery">Test gallery pick</button>' +
+          '<button class="btn sm" id="devTestBack">Test back-button handler</button>' +
+          '</div>' +
+          '<pre class="dig-log" id="devTestLog" style="height:160px; margin-top:10px">Ready.</pre>';
+        var logEl = document.querySelector('.wrap');
+        if (logEl) {
+          var insertAfter = document.querySelector('#diagLog');
+          if (insertAfter && insertAfter.parentNode) {
+            insertAfter.parentNode.insertBefore(tests, insertAfter.nextSibling);
+          } else {
+            logEl.appendChild(tests);
+          }
+        }
+        var httpBtn = document.getElementById('devTestHttp');
+        var galBtn = document.getElementById('devTestGallery');
+        var backBtn = document.getElementById('devTestBack');
+        var tlog = document.getElementById('devTestLog');
+        function tlogw(s){ if(tlog){ tlog.textContent = String(s); tlog.scrollTop = tlog.scrollHeight; } }
+        if (httpBtn) httpBtn.addEventListener('click', function(){
+          tlogw('Testing native HTTP...');
+          try {
+            var net = window.SSB && window.SSB.net;
+            var isNat = net && net.nativeHttp ? net.nativeHttp() : false;
+            fetch('https://httpbin.org/get').then(function(r){ return r.json(); }).then(function(j){
+              tlogw('nativeHttp: ' + isNat + '\nGET https://httpbin.org/get: ' + r.status + '\n' + JSON.stringify(j).slice(0,200));
+            }.bind(null), function(e){ tlogw('nativeHttp: ' + isNat + '\nERR: ' + e); });
+          } catch(e){ tlogw('ERR: ' + e); }
+        });
+        if (galBtn) galBtn.addEventListener('click', function(){
+          tlogw('Testing gallery pick...');
+          if (window.api && window.api.pickTatImages) {
+            window.api.pickTatImages().then(function(res){
+              tlogw('pickTatImages returned: ' + (Array.isArray(res)?res.length:typeof res) + ' items');
+            }).catch(function(e){ tlogw('ERR: ' + e); });
+          } else {
+            tlogw('pickTatImages not available');
+          }
+        });
+        if (backBtn) backBtn.addEventListener('click', function(){
+          tlogw('Testing back-button handler...');
+          try {
+            var h = window.__ssbBack ? window.__ssbBack() : false;
+            tlogw('window.__ssbBack() returned: ' + h + ' (true if handled by app, false to let Android handle)');
+          } catch(e){ tlogw('ERR: ' + e); }
+        });
+      }
+
       var lg = document.getElementById('diagLog');
       if (lg) lg.scrollTop = lg.scrollHeight;
     }
@@ -3909,7 +4253,10 @@
   function renderPhoneDigest() {
     if (!DG.phoneBusy && !DG.phone) {
       DG.phoneBusy = true;
-      Promise.resolve(window.api.digestOnPhone && window.api.digestOnPhone())
+      // Refresh must skip the 20-minute cache, or it hands back the same saved copy.
+      var force = !!DG.phoneForce;
+      DG.phoneForce = false;
+      Promise.resolve(window.api.digestOnPhone && window.api.digestOnPhone({ force: force }))
         .then(function (res) {
           DG.phoneBusy = false;
           DG.phone = res || { ok: false, error: 'network' };
@@ -3923,8 +4270,8 @@
 
     var head =
       '<h1>News Digest</h1>' +
-      '<p class="lead">Twelve sections of current affairs, collected here on the phone from the same free news feeds ' +
-      'the desktop engine reads. No Python, no account, no key — and the last edition stays readable without a connection.</p>';
+      '<p class="lead">Current affairs for the board, collected here on the phone from free feeds the desktop engine ' +
+      'also reads. No Python, no account, no key — and an edition always opens, even with no connection.</p>';
     var d = DG.phone;
 
     if (!d) {
@@ -3935,7 +4282,7 @@
     if (!d.ok) {
       var why =
         d.error === 'offline'
-          ? 'Online lookup is off. Turn it on in Settings, or read the last edition saved on this phone.'
+          ? 'Online lookup is off and no edition is saved on this phone yet. Turn online lookup on in Settings to collect today\'s headlines.'
           : d.error === 'empty'
             ? 'The feeds had nothing just now. Try again in a minute.'
             : 'Could not reach the news feeds just now' + (d.detail ? ' (' + esc(d.detail) + ')' : '') + '.';
@@ -3954,7 +4301,11 @@
       return;
     }
 
-    var when = d.checkedOn ? 'Edition of ' + esc(d.checkedOn) : 'Latest edition';
+    var when = d.reference
+      ? 'Reference edition'
+      : d.checkedOn
+        ? 'Edition of ' + esc(d.checkedOn)
+        : 'Latest edition';
     var count = (d.sections || []).reduce(function (n, s) { return n + (s.items || []).length; }, 0);
     var sections = (d.sections || [])
       .map(function (sec) {
@@ -3975,17 +4326,27 @@
         '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">' +
         '<span class="chip ok">' + when + '</span>' +
         '<span class="chip">' + count + ' stories</span>' +
-        '<span class="chip">' + (d.cached ? 'saved copy' : 'fresh') + '</span>' +
+        '<span class="chip">' + (d.reference ? 'bundled offline' : d.cached ? 'saved copy' : 'fresh') + '</span>' +
         '<span class="spacer"></span>' +
         '<button class="btn primary sm" id="digBuild">' + (DG.phoneBusy ? 'Building…' : 'Refresh') + '</button>' +
         '<button class="btn ghost sm" id="digHome">Dashboard</button>' +
         '</div>' +
+        (d.reference
+          ? '<div class="note">' + esc(d.note || 'Standing context bundled with the app.') +
+            ' Turn online lookup on in Settings for today\'s headlines.</div>'
+          : '') +
         '<div class="dig-grid">' + sections + '</div>' +
-        '<div class="note" style="margin-top:14px">Built from Google News headlines on this phone. The desktop app ' +
-        'adds your own newspaper PDFs and lays the same sections out as a 12-page PDF.</div>'
+        '<div class="note" style="margin-top:14px">' +
+        (d.reference
+          ? 'This is the reference edition that ships with the app, so the tab always has an edition with no connection. ' +
+            'It is standing background, not today\'s news.'
+          : 'Built from ' + esc(d.source || 'Google News') + ' on this phone. The desktop app adds your own ' +
+            'newspaper PDFs and lays the same sections out as a 12-page PDF.') +
+        '</div>'
     );
     document.getElementById('digBuild').addEventListener('click', function () {
       DG.phone = null;
+      DG.phoneForce = true;
       renderDigest();
     });
     document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
@@ -4625,7 +4986,7 @@
       return { id: t.id, source: t.source };
     },
     lectureScriptText: function () {
-      var el = document.querySelector('.lectscript');
+      var el = document.querySelector('.lectessay');
       return el ? el.innerText.slice(0, 4000) : '';
     },
     lectureLive: function () {
@@ -5580,7 +5941,8 @@
         S.attempts = res.attempts || [];
         S.tatImages = res.images || [];
         S.tatLibrary = res.library || [];
-        S.lectures = res.lectures || [];
+        S.lecturesBase = res.lectures || [];
+        S.lectures = lectWithWritten(S.lecturesBase);
         S.hints = res.hints || {};
         S.tatClassic = res.classic || [];
         S.tatBin = res.bin || [];

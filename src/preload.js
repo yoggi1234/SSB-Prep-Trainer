@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('api', {
   // still fills in when the machine is offline.
   lecturesLive: (opts) => ipcRenderer.invoke('lectures:live', opts),
   lecturesLiveStatus: () => ipcRenderer.invoke('lectures:liveStatus'),
+  lectureFacts: (topic) => ipcRenderer.invoke('lectures:facts', topic),
   // A cached batch of headlines, so a WAT word can show one real news example.
   newsIndex: (opts) => ipcRenderer.invoke('news:index', opts),
 

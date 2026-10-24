@@ -1,0 +1,126 @@
+{
+  "edition": "reference",
+  "note": "Evergreen background for each of the twelve digest sections. Not today's news: it is the standing context a candidate should already know, shipped with the app so the News Digest tab works with no connection.",
+  "sections": [
+    {
+      "key": "national",
+      "label": "National",
+      "items": [
+        { "title": "The Constitution of India, 1950: Preamble, Fundamental Rights and Duties, Directive Principles, federal structure with three legislative lists." },
+        { "title": "Parliament is the Lok Sabha (543 elected seats) and the Rajya Sabha (245, representing the states and union territories)." },
+        { "title": "The Finance Commission is appointed every five years under Article 280 to divide taxes between the Union and the states." },
+        { "title": "The Goods and Services Tax from 1 July 2017 replaced a maze of central and state indirect taxes; the GST Council decides rates by weighted vote." }
+      ]
+    },
+    {
+      "key": "international",
+      "label": "International",
+      "items": [
+        { "title": "United Nations founded 1945: General Assembly, Security Council with five permanent members and ten elected, ICJ at The Hague." },
+        { "title": "G20 is nineteen countries plus the European Union and the African Union, which joined in 2023; India hosted the 2023 summit in New Delhi." },
+        { "title": "India is a dialogue partner of ASEAN and a member of the East Asia Summit, ASEM and the Indian Ocean Rim Association." },
+        { "title": "The Non-Aligned Movement began at Bandung in 1955 and was formalised at Belgrade in 1961; India was a founding voice." }
+      ]
+    },
+    {
+      "key": "regional",
+      "label": "Regional (States)",
+      "items": [
+        { "title": "India has 28 states and 8 union territories; states were reorganised on linguistic lines by the States Reorganisation Act, 1956." },
+        { "title": "Panchayati Raj under the 73rd Amendment gives three tiers of rural local self-government with reservations for SC, ST and women." },
+        { "title": "The Inter-State Council, chaired by the Prime Minister, settles disputes and coordinates policy between the Union and the states." },
+        { "title": "Article 355 requires the Union to protect every state against external aggression and internal disturbance." }
+      ]
+    },
+    {
+      "key": "defence",
+      "label": "Defence",
+      "items": [
+        { "title": "The three services are the Indian Army, Indian Navy and Indian Air Force, with the Indian Coast Guard under the Ministry of Defence." },
+        { "title": "The Chief of Defence Staff, created in 2019, integrates the three services; the Department of Military Affairs was formed alongside." },
+        { "title": "Agnipath recruits soldiers for four years with a Seva Nidhi package and a reserved quota in central armed police forces." },
+        { "title": "India's nuclear doctrine: no first use, credible minimum deterrence and civilian control of the strategic forces." }
+      ]
+    },
+    {
+      "key": "politics",
+      "label": "Politics",
+      "items": [
+        { "title": "The Election Commission of India was established on 25 January 1950, the day the Constitution came into force." },
+        { "title": "The Tenth Schedule is the anti-defection law: a member who defies a party whip on a confidence or money vote can lose the seat." },
+        { "title": "The President is elected by an electoral college of elected MPs and elected MLAs by proportional representation with a single transferable vote." },
+        { "title": "The Governor is appointed by the President for a five-year term and holds reserve, assent and report powers under Articles 155-162." }
+      ]
+    },
+    {
+      "key": "financial",
+      "label": "Financial",
+      "items": [
+        { "title": "The Reserve Bank of India, founded 1935, is the central bank: it issues currency, manages reserves and supervises banks." },
+        { "title": "Monetary policy is set by the Monetary Policy Committee, six members, with an inflation target of 4% within a band of plus or minus 2%." },
+        { "title": "The Fiscal Responsibility and Budget Management Act, 2003 requires the Union and the states to publish fiscal policy statements." },
+        { "title": "Securities and Exchange Board of India, given statutory powers in 1992, regulates the capital market." }
+      ]
+    },
+    {
+      "key": "economic",
+      "label": "Economic",
+      "items": [
+        { "title": "Five-year plans ran from 1951 to 2017; the NITI Aayog, formed in 2015, now sets the medium-term strategy." },
+        { "title": "1991 liberalisation: the rupee moved to a market-determined rate, tariffs fell, foreign investment was opened and industrial licensing was scrapped." },
+        { "title": "The Mahatma Gandhi National Rural Employment Guarantee Act, 2005 guarantees 100 days of wage employment a year to rural households." },
+        { "title": "Direct Benefit Transfer sends subsidies to bank accounts linked to Aadhaar, cutting leakage." }
+      ]
+    },
+    {
+      "key": "neighbour",
+      "label": "Neighbouring Countries",
+      "items": [
+        { "title": "India has seven land neighbours: Pakistan, China, Nepal, Bhutan, Bangladesh, Myanmar and Afghanistan." },
+        { "title": "The Line of Control separates India and Pakistan in Jammu and Kashmir; the Line of Actual Control separates India and China." },
+        { "title": "SAARC has eight members; BIMSTEC links Bangladesh, Bhutan, India, Myanmar, Nepal, Sri Lanka and Thailand." },
+        { "title": "The Indus Waters Treaty, 1960 divides the Indus system rivers, with the World Bank as intermediary." }
+      ]
+    },
+    {
+      "key": "science",
+      "label": "Science",
+      "items": [
+        { "title": "ISRO was founded on 15 August 1969; its launch vehicles are the PSLV, GSLV Mk II and the heavy-lift LVM3." },
+        { "title": "Chandrayaan-3 landed near the lunar south polar region on 23 August 2023, and Aditya-L1 studies the Sun from the first Lagrange point." },
+        { "title": "The Department of Atomic Energy runs the nuclear power programme, from the first reactor at Trombay to the Kudankulam units." },
+        { "title": "The Digital Public Infrastructure stack — Aadhaar, UPI and DigiLocker — is now cited internationally as a model." }
+      ]
+    },
+    {
+      "key": "geopolitical",
+      "label": "Geopolitical",
+      "items": [
+        { "title": "The Quad brings India, the United States, Japan and Australia together on maritime security and vaccines in the Indo-Pacific." },
+        { "title": "BRICS was founded in 2006 and expanded in 2024; it is a forum for cooperation among major emerging economies." },
+        { "title": "India borders the Indian Ocean on three sides; the Andaman and Nicobar Command is its only tri-service theatre command." },
+        { "title": "The Malabar exercise began as a bilateral India-US drill in 1992 and is now a four-nation annual exercise." }
+      ]
+    },
+    {
+      "key": "misc",
+      "label": "Miscellaneous",
+      "items": [
+        { "title": "The Padma awards — Vibhushan, Bhushan and Shri — are announced on 26 January each year by the President." },
+        { "title": "The National Cadet Corps was raised in 1948 under the NCC Act and has Army, Navy and Air wings." },
+        { "title": "The National Service Scheme runs the motto 'Not Me But You' and is the country's largest student volunteer programme." },
+        { "title": "The Bharat Ratna is the highest civilian award; the Param Vir Chakra is the highest wartime gallantry award." }
+      ]
+    },
+    {
+      "key": "war",
+      "label": "War Section",
+      "items": [
+        { "title": "1947-48, 1965 and 1971: the three Indo-Pak wars; the 1971 war ended with the creation of Bangladesh." },
+        { "title": "The 1962 war with China was followed by the Himalayan climbing season of 1965 and the Siachen deployment of 1984." },
+        { "title": "Operation Cactus, 1988 restored the government of the Maldives; Indian forces have served in UN missions since 1950." },
+        { "title": "Kargil in 1999 was fought along the Line of Control at altitude; the Vijay Diwas observance marks its end on 26 July." }
+      ]
+    }
+  ]
+}
