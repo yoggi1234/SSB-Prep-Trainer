@@ -1,7 +1,7 @@
 {
   "name": "ssb-prep-trainer",
   "productName": "SSB Prep Trainer",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Offline SSB psychology test trainer - timed TAT, WAT and SRT practice with real SSB timings, no internet or AI needed.",
   "main": "src/main.js",
   "author": "SSB Prep Trainer",

@@ -24,7 +24,8 @@
   // Read the saved switch, not the merged defaults: online lookup starts off
   // until the person turns it on, which is what this has always answered.
   function onlineOn() {
-    return store.readJson('ssb-config', {}).onlineEnabled === true;
+    // config() applies the defaults; a fresh install has nothing saved yet.
+    return store.config().onlineEnabled === true;
   }
 
   function livePack(rec, cached, detail) {
@@ -215,7 +216,8 @@
         if (!onlineOn()) return Promise.resolve(cached ? livePack(cached, true) : { ok: false, error: 'offline' });
         if (!q) return Promise.resolve(cached ? livePack(cached, true) : { ok: false, error: 'no-query' });
         return net
-          .googleNews(q, 12)
+          // Only the last month, as newsPoints() in src/main.js.
+          .googleNews(q + ' when:30d', 12)
           .then(function (rows) {
             if (!rows.length) throw new Error('empty');
             var rec = { id: id, query: q, points: rows, checkedAt: Date.now(), source: 'Google News' };

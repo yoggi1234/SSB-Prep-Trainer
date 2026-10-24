@@ -5,6 +5,55 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-10-24 — 1.0.4 / 1.0.5: fixes from a hands-on pass on a real phone
+
+**Why.** The 1.0.3 APK was installed on the owner's Motorola Edge 50 Fusion and every screen was tapped
+through by hand over adb (screenshots after each step). That found bugs no browser run had shown.
+
+**Fixed (each one seen on the phone first).**
+
+- **Online was secretly off on a fresh install**: `onlineOn()` read only the saved config, not the
+  defaults, so the header said "online off" while the dashboard said "on". It now reads `store.config()`.
+- **Sound**: the phone's defaults had no `soundOn`, so Settings showed it off. Added, plus cues for each new
+  WAT word, each TAT picture, every lecturette phase and its end, a soft tap click on buttons, and the
+  `VIBRATE` permission (the buzz never worked without it). Sound and a new **Online lookup** switch now sit
+  together in Settings (the only online switch was hidden in Word library).
+- **Lecturette clock** counts to a deadline instead of subtracting a second per tick (the AGENTS.md rule).
+- **Results**: SRT rows read "undefined" (`blankText` was used before it was set); WAT/TAT reported the whole
+  set as practised after ending early — now "3 / 60" from the slide reached.
+- **TAT**: the clock and "VIEWING" label sat on the picture on phones; writing mode had no way to end and
+  save (and only the first End button was ever wired); the shuffle switch silently flipped the SRT
+  setting (TAT never shuffles) — removed; 21 plates titled with raw file names now read "Classic TAT plate N".
+- **Layout**: the lecturette form crushed its labels, pushed a button off screen and showed white text
+  boxes; the SRT grid and run bars are phone-friendly. "Write it for me" no longer appears on hand-written topics.
+- **News on the phone**: headlines kept " - Publisher" and raw RSS dates — `parseRss()` now splits the
+  source and dates by day like `cleanHeadline()`; digest stories show their source and open when tapped;
+  digest queries use `when:2d` (evergreen explainer pages were filling sections) and lecture points
+  `when:30d` on both builds.
+- **Copy**: PC wording on the phone (computer, arrow keys, PDF engine, Windows palette, JSON file,
+  "41 plates", 2,001-picture museum) replaced with phone wording; "Export (.txt)" reads "Copy this attempt".
+
+**Verified.** Each fix re-checked on the served bundle with the Android flag (computed styles and text):
+fresh config soundOn/online true and the online check agrees; TAT clock bottom 253 px above picture top
+255 px; "1 / 12" practised; SRT rows "written in your practice copy"; grid not clipped; dark inputs; random
+button inside the 414 px screen. `npm run smoke`: 0 failures, 0 console errors. On the phone before the
+fixes: TAT/WAT/SRT runs and results, Back-button guard, export to clipboard, library search and meanings,
+the lecturette writer with live Google News, and a fresh 48-story digest all worked.
+
+**1.0.5, after walking History, Add, Bin and Diagnostics on 1.0.4.** The remove × on pictures only
+appeared on hover, so a phone could never bin a picture (`@media (hover: none)` shows it); the hint said
+"Hover"; 12 more plates had file names for titles — all 43 are now "Classic TAT plate N"; History said
+"stored on this computer" and counted the whole set; Diagnostics on the phone was almost empty because
+`platform.js` returned a different shape from `diagInfo()` in main.js — it now returns `{app, paths, data,
+store}` with the APK version (Capacitor `App.getInfo`), and the screen shows phone rows instead of
+Electron/Node/Python/log-folder; the "Test native HTTP" device check threw on success (`r` out of scope).
+Checked on the served bundle: every Diagnostics row filled (5/3/3 sets, 334 topics, 43 plates, 238 hints).
+
+**Not verified.** Whether the chime is audible was not measured (adb cannot hear); the × visibility rule is
+for touch screens and was read from CSS, not seen on the phone yet.
+
+---
+
 ## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
 
 **Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is

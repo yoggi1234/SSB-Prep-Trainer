@@ -448,6 +448,20 @@ button {
   margin-left: auto;
 }
 
+/* On a phone the run bar wraps onto a second line rather than squeezing
+   "Next phase →" into three. */
+@media (max-width: 700px) {
+  .runbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .runbar .chip,
+  .runbar .btn {
+    white-space: nowrap;
+  }
+}
+
 .runbody {
   flex: 1 1 auto;
   overflow: hidden;
@@ -770,6 +784,17 @@ textarea.answer:disabled {
   .srt-grid {
     grid-template-columns: 1fr;
   }
+  /* One column: the page scrolls as a whole, and the 60 numbers are all shown
+     rather than tucked in a box with a scrollbar of its own. */
+  .runbody.srtpage {
+    overflow-y: auto;
+  }
+  .srtpage .srt-grid {
+    flex: 0 0 auto;
+  }
+  .srtpage .nav-grid {
+    overflow: visible;
+  }
 }
 
 .srt-main {
@@ -868,6 +893,14 @@ textarea.answer:disabled {
   padding: 18px;
   min-height: 190px;
   position: relative;
+}
+
+/* On a phone the plate fills the width, so the phase label and clock (pinned
+   to the top corners) get a strip of their own instead of covering it. */
+@media (max-width: 700px) {
+  .slidebox {
+    padding-top: 50px;
+  }
 }
 
 .slide-text {
@@ -1135,6 +1168,23 @@ textarea.answer:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* The lecturette form has wide controls (two selects and a button, or a text
+   box and a button): on a phone the label goes on top and the controls wrap. */
+@media (max-width: 700px) {
+  .lectform .field {
+    flex-wrap: wrap;
+  }
+  .lectform .field label,
+  .lectform .field .ctl {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  .lectform .field .ctl > * {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
 }
 
 input[type="number"] {
@@ -2252,6 +2302,13 @@ a {
   opacity: 1;
 }
 
+/* A touch screen cannot hover, so the remove button is always shown there. */
+@media (hover: none) {
+  .pick-rm {
+    opacity: 1;
+  }
+}
+
 .pick-rm:hover {
   background: var(--danger);
   color: var(--on-accent);
@@ -2628,6 +2685,12 @@ html[data-reduce-motion='true'] *::after {
 
 .dig-list li:first-child {
   border-top: 0;
+}
+
+/* A story with a link opens the full article when tapped. */
+.dig-list li.dig-link {
+  color: var(--text);
+  cursor: pointer;
 }
 
 /* The last-minute warning sits a little above the digits. */

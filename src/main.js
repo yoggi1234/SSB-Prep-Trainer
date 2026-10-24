@@ -954,7 +954,8 @@ function newsGroupOf(text) {
 }
 
 async function newsPoints(query) {
-  const rows = await googleNews(query);
+  // Only the last month: a lecturette's "latest developments" must be current.
+  const rows = await googleNews(query + ' when:30d');
   const points = [];
   const seen = new Set();
   for (const r of rows) {

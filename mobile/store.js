@@ -22,6 +22,7 @@
     theme: 'mist',
     reduceMotion: false,
     hideTatPromptWhileWriting: true,
+    soundOn: true,
     onlineEnabled: true,
     watSentences: {}
   };

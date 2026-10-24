@@ -59,13 +59,26 @@
     var parts = String(xml).split('<item>');
     for (var i = 1; i < parts.length && out.length < want; i++) {
       var body = parts[i].split('</item>')[0];
-      var title = decodeEntities(tagText(body, 'title'));
+      var title = decodeEntities(tagText(body, 'title')).trim();
       if (!title) continue;
+      // Google News titles end in " - Publisher": split it off as the source,
+      // and date the point by day, as cleanHeadline() does in src/main.js.
+      var source = '';
+      var dash = title.lastIndexOf(' - ');
+      if (dash > 20) {
+        source = title.slice(dash + 3).trim();
+        title = title.slice(0, dash).trim();
+      }
+      var day = '';
+      try {
+        day = new Date(tagText(body, 'pubDate').trim()).toISOString().slice(0, 10);
+      } catch (_) {}
       out.push({
         text: title,
         title: title,
+        source: source,
         link: decodeEntities(tagText(body, 'link')),
-        date: tagText(body, 'pubDate').trim(),
+        date: day,
         query: query
       });
     }

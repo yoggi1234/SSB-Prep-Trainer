@@ -47,7 +47,9 @@
         return {
           key: s.key,
           label: s.label,
-          items: (s.items || []).map(function (it) { return { title: it.title || it.text || '', link: it.link || '' }; })
+          items: (s.items || []).map(function (it) {
+            return { title: it.title || it.text || '', link: it.link || '', source: it.source || '', date: it.date || '' };
+          })
         };
       }),
       at: rec.at || 0,
@@ -235,7 +237,8 @@
         var live = net.nativeHttp()
           ? Promise.all(
               DIGEST_SECTIONS.map(function (sec) {
-                return net.googleNews(sec.query, 4).then(
+                // when:2d keeps evergreen explainer pages out of a daily edition.
+                return net.googleNews(sec.query + ' when:2d', 4).then(
                   function (rows) { return { key: sec.key, label: sec.label, items: rows.slice(0, 4) }; },
                   function () { return { key: sec.key, label: sec.label, items: [] }; }
                 );

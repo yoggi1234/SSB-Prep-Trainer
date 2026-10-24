@@ -173,6 +173,12 @@
     { id: 'settings', label: 'Settings', code: 'SET' }
   ];
 
+  // The same screens run on Windows and inside the Android app; copy that
+  // names a file, a folder, a keyboard or the PC asks this first.
+  function onPhone() {
+    return !!(window.api && window.api.android);
+  }
+
   function netChip() {
     // S.net: 'checking' | 'online' | 'offline' | 'disabled'. The page itself
     // can never reach the network (CSP), so this mirrors the main process's
@@ -378,12 +384,14 @@
     if (t.id === 'digest') {
       return {
         code: t.code,
-        chip: 'separate engine',
-        blurb: 'Free news feeds and your own newspaper PDFs into a 12-page daily digest.',
+        chip: onPhone() ? 'today\'s edition' : 'separate engine',
+        blurb: onPhone()
+          ? 'Today\'s current affairs in twelve sections, built on the phone; an edition opens even offline.'
+          : 'Free news feeds and your own newspaper PDFs into a 12-page daily digest.',
         rows:
-          '<li><span>Pages</span><b>12</b></li>' +
-          '<li><span>Feeds</span><b>RSS + Google</b></li>' +
-          '<li><span>Output</span><b>PDF</b></li>'
+          '<li><span>Sections</span><b>12</b></li>' +
+          '<li><span>Feeds</span><b>' + (onPhone() ? 'Google News' : 'RSS + Google') + '</b></li>' +
+          '<li><span>Output</span><b>' + (onPhone() ? 'on screen' : 'PDF') + '</b></li>'
       };
     }
     if (t.id === 'history') {
@@ -394,7 +402,7 @@
         rows:
           '<li><span>Export</span><b>text</b></li>' +
           '<li><span>Delete</span><b>per attempt</b></li>' +
-          '<li><span>Storage</span><b>local file</b></li>'
+          '<li><span>Storage</span><b>' + (onPhone() ? 'on this phone' : 'local file') + '</b></li>'
       };
     }
     if (t.id === 'add') {
@@ -417,7 +425,7 @@
         rows:
           '<li><span>Restore</span><b>any time</b></li>' +
           '<li><span>Delete forever</span><b>one click</b></li>' +
-          '<li><span>Stored</span><b>on this PC</b></li>'
+          '<li><span>Stored</span><b>' + (onPhone() ? 'on this phone' : 'on this PC') + '</b></li>'
       };
     }
     return {
@@ -559,9 +567,12 @@
       '<h1>SSB psychology test trainer</h1>' +
       '<p class="lead">Everything for the board on one dashboard. ' +
       (S.config.onlineEnabled
-        ? 'Online extras are on and fall back to what is already saved on this computer, so a lost connection never stops a session. '
+        ? 'Online extras are on and fall back to what is already saved on this ' + (onPhone() ? 'phone' : 'computer') +
+          ', so a lost connection never stops a session. '
         : 'This copy runs offline: every test uses the material already saved here, so nothing waits on a connection. ') +
-      'Move with <b>← ↑ ↓ →</b> and open with <b>Enter</b>: the highlight walks the tiles until you take over.</p>' +
+      (onPhone()
+        ? 'Tap a tile to open it.</p>'
+        : 'Move with <b>← ↑ ↓ →</b> and open with <b>Enter</b>: the highlight walks the tiles until you take over.</p>') +
       '</div>' +
       '<div class="dashbadge"><b>' + TILES.length + '</b><span>sections</span></div>' +
       '</div>' +
@@ -616,7 +627,7 @@
         '<button class="btn sm" id="pickImgs">Add pictures…</button>' +
         '<button class="btn sm ghost" id="manageImgs">Review / remove…</button>' +
         '<button class="btn sm ghost" id="clearImgs">Clear</button></div></div>' +
-        '<div class="field"><label><b>More museum pictures</b><br><span class="small muted">Optional online top-up, needs the online switch in Word library</span></label><div class="ctl">' +
+        '<div class="field"><label><b>More museum pictures</b><br><span class="small muted">Optional online top-up, needs online lookup on in Settings</span></label><div class="ctl">' +
         '<button class="btn sm" id="fetchOnlineImgs">Fetch 20 more online</button>' +
         '</div></div>' +
         '</div>' +
@@ -626,7 +637,7 @@
         (source === 'classic'
           ? 'The classic set comes from the CarePatron TAT PDF and your own TAT folder, de-duplicated when it was built.'
           : source === 'mine'
-            ? 'Your own pictures are used only on this computer; nothing is copied or uploaded.'
+            ? 'Your own pictures are used only on this ' + (onPhone() ? 'phone' : 'computer') + '; nothing is uploaded.'
             : 'Museum pictures are public domain (CC0), from the Art Institute of Chicago and The Met.') +
         '</div>';
     }
@@ -640,10 +651,14 @@
         '<div class="field"><label>Practice set</label><div class="ctl">' +
         (sets.length ? '<select id="setSel">' + opts + '</select>' : '<span class="muted">No sets available</span>') +
         '</div></div>' +
-        '<div class="field"><label>Shuffle the order<br><span class="small muted">Word and situation order varies each time</span></label>' +
-        '<div class="ctl"><button class="toggle' +
-        (test === 'wat' ? (S.config.shuffleWAT ? ' on' : '') : S.config.shuffleSRT ? ' on' : '') +
-        '" id="shuffleT"></button></div></div>' +
+        // TAT draws fresh pictures for every set, so it has no order to shuffle.
+        (test === 'tat'
+          ? ''
+          : '<div class="field"><label>Shuffle the order<br><span class="small muted">' +
+            (test === 'wat' ? 'Word' : 'Situation') + ' order varies each time</span></label>' +
+            '<div class="ctl"><button class="toggle' +
+            (test === 'wat' ? (S.config.shuffleWAT ? ' on' : '') : S.config.shuffleSRT ? ' on' : '') +
+            '" id="shuffleT"></button></div></div>') +
         '<div class="field"><label>Timings<br><span class="small muted">Change these in Settings</span></label><div class="ctl muted small">' +
         timingSummary(test) +
         '</div></div>' +
@@ -1093,6 +1108,7 @@
     if (!s.paused) s.deadline = Date.now() + S.config.watPerWordSec * 1000;
     else s.pausedRemaining = S.config.watPerWordSec * 1000;
     paintWat();
+    cue('next');
   }
 
   /* --------------------------------------------------------------- SRT run */
@@ -1119,7 +1135,7 @@
         '<button class="btn ghost sm" id="pauseBtn">Pause</button>' +
         '<button class="btn danger sm" data-end="1">End &amp; review</button>' +
         '</div>' +
-        '<div class="runbody">' +
+        '<div class="runbody srtpage">' +
         '<div class="srt-grid">' +
         '<div class="srt-main">' +
         // The real test gives you a booklet and a pen, not a text box: the run
@@ -1249,6 +1265,7 @@
         '</div>' +
         '<div class="ws-actions">' +
         '<button class="btn ghost" id="peekBtn2">Show prompt</button>' +
+        '<button class="btn ghost" data-end="2">End &amp; review</button>' +
         '<button class="btn primary btn-next" id="nextBtn2">Next slide →</button>' +
         '</div>' +
         '</div>' +
@@ -1290,7 +1307,9 @@
     document.getElementById('peekBtn2').addEventListener('click', togglePeek);
     document.getElementById('peekBack').addEventListener('click', togglePeek);
     document.getElementById('pauseBtn').addEventListener('click', pauseResume);
-    document.querySelector('[data-end]').addEventListener('click', function () { finish('manual'); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-end]'), function (b) {
+      b.addEventListener('click', function () { finish('manual'); });
+    });
 
     s.phase = 'view';
     s.deadline = Date.now() + S.config.tatViewSec * 1000;
@@ -1359,6 +1378,7 @@
     s.phase = 'view';
     s.deadline = Date.now() + S.config.tatViewSec * 1000;
     paintTat();
+    cue('next');
   }
 
   /* ----------------------------------------------------------- finishing */
@@ -1384,6 +1404,8 @@
       reason: reason,
       total: s.items.length,
       answered: answered,
+      // WAT and TAT only move forward, so the slide on screen is how far you got.
+      reached: Math.min(s.items.length, s.index + 1),
       items: s.items.map(function (i) {
         return { prompt: i.prompt, kind: i.kind || 'text', src: i.src || '', response: i.response || '' };
       })
@@ -1531,6 +1553,11 @@
     }).join('');
   }
 
+  // Attempts saved before `reached` existed only know the set size.
+  function practised(r) {
+    return r.reached && r.reached < r.total ? r.reached + ' / ' + r.total : String(r.total);
+  }
+
   function renderResult() {
     var r = S.lastResult;
     // The news line for a WAT word needs the headline index; ask once, off the
@@ -1541,6 +1568,9 @@
       return;
     }
     var m = META[r.test];
+    // WAT and TAT were never typed into; an SRT attempt from before this
+    // change can still carry its typed answers, which are shown as they are.
+    var blankText = r.test === 'srt' ? 'written in your practice copy' : 'left blank';
     var rows = r.items
       .map(function (it, i) {
         var ans = String(it.response || '').trim();
@@ -1554,20 +1584,17 @@
       })
       .join('');
 
-    // WAT and TAT were never typed into; an SRT attempt from before this
-    // change can still carry its typed answers, which are shown as they are.
-    var blankText = r.test === 'srt' ? 'written in your practice copy' : 'left blank';
     var isWat = r.test === 'wat';
     var isTat = r.test === 'tat';
     var stats = isWat
       ? '<div class="stat">' +
-        '<div class="box"><div class="num">' + r.total + '</div><div class="lbl">words practised</div></div>' +
+        '<div class="box"><div class="num">' + practised(r) + '</div><div class="lbl">words practised</div></div>' +
         '<div class="box"><div class="num">' + clock(r.durationMs) + '</div><div class="lbl">time on task</div></div>' +
         '<div class="box"><div class="num">' + r.items.filter(function (i) { return !!hintFor(i.prompt); }).length + '</div><div class="lbl">with model sentences</div></div>' +
         '</div>'
       : isTat
         ? '<div class="stat">' +
-          '<div class="box"><div class="num">' + r.total + '</div><div class="lbl">slides practised</div></div>' +
+          '<div class="box"><div class="num">' + practised(r) + '</div><div class="lbl">slides practised</div></div>' +
           '<div class="box"><div class="num">' + clock(r.durationMs) + '</div><div class="lbl">time on task</div></div>' +
           '<div class="box"><div class="num">' + (r.reason === 'manual' ? 'ended early' : 'completed') + '</div><div class="lbl">session</div></div>' +
           '</div>'
@@ -1607,7 +1634,7 @@
         stats +
         '<div class="row" style="margin:20px 0">' +
         '<button class="btn primary" id="again">Practise this set again</button>' +
-        '<button class="btn" id="export">Export this attempt (.txt)</button>' +
+        '<button class="btn" id="export">' + (onPhone() ? 'Copy this attempt' : 'Export this attempt (.txt)') + '</button>' +
         '<button class="btn" id="toHistory">Open history</button>' +
         '<button class="btn ghost" id="home">Home</button>' +
         '</div>' +
@@ -1622,7 +1649,7 @@
       window.api
         .exportText({ defaultName: 'SSB-' + r.test.toUpperCase() + '-' + r.setName.replace(/\s+/g, '-') + '.txt', text: attemptToText(r) })
         .then(function (res) {
-          if (res && res.saved) toast('Saved to ' + res.path);
+          if (res && res.saved) toast(res.path === 'clipboard' ? 'Copied — paste it into any app' : 'Saved to ' + res.path);
         });
     });
     document.getElementById('toHistory').addEventListener('click', function () { goto('history'); });
@@ -2375,7 +2402,8 @@
           '</div>' +
           '<div class="row" style="margin:0">' +
           '<button class="btn sm ghost" data-lectfacts="' + idx + '">' + (open ? 'Hide facts' : 'Facts') + '</button>' +
-          (t.speech && !t.written
+          // A hand-written or drafted script is never replaced by a generated one.
+          (t.source === 'curated' || (t.speech && !t.written)
             ? ''
             : '<button class="btn sm" data-lectwrite="' + idx + '"' + (L.writing ? ' disabled' : '') + '>' +
               (L.writing === t.id ? 'Writing…' : t.written ? 'Rewrite with latest facts' : 'Write it for me') + '</button>') +
@@ -2393,7 +2421,7 @@
       '<p class="lead">A lecturette is a three-minute talk on a topic handed to you on the spot. ' +
       'The pattern that scores is <b>30 seconds intro, 2 minutes body, 30 seconds conclusion</b>. ' +
       'The clock here changes phase by itself, exactly like the real thing. Nothing is typed — speak it aloud and write in your notebook.</p>' +
-      '<div class="card">' +
+      '<div class="card lectform">' +
       '<div class="field"><label>Selection centre / board<br><span class="small muted">' +
       topics.length + ' topics · <b>' + withScript + '</b> with a full script · <b>' + (topics.length - withScript) + '</b> as outlines</span></label>' +
       '<div class="ctl"><select id="lectBoard">' + boardOpts + '</select>' +
@@ -2401,10 +2429,10 @@
       '<button class="btn primary" id="lectRandom">Practise a random topic</button></div></div>' +
       '<div class="field" style="margin-top:14px"><label for="lectSearch">Find a topic<br><span class="small muted">' +
       'Type a topic, a theme or a cue word — the list narrows as you type</span></label>' +
-      '<div class="ctl"><input id="lectSearch" type="search" placeholder="e.g. inflation, navy, youth" value="' + esc(L.q || '') + '"></div></div>' +
+      '<div class="ctl"><input id="lectSearch" class="textinput" type="search" placeholder="e.g. inflation, navy, youth" value="' + esc(L.q || '') + '"></div></div>' +
       '<div class="field" style="margin-top:14px"><label for="lectOwn">Your own topic<br><span class="small muted">' +
       'Type any topic and the app writes a three-minute lecturette in simple words, from the latest facts, with every source dated</span></label>' +
-      '<div class="ctl"><input id="lectOwn" type="text" maxlength="120" placeholder="e.g. Operation Sindoor, Make in India, cyber security">' +
+      '<div class="ctl"><input id="lectOwn" class="textinput" type="text" maxlength="120" placeholder="e.g. Operation Sindoor, Make in India, cyber security">' +
       '<button class="btn primary" id="lectOwnWrite"' + (L.writing ? ' disabled' : '') + '>' +
       (L.writing && L.writing.indexOf('own-') === 0 ? 'Writing…' : 'Write my lecture') + '</button></div></div>' +
       '<div class="small muted">Pattern: <b>' + esc(LECT_PHASES[0].label) + ' ' + LECT_PHASES[0].secs + 's</b> → ' +
@@ -2539,6 +2567,9 @@
       topic: lectRunTopic(topic, extra),
       phase: 0,
       remaining: LECT_PHASES[0].secs,
+      // The clock counts down to a deadline, so a phone that slows the page in
+      // the background cannot stretch the three minutes.
+      deadline: Date.now() + LECT_PHASES[0].secs * 1000,
       paused: false,
       startedAt: Date.now(),
       done: false
@@ -2546,6 +2577,7 @@
     L.mode = 'run';
     S.view = 'lecturette';
     window.api.keepAwake(true);
+    cue('start');
     render();
   }
 
@@ -2728,8 +2760,18 @@
     var R = lectState().run;
     if (!R || R.done) return false;
     R.paused = !R.paused;
+    // Resuming sets a new deadline from what was left when the clock stopped.
+    if (!R.paused) R.deadline = Date.now() + R.remaining * 1000;
     paintLecture(false);
     return R.paused;
+  }
+
+  function lectEnterPhase(R, phase) {
+    R.phase = phase;
+    R.remaining = LECT_PHASES[phase].secs;
+    R.deadline = Date.now() + R.remaining * 1000;
+    paintLecture(true);
+    cue('next');
   }
 
   function lectureNextPhase() {
@@ -2740,21 +2782,17 @@
       finishLecture('manual');
       return;
     }
-    R.phase += 1;
-    R.remaining = LECT_PHASES[R.phase].secs;
-    paintLecture(true);
+    lectEnterPhase(R, R.phase + 1);
   }
 
   function lectTick() {
     var L = lectState();
     var R = L.run;
     if (!R || R.done || R.paused) return;
-    R.remaining = Math.max(0, R.remaining - 1);
+    R.remaining = Math.max(0, Math.ceil((R.deadline - Date.now()) / 1000));
     if (R.remaining === 0) {
       if (R.phase < LECT_PHASES.length - 1) {
-        R.phase += 1;
-        R.remaining = LECT_PHASES[R.phase].secs;
-        paintLecture(true);
+        lectEnterPhase(R, R.phase + 1);
         toast('Time — now the ' + LECT_PHASES[R.phase].label.toLowerCase() + ' (' + LECT_PHASES[R.phase].secs + ' seconds)');
       } else {
         finishLecture('time');
@@ -2769,6 +2807,7 @@
     var R = L.run;
     if (!R) return;
     stopLectTimer();
+    cue('end');
     window.api.keepAwake(false);
     R.done = true;
     L.summary = {
@@ -3057,7 +3096,8 @@
         '<span class="chip">' + lib.length + ' in the museum library</span>' +
         '<button class="btn sm ghost" id="goBin">Open bin (' + (S.tatBin || []).length + ')</button>' +
         '</div>' +
-        '<p class="small muted" style="margin:12px 0 0">Hover a picture and press <b>×</b> to take it out of the test. ' +
+        '<p class="small muted" style="margin:12px 0 0">' + (onPhone() ? 'Tap the <b>×</b> on a picture' : 'Hover a picture and press <b>×</b>') +
+        ' to take it out of the test. ' +
         'The test never sees it again until you restore it.</p>' +
         '</div>' +
 
@@ -3701,9 +3741,9 @@
           '<span class="chip">' + clock(a.durationMs) + '</span>' +
           '<span class="chip ok">' +
           (a.test === 'wat'
-            ? a.total + ' words · model sentences'
+            ? practised(a) + ' words · model sentences'
             : a.test === 'tat'
-              ? a.total + ' slides · written in copy'
+              ? practised(a) + ' slides · written in copy'
               : a.answered + '/' + a.total + ' answered') +
           '</span>' +
           '<span class="spacer" style="margin-left:auto"></span>' +
@@ -3717,7 +3757,7 @@
 
     body(
       '<h1>History</h1>' +
-        '<p class="lead">Every finished attempt, stored on this computer only. ' + S.attempts.length + ' attempt(s).</p>' +
+        '<p class="lead">Every finished attempt, stored on this ' + (onPhone() ? 'phone' : 'computer') + ' only. ' + S.attempts.length + ' attempt(s).</p>' +
         '<div class="row" style="margin-bottom:16px"><button class="btn danger sm" id="clearAll">Clear all history</button></div>' +
         html
     );
@@ -3744,7 +3784,7 @@
         window.api
           .exportText({ defaultName: 'SSB-' + a.test.toUpperCase() + '-' + a.setName.replace(/\s+/g, '-') + '.txt', text: attemptToText(a) })
           .then(function (res) {
-            if (res && res.saved) toast('Saved to ' + res.path);
+            if (res && res.saved) toast(res.path === 'clipboard' ? 'Copied — paste it into any app' : 'Saved to ' + res.path);
           });
       });
     });
@@ -3797,14 +3837,23 @@
         '<h2>Appearance</h2>' +
         '<div class="card">' +
         '<div class="field"><label>Theme<br><span class="small muted">' +
-        'Mist is the dark Windows 11 palette this app ships with; Alpine light is the sage paper one. ' +
+        'Mist is the dark palette this app ships with; Alpine light is the sage paper one. ' +
         'Same layout, same type, same motion — only the colours change.</span></label>' +
         '<div class="ctl">' +
         '<button class="btn sm' + (S.config.theme === 'alpine' ? '' : ' primary') + '" id="themeMist">Mist dark</button>' +
         '<button class="btn sm' + (S.config.theme === 'alpine' ? ' primary' : '') + '" id="themeAlpine">Alpine light</button>' +
         '</div></div>' +
         toggleField('Reduce motion', 'Skip the tile orbit, lecturette slides and paging transitions. ' +
-          'Windows\' own "Animation effects" setting is always respected as well.', 'reduceMotion') +
+          (onPhone() ? 'Your phone\'s own "remove animations" setting' : 'Windows\' own "Animation effects" setting') +
+          ' is always respected as well.', 'reduceMotion') +
+        '</div>' +
+
+        '<h2>Sound and internet</h2>' +
+        '<div class="card">' +
+        toggleField('Sound cues', 'A short chime when a test starts, when each word, picture or lecturette phase changes, ' +
+          'and at the end' + (onPhone() ? '; the phone also buzzes' : '') + '. Taps on buttons click softly.', 'soundOn') +
+        toggleField('Online lookup', 'Live news, the lecturette writer, word meanings and extra museum pictures. ' +
+          'Everything else works with no connection.', 'onlineEnabled') +
         '</div>' +
 
 
@@ -3824,7 +3873,6 @@
         '<div class="card">' +
         numField('Seconds to view each slide', 'Standard is 30 seconds.', 'tatViewSec', 5, 120, 'sec') +
         numField('Seconds to write each story', 'Standard is 4 minutes (240 seconds).', 'tatWriteSec', 30, 900, 'sec') +
-        toggleField('Sound cues', 'A short chime at the start, when writing begins and at the end. Synthesised, so there is no audio file to lose.', 'soundOn') +
         '</div>' +
 
         '<h2>Add your own practice set</h2>' +
@@ -3847,15 +3895,20 @@
         '<div class="note">' +
         '<b>Word lists and situations</b> are adapted from publicly published SSB preparation material and rewritten for this app; ' +
         'they are practice prompts, not official board papers.<br><br>' +
-        '<b>TAT pictures</b>: the optional classic set (41 plates) is user-supplied practice material imported from a third-party PDF and your own folder; it is not public domain and is not covered by the project licence. ' +
-        'The default museum library (2,001 pictures) is public domain (CC0). You can also load any picture folder you already have.<br><br>' +
+        '<b>TAT pictures</b>: the classic set (' + (S.tatClassic || []).length + ' plates) is user-supplied practice material imported from a third-party PDF and your own folder; it is not public domain and is not covered by the project licence. ' +
+        (onPhone()
+          ? 'Museum pictures fetched online are public domain (CC0). You can also add your own pictures from the phone.<br><br>'
+          : 'The default museum library (' + (S.tatLibrary || []).length.toLocaleString() + ' pictures) is public domain (CC0). You can also load any picture folder you already have.<br><br>') +
         'Format and timings reflect what SSB preparation sources consistently report: TAT 12 slides at 30 s view + 4 min write, ' +
         'WAT 60 words at 15 s each, SRT 60 situations in 30 minutes.' +
         '</div>' +
 
         '<h2>Storage</h2>' +
         '<div class="card">' +
-        '<p class="small muted" style="margin:0">History and settings live in a single JSON file in this app\'s user-data folder. ' +
+        '<p class="small muted" style="margin:0">' +
+        (onPhone()
+          ? 'History, settings and your pictures are kept on this phone, inside the app. '
+          : 'History and settings live in a single JSON file in this app\'s user-data folder. ') +
         'Nothing is uploaded anywhere.</p>' +
         '</div>' +
 
@@ -3909,11 +3962,16 @@
         t.classList.toggle('on', S.config[key]);
         var patch = {};
         patch[key] = S.config[key];
-        window.api.setConfig(patch);
+        var saved = window.api.setConfig(patch);
         if (key === 'reduceMotion') {
           applyMotion();
           toast(S.config.reduceMotion ? 'Motion reduced' : 'Motion restored');
         }
+        if (key === 'onlineEnabled') {
+          toast(S.config.onlineEnabled ? 'Online lookup is on' : 'Online lookup is off');
+          saved.then(function () { refreshNet(false); });
+        }
+        if (key === 'soundOn' && S.config.soundOn) cue('start');
       });
     });
 
@@ -3991,13 +4049,18 @@
       var p = (info && info.paths) || {};
       var d = (info && info.data) || {};
       var st = (info && info.store) || {};
-      var env =
-        diagRow('Version', a.version) +
-        diagRow('Packaged', a.packaged ? 'yes' : 'no (running from source)') +
-        diagRow('Electron', a.electron) +
-        diagRow('Chromium', a.chrome) +
-        diagRow('Node', a.node) +
-        diagRow('Platform', (a.platform || '') + ' ' + (a.arch || ''));
+      var phone = onPhone();
+      var env = phone
+        ? diagRow('Version', a.version) +
+          diagRow('Build', 'Android app (APK)') +
+          diagRow('WebView (Chromium)', a.chrome) +
+          diagRow('Platform', a.arch || 'Android')
+        : diagRow('Version', a.version) +
+          diagRow('Packaged', a.packaged ? 'yes' : 'no (running from source)') +
+          diagRow('Electron', a.electron) +
+          diagRow('Chromium', a.chrome) +
+          diagRow('Node', a.node) +
+          diagRow('Platform', (a.platform || '') + ' ' + (a.arch || ''));
       var dataRows =
         diagRow('WAT sets', d.watSets) +
         diagRow('SRT sets', d.srtSets) +
@@ -4013,41 +4076,58 @@
         diagRow('Custom sets (WAT/SRT/TAT)', (st.customWat || 0) + ' / ' + (st.customSrt || 0) + ' / ' + (st.customTat || 0)) +
         diagRow('TAT picture source', st.tatSource) +
         diagRow('Online lookup', st.onlineEnabled ? 'on' : 'off') +
-        diagRow('Python', info && info.python && info.python.ok ? info.python.version : 'not found') +
-        diagRow('Digest libraries', info && info.digestDeps && info.digestDeps.ok ? 'ready' : 'missing');
+        // The phone builds its digest itself; Python is the desktop engine only.
+        (phone
+          ? ''
+          : diagRow('Python', info && info.python && info.python.ok ? info.python.version : 'not found') +
+            diagRow('Digest libraries', info && info.digestDeps && info.digestDeps.ok ? 'ready' : 'missing'));
 
       body(
         '<div class="dig-head"><div><h1>Diagnostics</h1>' +
           '<p class="lead">Everything needed to debug this build or hand it to another developer: environment, data, paths, the working flow and the live log. All local.</p></div>' +
-          '<div class="dig-chips"><span class="chip ok">' + (a.packaged ? 'packaged build' : 'source build') + '</span>' +
-          '<span class="chip">log on disk</span></div></div>' +
+          '<div class="dig-chips"><span class="chip ok">' + (phone ? 'Android app' : a.packaged ? 'packaged build' : 'source build') + '</span>' +
+          '<span class="chip">' + (phone ? 'no log file' : 'log on disk') + '</span></div></div>' +
           '<div class="row" style="margin-bottom:16px">' +
-          '<button class="btn primary sm" id="diagSave">Save report…</button>' +
+          '<button class="btn primary sm" id="diagSave">' + (phone ? 'Copy report' : 'Save report…') + '</button>' +
           '<button class="btn sm" id="diagRefresh">Refresh</button>' +
-          '<button class="btn sm" id="diagFolder">Open log folder</button>' +
+          (phone ? '' : '<button class="btn sm" id="diagFolder">Open log folder</button>') +
           '<button class="btn sm ghost" id="diagBack">Back to settings</button></div>' +
           '<div class="diag-grid">' +
           '<div class="card"><h2>Environment</h2>' + env + '</div>' +
           '<div class="card"><h2>Bundled data</h2>' + dataRows + '</div>' +
           '<div class="card"><h2>Your store</h2>' + storeRows + '</div>' +
           '<div class="card diag-paths"><h2>Paths</h2>' +
-            diagRow('User data', p.userData) + diagRow('Store file', p.store) +
-            diagRow('Log file', p.log) + diagRow('Data folder', p.data) +
-            diagRow('Digest engine', p.digest) + '</div>' +
+            (phone
+              ? diagRow('Your data', p.userData)
+              : diagRow('User data', p.userData) + diagRow('Store file', p.store) +
+                diagRow('Log file', p.log) + diagRow('Data folder', p.data) +
+                diagRow('Digest engine', p.digest)) +
+            '</div>' +
           '</div>' +
           '<h2>How the app works</h2>' +
           '<div class="card diag-flow">' +
-          '<ol>' +
-          '<li><b>Boot.</b> main.js opens the window, reads the store, and loads the WAT/SRT/TAT packs, the 41 classic plates, the museum manifest, the lecturette topics and the WAT model sentences.</li>' +
-          '<li><b>A test run.</b> TAT: 30 s view → 4 min writing clock, no typing. WAT: 60 words, auto-advance, no typing. SRT: one 30-minute clock with typed answers. On finish the attempt is written to the store.</li>' +
-          '<li><b>Word library.</b> The 149k dictionary loads in the main process on first use; the page never touches the network (CSP connect-src none).</li>' +
-          '<li><b>Lecturette.</b> Bundled topics with a 30 s / 2 min / 30 s clock and a facts panel.</li>' +
-          '<li><b>News Digest.</b> A separate Python engine is copied to the user-data folder and driven over IPC; it keeps its own config, drafts and output.</li>' +
-          '<li><b>Verification.</b> npm run smoke drives the real window through every feature and fails on any check; tools/verify-package.js compares the packaged app with the source.</li>' +
-          '</ol></div>' +
-          '<h2>Live log</h2>' +
-          '<p class="small muted">Also written to the file above (rotates at 2 MB). Copy this when reporting a problem.</p>' +
-          '<pre class="dig-log" id="diagLog" style="height:280px">' + esc((log && log.text) || 'No log yet.') + '</pre>'
+          (phone
+            ? '<ol>' +
+              '<li><b>Boot.</b> The app loads the WAT/SRT/TAT packs, the ' + (d.classicPictures || 0) + ' classic plates, the lecturette topics and the WAT model sentences from inside the APK.</li>' +
+              '<li><b>A test run.</b> TAT: view → writing clock. WAT: words advance on their own. SRT: one total clock. Answers go in your practice copy; the attempt is saved on the phone.</li>' +
+              '<li><b>Word library.</b> The dictionary ships in the APK and loads on first use.</li>' +
+              '<li><b>Lecturette.</b> A 30 s / 2 min / 30 s clock; with online lookup on, scripts are written from Wikipedia and the latest headlines.</li>' +
+              '<li><b>News Digest.</b> Built on the phone from Google News; the last edition is saved, and an edition bundled in the APK opens with no connection.</li>' +
+              '</ol>'
+            : '<ol>' +
+              '<li><b>Boot.</b> main.js opens the window, reads the store, and loads the WAT/SRT/TAT packs, the ' + (d.classicPictures || 0) + ' classic plates, the museum manifest, the lecturette topics and the WAT model sentences.</li>' +
+              '<li><b>A test run.</b> TAT: 30 s view → 4 min writing clock, no typing. WAT: 60 words, auto-advance, no typing. SRT: one 30-minute clock with typed answers. On finish the attempt is written to the store.</li>' +
+              '<li><b>Word library.</b> The 149k dictionary loads in the main process on first use; the page never touches the network (CSP connect-src none).</li>' +
+              '<li><b>Lecturette.</b> Bundled topics with a 30 s / 2 min / 30 s clock and a facts panel.</li>' +
+              '<li><b>News Digest.</b> A separate Python engine is copied to the user-data folder and driven over IPC; it keeps its own config, drafts and output.</li>' +
+              '<li><b>Verification.</b> npm run smoke drives the real window through every feature and fails on any check; tools/verify-package.js compares the packaged app with the source.</li>' +
+              '</ol>') +
+          '</div>' +
+          (phone
+            ? ''
+            : '<h2>Live log</h2>' +
+              '<p class="small muted">Also written to the file above (rotates at 2 MB). Copy this when reporting a problem.</p>' +
+              '<pre class="dig-log" id="diagLog" style="height:280px">' + esc((log && log.text) || 'No log yet.') + '</pre>')
       );
 
       var sv = document.getElementById('diagSave');
@@ -4095,9 +4175,10 @@
           try {
             var net = window.SSB && window.SSB.net;
             var isNat = net && net.nativeHttp ? net.nativeHttp() : false;
-            fetch('https://httpbin.org/get').then(function(r){ return r.json(); }).then(function(j){
-              tlogw('nativeHttp: ' + isNat + '\nGET https://httpbin.org/get: ' + r.status + '\n' + JSON.stringify(j).slice(0,200));
-            }.bind(null), function(e){ tlogw('nativeHttp: ' + isNat + '\nERR: ' + e); });
+            var status = 0;
+            fetch('https://httpbin.org/get').then(function(r){ status = r.status; return r.json(); }).then(function(j){
+              tlogw('nativeHttp: ' + isNat + '\nGET https://httpbin.org/get: ' + status + '\n' + JSON.stringify(j).slice(0,200));
+            }).catch(function(e){ tlogw('nativeHttp: ' + isNat + '\nERR: ' + e); });
           } catch(e){ tlogw('ERR: ' + e); }
         });
         if (galBtn) galBtn.addEventListener('click', function(){
@@ -4310,7 +4391,13 @@
     var sections = (d.sections || [])
       .map(function (sec) {
         var items = (sec.items || [])
-          .map(function (it) { return '<li>' + esc(it.title) + '</li>'; })
+          .map(function (it) {
+            var meta = [it.source, it.date].filter(Boolean).join(' · ');
+            return (
+              '<li' + (it.link ? ' class="dig-link" data-external="' + esc(it.link) + '"' : '') + '>' + esc(it.title) +
+              (meta ? ' <span class="small muted">' + esc(meta) + '</span>' : '') + '</li>'
+            );
+          })
           .join('');
         return (
           '<section class="dig-sec">' +
@@ -5819,26 +5906,28 @@
     if (ctx.state === 'suspended') {
       try { ctx.resume(); } catch (_) {}
     }
-    var notes = kind === 'end' ? [784, 587, 392] : kind === 'write' ? [659, 880] : [523, 659, 784];
+    // 'next' marks a new word, picture or phase; 'tap' is the soft click on a button.
+    var notes = kind === 'end' ? [784, 587, 392] : kind === 'write' ? [659, 880] : kind === 'next' ? [880] : kind === 'tap' ? [1320] : [523, 659, 784];
     var t0 = ctx.currentTime + 0.02;
+    var peak = kind === 'tap' ? 0.05 : 0.22;
     for (var i = 0; i < notes.length; i++) {
       var at = t0 + i * 0.16;
-      var dur = kind === 'end' ? 0.4 : 0.22;
+      var dur = kind === 'end' ? 0.4 : kind === 'tap' ? 0.04 : kind === 'next' ? 0.15 : 0.22;
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.value = notes[i];
       gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(0.22, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(peak, at + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(at);
       osc.stop(at + dur + 0.02);
     }
-    // A phone also buzzes, so the cue lands even with the media volume down.
+    // A phone also buzzes, so the cue lands even with the media volume down; a tap only ticks.
     try {
-      if (navigator.vibrate) navigator.vibrate(kind === 'end' ? [120, 80, 120] : 60);
+      if (navigator.vibrate) navigator.vibrate(kind === 'end' ? [120, 80, 120] : kind === 'tap' ? 8 : 60);
     } catch (_) {}
   }
 
@@ -6004,6 +6093,13 @@
     goto('home');
     return true;
   };
+
+  // Every button and tile answers a tap with a soft click (and a tick of
+  // vibration on a phone), so a press is felt even when the screen is glanced at.
+  document.addEventListener('click', function (e) {
+    var hit = e.target && e.target.closest && e.target.closest('button, [data-tile]');
+    if (hit && !hit.disabled) cue('tap');
+  }, true);
 
   boot();
 })();

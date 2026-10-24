@@ -312,26 +312,56 @@
         return Promise.resolve({ ok: false });
       },
 
+      // Same shape as diagInfo() in src/main.js ({app, paths, data, store}), so
+      // the Diagnostics screen fills in on the phone too.
       diagInfo: function () {
-        return Promise.resolve({
-          version: 'android',
-          packaged: true,
-          platform: 'android',
-          electron: '-',
-          chrome: navigator.userAgent,
-          node: '-',
-          userData: 'on-device storage',
-          storePath: 'localStorage',
-          logPath: '-',
-          data: {
-            classicPictures: material ? material.classicCount() : 0,
-            museumPictures: 0,
-            watHints: material ? material.hintCount() : 0,
-            attempts: store.attempts().length
-          },
-          paths: {},
-          flow: [],
-          log: 'The Android build keeps no log file.'
+        var CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        var appInfo = CapApp && CapApp.getInfo ? CapApp.getInfo().catch(function () { return {}; }) : Promise.resolve({});
+        var museum = window.SSB.museum && window.SSB.museum.all ? window.SSB.museum.all().catch(function () { return []; }) : Promise.resolve([]);
+        var api = material ? material.api : null;
+        return Promise.all([
+          appInfo,
+          api ? api.loadData().catch(function () { return {}; }) : {},
+          api ? api.lecturesList().catch(function () { return []; }) : [],
+          museum
+        ]).then(function (r) {
+          var cfg = store.config();
+          var sets = function (pack) { return pack && pack.sets ? pack.sets.length : 0; };
+          var bytes = 0;
+          try {
+            for (var k in window.localStorage) {
+              if (Object.prototype.hasOwnProperty.call(window.localStorage, k)) bytes += (window.localStorage.getItem(k) || '').length;
+            }
+          } catch (_) {}
+          var chrome = (/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [])[1] || '';
+          return {
+            app: {
+              version: r[0].version || '',
+              packaged: true,
+              chrome: chrome,
+              platform: 'android',
+              arch: (/Android [\d.]+/.exec(navigator.userAgent) || [''])[0]
+            },
+            paths: { userData: 'inside the app (localStorage and IndexedDB)' },
+            data: {
+              watSets: sets(r[1].wat),
+              srtSets: sets(r[1].srt),
+              tatSets: sets(r[1].tat),
+              lectures: (r[2] || []).length,
+              museumPictures: (r[3] || []).length,
+              classicPictures: material ? material.classicCount() : 0,
+              watHints: material ? material.hintCount() : 0
+            },
+            store: {
+              bytes: bytes,
+              attempts: store.attempts().length,
+              customWat: ((cfg.custom || {}).wat || []).length,
+              customSrt: ((cfg.custom || {}).srt || []).length,
+              customTat: ((cfg.custom || {}).tat || []).length,
+              tatSource: cfg.tatSource,
+              onlineEnabled: !!cfg.onlineEnabled
+            }
+          };
         });
       },
       diagSave: function () {
