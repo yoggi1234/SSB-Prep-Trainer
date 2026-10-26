@@ -9,6 +9,8 @@
  *   net.js       fetch/JSON/XML with timeouts, Google News RSS, date labels
  *   material.js  the bundled practice data and the dictionary
  *   online.js    word lookups and live news, gated by the online switch
+ *   edition.js   the 12-page news edition (port of the digest-tool engine)
+ *   pdf.js       draws that edition as the colour A4 PDF (port of render.py)
  *   digest.js    the phone's twelve-section edition and its fallback chain
  *   museum.js    public-domain plates kept in IndexedDB
  *   platform.js  gallery pictures, clipboard, wake lock, back button, diagnostics
@@ -30,6 +32,8 @@
     ['net', SSB.net],
     ['material', SSB.material],
     ['online', SSB.online],
+    ['edition', SSB.edition],
+    ['pdf', SSB.pdf],
     ['digest', SSB.digest],
     ['museum', SSB.museum],
     ['platform', SSB.platform]

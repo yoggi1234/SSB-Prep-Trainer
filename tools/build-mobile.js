@@ -19,7 +19,7 @@ const OUT = path.join(ROOT, 'mobile', 'www');
 
 // The phone bridge, in load order: each module puts its own window.api keys on
 // SSB, and api.js last assembles them. A module may rely on anything above it.
-const BRIDGE = ['store.js', 'net.js', 'material.js', 'online.js', 'digest.js', 'museum.js', 'platform.js', 'api.js'];
+const BRIDGE = ['store.js', 'net.js', 'material.js', 'online.js', 'edition.js', 'pdf.js', 'digest.js', 'museum.js', 'platform.js', 'api.js'];
 
 function copy(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
@@ -85,6 +85,12 @@ function main() {
     if (fs.existsSync(from)) copy(from, path.join(OUT, 'data', f));
   }
 
+  // The news-digest engine's own word lists (glossary, hard words, exam facts,
+  // war timelines): the phone edition (mobile/edition.js) writes its pages from them.
+  for (const f of ['glossary.json', 'hardwords.json', 'facts.json', 'wars.json']) {
+    copy(path.join(ROOT, 'digest-tool', 'newsdigest', 'data', f), path.join(OUT, 'data', 'digest', f));
+  }
+
   // The browser cannot list a folder, so the hint files are named in a manifest.
   const hintFiles = fs
     .readdirSync(path.join(ROOT, 'data', 'wat-hints'))
@@ -105,6 +111,21 @@ function main() {
     }
   }
 
+  // PPDT pictures, the same way: only what data/ppdt.json names, plus the
+  // model stories written ahead and the prompt the "write 5 stories" button uses.
+  const ppdt = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ppdt.json'), 'utf8'));
+  let ppdtPics = 0;
+  for (const rec of ppdt) {
+    const from = path.join(ROOT, 'data', 'ppdt', rec.file);
+    if (fs.existsSync(from)) {
+      copy(from, path.join(OUT, 'data', 'ppdt', rec.file));
+      ppdtPics++;
+    }
+  }
+  for (const f of ['ppdt.json', 'ppdt-stories.json', 'ppdt-prompt.txt']) {
+    if (fs.existsSync(path.join(ROOT, 'data', f))) copy(path.join(ROOT, 'data', f), path.join(OUT, 'data', f));
+  }
+
   const size = (() => {
     let total = 0;
     (function walk(dir) {
@@ -119,6 +140,7 @@ function main() {
 
   console.log('mobile bundle:', OUT);
   console.log('plates:', plates, 'of', manifest.length, 'in the manifest');
+  console.log('PPDT pictures:', ppdtPics, 'of', ppdt.length);
   console.log('hint files:', hintFiles.length);
   console.log('size:', (size / 1048576).toFixed(1), 'MB');
 }

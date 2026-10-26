@@ -23,7 +23,7 @@ module.exports = async function (page) {
 
   /* ------------------------------------------------------------ dashboard */
   const dash = await txt();
-  check('dashboard has ten tiles', (await page.ev('document.querySelectorAll("[data-tile]").length')) === 10);
+  check('dashboard has eleven tiles', (await page.ev('document.querySelectorAll("[data-tile]").length')) === 11);
   check('dashboard bin count is a number', !/undefined/.test(dash), (dash.match(/BIN[\s\S]{0,40}/) || [''])[0]);
   check('dashboard copy matches the online setting', /(This copy runs offline|Online extras are on)/.test(dash), (dash.match(/Everything for the board[\s\S]{0,120}/) || [''])[0]);
 
@@ -148,7 +148,7 @@ module.exports = async function (page) {
     )
   );
   check('TAT shows a decoded plate', out.tatView.img && out.tatView.img.w > 0, out.tatView.img);
-  check('TAT plate is the bundled classic file', /tat-classic/.test(out.tatView.img ? out.tatView.img.src : ''));
+  check('TAT plate is a bundled classic or PPDT picture', /tat-classic|ppdt/.test(out.tatView.img ? out.tatView.img.src : ''));
   check('TAT plate fits the screen width', out.tatView.img && out.tatView.img.left >= 0 && out.tatView.img.right <= out.tatView.vw, out.tatView.img);
   await page.shot('screenshots/mobile/tat-view.png');
 

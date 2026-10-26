@@ -93,7 +93,12 @@ function defaults() {
       tatWriteSec: 240,
       shuffleWAT: false,
       shuffleSRT: true,
-      tatSource: 'classic',
+      tatSource: 'both',
+      ppdtViewSec: 30,
+      ppdtThinkSec: 30,
+      ppdtWriteSec: 240,
+      ppdtBlur: 40,
+      ppdtTatMix: true,
       // Mist (dark) is the shipped palette, read out of the Windows 11 Mist
       // theme; "alpine" keeps the sage paper one. Applied in the renderer by
       // applyTheme(), and used here so the window itself never flashes white.
@@ -528,6 +533,73 @@ function readTatClassic() {
 ipcMain.handle('tat:classic', () => {
   const hidden = binnedKeys();
   return readTatClassic().filter((r) => !hidden.has(String(r.id)));
+});
+
+/* --------------------------------------------------------------- PPDT */
+// 418 practice pictures imported from a user-supplied "PPDT 400+" PDF (data/ppdt,
+// data/ppdt.json), and five model stories written ahead for some of them by
+// tools/build-ppdt-stories.py (data/ppdt-stories.json); any other picture gets them on request.
+const PPDT_DIR = path.join(DATA_DIR, 'ppdt');
+let ppdtCache = null;
+let ppdtStoryCache = null;
+
+function readPpdt() {
+  if (ppdtCache) return ppdtCache;
+  try {
+    ppdtCache = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ppdt.json'), 'utf8'))
+      .filter((r) => r && r.file && fs.existsSync(path.join(PPDT_DIR, r.file)))
+      .map((r) => ({ id: r.id, file: path.join(PPDT_DIR, r.file), title: r.title || 'PPDT picture', source: r.source || '', ppdt: true }));
+  } catch (err) {
+    console.error('[ppdt] pictures unavailable:', err.message);
+    ppdtCache = [];
+  }
+  return ppdtCache;
+}
+
+ipcMain.handle('ppdt:list', () => {
+  const hidden = binnedKeys();
+  return readPpdt().filter((r) => !hidden.has(String(r.id)));
+});
+
+ipcMain.handle('ppdt:stories', (_e, id) => {
+  if (!ppdtStoryCache) {
+    try {
+      ppdtStoryCache = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ppdt-stories.json'), 'utf8'));
+    } catch (_) {
+      ppdtStoryCache = {};
+    }
+  }
+  return ppdtStoryCache[String(id || '')] || null;
+});
+
+// Five fresh stories for one picture from a vision model through the local
+// Ollama app (free cloud models after `ollama signin`). The prompt is the one
+// the bundled stories were written with, so both read the same way.
+ipcMain.handle('ppdt:generate', async (_e, id) => {
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  const key = String(id || '');
+  const rec = readPpdt().concat(readTatClassic()).find((r) => String(r.id) === key);
+  if (!rec) return { ok: false, error: 'not-found' };
+  const model = getStore().config.ppdtModel || 'gemma4:31b-cloud';
+  try {
+    const res = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      signal: AbortSignal.timeout(180000),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model, stream: false, format: 'json', think: false, options: { temperature: 0.7 },
+        messages: [{ role: 'user', content: fs.readFileSync(path.join(DATA_DIR, 'ppdt-prompt.txt'), 'utf8'),
+          images: [fs.readFileSync(rec.file).toString('base64')] }]
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const out = JSON.parse((await res.json()).message.content);
+    if (!out || !Array.isArray(out.stories) || !out.stories.length) throw new Error('no stories in the answer');
+    appLog('ppdt', 'stories written', { id: key, model });
+    return { ok: true, perception: out.perception || null, stories: out.stories, model };
+  } catch (err) {
+    return { ok: false, error: /fetch failed|ECONNREFUSED/i.test(err.message) ? 'no-ai' : 'failed', detail: err.message };
+  }
 });
 
 const AIC_API = 'https://api.artic.edu/api/v1';
@@ -2164,7 +2236,7 @@ async function runSmoke() {
     results.push({
       step: 'the TAT slide points at a bundled picture',
       // The classic set ships .jpg and .png plates; the slide may land on either.
-      result: typeof bundledSrc === 'string' && /tat-(images|classic)/.test(bundledSrc) && /\.(jpe?g|png)$/i.test(bundledSrc),
+      result: typeof bundledSrc === 'string' && /(tat-images|tat-classic|ppdt)/.test(bundledSrc) && /\.(jpe?g|png)$/i.test(bundledSrc),
       src: bundledSrc ? bundledSrc.replace(/^.*(tat-(?:images|classic))/, '$1') : null
     });
     const tatUi = await js('window.__smoke.tatScreen()', 'the TAT screen');
@@ -2172,7 +2244,8 @@ async function runSmoke() {
       // At least the 11 plates a test needs; the bin can legitimately take plates
       // out, so the count is no longer a fixed 41.
       step: 'the classic TAT set is bundled and selected',
-      result: !!tatUi && tatUi.classic >= 11 && tatUi.source === 'classic',
+      // The default source is the classic set with the PPDT pictures added to it.
+      result: !!tatUi && tatUi.classic >= 11 && (tatUi.source === 'classic' || tatUi.source === 'both'),
       classic: tatUi && tatUi.classic,
       source: tatUi && tatUi.source
     });
@@ -2188,11 +2261,17 @@ async function runSmoke() {
         !!tatUi.img &&
         tatUi.img.complete === true &&
         tatUi.img.w > 0 &&
-        /tat-classic/.test(tatUi.img.src || '') &&
+        /tat-classic|ppdt/.test(tatUi.img.src || '') &&
         !!tatUi.img.shown &&
         tatUi.img.shown.w >= 200 &&
         tatUi.img.shown.h >= 200,
       shown: tatUi && tatUi.img && tatUi.img.shown
+    });
+    const ppdt = await js('window.api.ppdtList().then(function (l) { return window.api.ppdtStories(l[0].id).then(function (s) { return { n: l.length, file: l[0].file, stories: s ? s.stories.length : 0 }; }); })', 'the PPDT pictures');
+    results.push({
+      step: 'the PPDT pictures are bundled, with five model stories for the first one',
+      result: !!ppdt && ppdt.n >= 400 && /ppdt/.test(ppdt.file) && ppdt.stories === 5,
+      got: ppdt
     });
     results.push({
       step: 'the bundled picture is decoded and drawn on the slide',
@@ -3035,7 +3114,7 @@ async function runSmoke() {
       step: 'the dashboard carries every section as a tile, with no settings menu in the top bar',
       result:
         !!dash &&
-        dash.tiles === 10 &&
+        dash.tiles === 11 &&
         dash.settingsInTopBar === false &&
         dash.topLinks === 1 &&
         dash.selected !== null &&
@@ -3411,7 +3490,7 @@ async function runSmoke() {
         boot.watItems >= 60 &&
         boot.srtItems >= 60 &&
         boot.tatScenes >= 11 &&
-        boot.tileCount === 10 &&
+        boot.tileCount === 11 &&
         boot.navLinks === 1
     });
 

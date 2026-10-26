@@ -23,8 +23,8 @@ Electron app, zero runtime npm dependencies. Python is only needed for the optio
 | **WAT** — Word Association Test | 60 words, 15 s each, no typing, one large clock + plain meaning | 4 word sets, 5 model sentences per word, news lines when online |
 | **SRT** — Situation Reaction Test | 60 situations in 30 min, one running total clock, written in your copy | 3 situation sets |
 | **Lecturette** — three-minute talk | 30 s intro + 2 min body + 30 s conclusion, clock phases auto-advance | 334 topics offline, search/filter, Facts tab, current points |
-| **Word library** | Dictionary with search, meanings, sentiment tabs, random words | 147,417 words, 146,410 with offline meanings; optional Datamuse lookup |
-| **News Digest** | 12-page current-affairs PDF from free feeds (desktop); twelve sections of today's headlines on the phone | Desktop needs Python 3.9+ + `reportlab`, `pypdf`, `feedparser`, `trafilatura`; the phone builds from the same free feeds itself |
+| **Word library** | Dictionary with search, meanings, sentiment tabs, random words | 123,913 words, 122,911 with offline meanings (names, places, plant families and fragments removed); optional Datamuse lookup |
+| **News Digest** | 12-page colour current-affairs PDF from free feeds, on both desktop and phone | Desktop needs Python 3.9+ + `reportlab`, `pypdf`, `feedparser`, `trafilatura`; the phone runs a JavaScript port of the same engine and saves the PDF to Documents / the share sheet (**Make 12-page PDF**) |
 
 TAT writing takes over the whole screen: the picture goes away and a large clock fills the window,
 with a full-width **Next slide** button in portrait and a medium one in landscape. A short chime marks
@@ -81,9 +81,9 @@ dashboard), and the TAT writing phase fills the stage with a large countdown.
 Online extras work on the phone too: word meanings and related words from Datamuse, current
 headlines for the WAT and lecturette screens, and public-domain pictures fetched from Wikimedia
 Commons. The page's requests run through Capacitor's native HTTP, so no browser CORS rule blocks
-them. The Python News Digest engine stays desktop-only, and an export copies to the clipboard
-instead of writing a file. The Add screen says that pictures picked from the gallery last until
-the app is closed.
+them. The News Digest's Python engine is desktop-only, so the phone runs a JavaScript port of it and
+draws the same 12-page colour PDF. Exports of attempts copy to the clipboard, and pictures you add
+are kept on the phone.
 
 ## Using each test
 

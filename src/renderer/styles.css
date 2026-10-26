@@ -2708,3 +2708,48 @@ html[data-reduce-motion='true'] *::after {
 .ws-warn[hidden] {
   display: none;
 }
+
+/* ---------------------------------------------------------------- PPDT */
+/* The picture keeps the white mat of the TAT frames; the haze is a blur on it. */
+.ppdt-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ppdt-img {
+  max-width: 100%;
+  max-height: min(64vh, 560px);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.ppdt-img[hidden],
+.ppdt-note[hidden] {
+  display: none;
+}
+.ppdt-note {
+  text-align: center;
+  max-width: 60ch;
+}
+.ppdt-note .ws-num {
+  margin-bottom: 12px;
+}
+.ppdt-review {
+  display: flex;
+  justify-content: center;
+}
+.ppdt-review .ppdt-img {
+  max-height: 46vh;
+}
+.ppdt-chars {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.ppdt-tabs {
+  flex-wrap: wrap;
+}
+.ppdt-story p {
+  line-height: 1.65;
+}

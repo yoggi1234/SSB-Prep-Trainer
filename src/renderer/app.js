@@ -164,6 +164,7 @@
     { id: 'tat', label: 'TAT', code: 'TAT', test: true },
     { id: 'wat', label: 'WAT', code: 'WAT', test: true },
     { id: 'srt', label: 'SRT', code: 'SRT', test: true },
+    { id: 'ppdt', label: 'PPDT', code: 'PPDT' },
     { id: 'lecturette', label: 'Lecturette', code: 'LECT' },
     { id: 'library', label: 'Word library', code: 'WORD' },
     { id: 'digest', label: 'News Digest', code: 'NEWS' },
@@ -305,6 +306,7 @@
     if (S.view === 'setup') return renderSetup();
     if (S.view === 'result') return renderResult();
     if (S.view === 'lecturette') return renderLecturette();
+    if (S.view === 'ppdt') return renderPpdt();
     if (S.view === 'digest') return renderDigest();
     if (S.view === 'add') return renderAdd();
     if (S.view === 'bin') return renderBin();
@@ -357,6 +359,19 @@
         rows: rows + '<li><span>Practice sets</span><b>' + sets.length + '</b></li>'
       };
     }
+    if (t.id === 'ppdt') {
+      var pc = S.config;
+      return {
+        code: t.code,
+        chip: (S.ppdt || []).length + ' pictures',
+        blurb: 'A hazy picture for a few seconds, a moment to think, then your story — with five model stories to compare.',
+        rows:
+          '<li><span>View / think / write</span><b>' + (pc.ppdtViewSec || 30) + 's · ' + (pc.ppdtThinkSec || 30) + 's · ' +
+          Math.round((pc.ppdtWriteSec || 240) / 60) + 'm</b></li>' +
+          '<li><span>Blur</span><b>' + (pc.ppdtBlur == null ? 40 : pc.ppdtBlur) + '%</b></li>' +
+          '<li><span>Model stories</span><b>5 per picture</b></li>'
+      };
+    }
     if (t.id === 'lecturette') {
       var topics = lectTopics().length;
       var scripts = lectScriptCount();
@@ -373,7 +388,7 @@
     if (t.id === 'library') {
       return {
         code: t.code,
-        chip: '147,417 words',
+        chip: '123,913 words',
         blurb: 'Every word with a plain meaning, search, sentiment tabs and a random-word drill.',
         rows:
           '<li><span>Lookup</span><b>offline + online</b></li>' +
@@ -608,8 +623,10 @@
       var libCount = (S.tatLibrary || []).length;
       var classicCount = (S.tatClassic || []).length;
       var mineCount = (S.tatImages || []).length;
+      var ppdtCount = (S.ppdt || []).length;
       var source = S.config.tatSource || (classicCount >= 11 ? 'classic' : 'museum');
       if (source === 'classic' && classicCount < 11) source = 'museum';
+      if ((source === 'both' || source === 'ppdt') && ppdtCount < 11) source = classicCount >= 11 ? 'classic' : 'museum';
       if (source === 'mine' && mineCount < 11) source = classicCount >= 11 ? 'classic' : 'museum';
 
       extra =
@@ -617,6 +634,10 @@
         '<div class="card">' +
         '<div class="field"><label>Pictures for every set<br><span class="small muted">Eleven pictures plus the blank twelfth slide</span></label>' +
         '<div class="ctl"><select id="tatSource">' +
+        (ppdtCount >= 11
+          ? '<option value="both"' + (source === 'both' ? ' selected' : '') + '>Classic + PPDT practice set — ' + (classicCount + ppdtCount) + ' pictures</option>' +
+            '<option value="ppdt"' + (source === 'ppdt' ? ' selected' : '') + '>PPDT practice set — ' + ppdtCount + ' pictures</option>'
+          : '') +
         '<option value="classic"' + (source === 'classic' ? ' selected' : '') + (classicCount < 11 ? ' disabled' : '') + '>Classic TAT set — ' + classicCount + ' plates</option>' +
         '<option value="museum"' + (source === 'museum' ? ' selected' : '') + '>Museum library — ' + libCount.toLocaleString() + ' pictures</option>' +
         '<option value="mine"' + (source === 'mine' ? ' selected' : '') + (mineCount < 11 ? ' disabled' : '') + '>My own pictures — ' + mineCount + ' added</option>' +
@@ -833,6 +854,9 @@
   function tatPool() {
     var mine = (S.tatImages || []).filter(Boolean);
     var source = S.config.tatSource || 'classic';
+    var ppdt = S.ppdt || [];
+    if (source === 'both' && ppdt.length >= 11) return (S.tatClassic || []).concat(ppdt);
+    if (source === 'ppdt' && ppdt.length >= 11) return ppdt.slice();
     if (source === 'mine' && mine.length >= 11) {
       return mine.map(function (p, i) {
         return { id: 'mine-' + i, file: p, title: 'My picture ' + (i + 1) };
@@ -1683,6 +1707,262 @@
       lines.push('');
     });
     return lines.join('\r\n');
+  }
+
+  /* -------------------------------------------------------------- PPDT */
+
+  // Picture Perception and Description Test: a hazy picture for a short look,
+  // a moment to note the characters (number, age, sex, mood, action), then the
+  // story in your practice copy. Afterwards the picture is shown clearly with
+  // five model stories (Problem -> Action -> Outcome, one per officer-like
+  // quality angle), written ahead for some pictures and on request for any.
+  var PPDT_TYPES = ['Leadership', 'Social responsibility', 'Courage in a crisis', 'Initiative and achievement', 'Teamwork'];
+
+  function ppdtState() {
+    if (!S.pp) S.pp = { mode: 'setup', pic: null, phase: 'view', deadline: 0, remaining: 0, paused: false, timer: null,
+      model: null, tab: 0, gen: null };
+    return S.pp;
+  }
+
+  function ppdtCfg(key, dflt) {
+    var v = S.config[key];
+    return v == null || v === '' ? dflt : Number(v);
+  }
+
+  function ppdtPhases() {
+    return [
+      { id: 'view', label: 'Look', secs: ppdtCfg('ppdtViewSec', 30) },
+      { id: 'think', label: 'Think', secs: ppdtCfg('ppdtThinkSec', 30) },
+      { id: 'write', label: 'Write', secs: ppdtCfg('ppdtWriteSec', 240) }
+    ].filter(function (p) { return p.secs > 0; });
+  }
+
+  // A PPDT picture, and now and then a classic TAT plate (as boards do),
+  // never one seen in the last 150 rounds while others remain.
+  function ppdtPick() {
+    var ppdt = S.ppdt || [];
+    var classic = S.config.ppdtTatMix === false ? [] : (S.tatClassic || []);
+    var pool = classic.length && Math.random() < 0.25 ? classic : ppdt.length ? ppdt : classic;
+    if (!pool.length) return null;
+    var recent = S.config.ppdtRecent || [];
+    var fresh = pool.filter(function (p) { return recent.indexOf(String(p.id)) < 0; });
+    var pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length ? fresh : pool).length)];
+    S.config.ppdtRecent = [String(pick.id)].concat(recent).slice(0, 150);
+    window.api.setConfig({ ppdtRecent: S.config.ppdtRecent });
+    return pick;
+  }
+
+  function stopPpdtTimer() {
+    var P = ppdtState();
+    if (P.timer) clearInterval(P.timer);
+    P.timer = null;
+  }
+
+  function renderPpdt() {
+    var P = ppdtState();
+    if (P.mode === 'run' && P.pic) return mountPpdt();
+    if (P.mode === 'review' && P.pic) return renderPpdtReview();
+    var phases = ppdtPhases();
+    body(
+      '<button class="btn ghost sm" id="back">← Back</button>' +
+        '<h1 style="margin-top:14px">PPDT — Picture Perception and Description Test</h1>' +
+        '<p class="lead">At the board a hazy picture is shown for a short time. You note the characters — how many, their age, ' +
+        'sex and mood (positive, negative or neutral) and what they are doing — then write a story: what led to the scene, ' +
+        'what the hero does, and how it ends. Afterwards you narrate it and the group discusses.</p>' +
+        '<p class="small muted">Pick the hero in the first seconds; give them a name and age.</p>' +
+        '<div class="card">' +
+        '<div class="field"><label>This round<br><span class="small muted">Change the times and the blur in Settings</span></label>' +
+        '<div class="ctl muted small">' + phases.map(function (p) { return p.label + ' ' + (p.secs >= 120 ? Math.round(p.secs / 60) + ' min' : p.secs + 's'); }).join(' · ') +
+        ' · blur ' + ppdtCfg('ppdtBlur', 40) + '%</div></div>' +
+        '<div class="field"><label>Pictures<br><span class="small muted">' + (S.ppdt || []).length + ' PPDT pictures' +
+        (S.config.ppdtTatMix === false ? '' : ', and now and then a classic TAT plate') + '</span></label>' +
+        '<div class="ctl"><button class="btn primary" id="ppdtGo">Start PPDT</button></div></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px"><b>A story that scores:</b> ' +
+        'about 2 lines on what led to the scene, 4–5 on what the hero does step by step, 2 on a realistic outcome. ' +
+        'Stay with what the picture shows — no invented disasters — and write in the past tense.</div>'
+    );
+    document.getElementById('back').addEventListener('click', function () { goto('home'); });
+    document.getElementById('ppdtGo').addEventListener('click', startPpdt);
+  }
+
+  function startPpdt() {
+    var P = ppdtState();
+    var pic = ppdtPick();
+    if (!pic) return toast('No pictures available');
+    P.pic = pic;
+    P.mode = 'run';
+    P.model = null;
+    P.gen = null;
+    P.tab = 0;
+    P.paused = false;
+    P.phaseIdx = 0;
+    P.remaining = ppdtPhases()[0].secs;
+    P.deadline = Date.now() + P.remaining * 1000;
+    window.api.keepAwake(true);
+    cue('start');
+    render();
+  }
+
+  function mountPpdt() {
+    var P = ppdtState();
+    var blurPx = (ppdtCfg('ppdtBlur', 40) / 100) * 8;
+    shell(
+      '<div class="run">' +
+        '<div class="runbar">' +
+        '<span class="chip ok">PPDT</span>' +
+        '<span class="chip" id="ppdtPhase"></span>' +
+        '<span class="spacer"></span>' +
+        '<span class="countdown-big" id="ppdtClock"></span>' +
+        '<button class="btn ghost sm" id="ppdtPause">Pause</button>' +
+        '<button class="btn sm" id="ppdtNext">Next →</button>' +
+        '<button class="btn danger sm" id="ppdtEnd">End &amp; review</button>' +
+        '</div>' +
+        '<div class="runbody">' +
+        '<div class="progress"><i id="ppdtBar"></i></div>' +
+        '<div class="ppdt-stage" id="ppdtStage">' +
+        '<img class="ppdt-img" id="ppdtImg" alt="PPDT picture" src="' + esc(fileUrl(P.pic.file)) + '" style="filter:blur(' + blurPx.toFixed(1) + 'px) contrast(0.85) grayscale(0.25)" />' +
+        '<div class="ppdt-note" id="ppdtNote" hidden></div>' +
+        '</div>' +
+        '</div>' +
+        '</div>'
+    );
+    document.getElementById('ppdtPause').addEventListener('click', function () {
+      P.paused = !P.paused;
+      if (!P.paused) P.deadline = Date.now() + P.remaining * 1000;
+      paintPpdt();
+    });
+    document.getElementById('ppdtNext').addEventListener('click', function () { ppdtNextPhase(); });
+    document.getElementById('ppdtEnd').addEventListener('click', function () { finishPpdt(); });
+    paintPpdt();
+    stopPpdtTimer();
+    P.timer = setInterval(ppdtTick, 250);
+  }
+
+  function paintPpdt() {
+    var P = ppdtState();
+    var phases = ppdtPhases();
+    var ph = phases[P.phaseIdx];
+    var clockEl = document.getElementById('ppdtClock');
+    if (!clockEl || !ph) return;
+    clockEl.textContent = clock(P.remaining * 1000);
+    clockEl.classList.toggle('low', P.remaining <= 10);
+    document.getElementById('ppdtPhase').textContent = ph.label + ' · ' + (P.phaseIdx + 1) + ' of ' + phases.length;
+    document.getElementById('ppdtPause').textContent = P.paused ? 'Resume' : 'Pause';
+    document.getElementById('ppdtBar').style.width = (Math.max(0, Math.min(1, P.remaining / ph.secs)) * 100).toFixed(1) + '%';
+    var img = document.getElementById('ppdtImg');
+    var note = document.getElementById('ppdtNote');
+    img.hidden = ph.id !== 'view';
+    note.hidden = ph.id === 'view';
+    if (ph.id === 'think') {
+      note.innerHTML = '<h2>Note it in your copy</h2><p>How many characters · age · sex · mood (+ / − / neutral) · what each is doing.</p>' +
+        '<p>Then decide your hero and what they will do.</p>';
+    } else if (ph.id === 'write') {
+      note.innerHTML = '<div class="ws-num">' + clock(P.remaining * 1000) + '</div>' +
+        '<p>Write the story in your practice copy: what led to it, what the hero does, how it ends.</p>';
+    }
+  }
+
+  function ppdtNextPhase() {
+    var P = ppdtState();
+    var phases = ppdtPhases();
+    if (P.phaseIdx >= phases.length - 1) return finishPpdt();
+    P.phaseIdx += 1;
+    P.remaining = phases[P.phaseIdx].secs;
+    P.deadline = Date.now() + P.remaining * 1000;
+    cue(phases[P.phaseIdx].id === 'write' ? 'write' : 'next');
+    paintPpdt();
+  }
+
+  function ppdtTick() {
+    var P = ppdtState();
+    if (S.view !== 'ppdt' || P.mode !== 'run') return stopPpdtTimer();
+    if (P.paused) return;
+    P.remaining = Math.max(0, Math.ceil((P.deadline - Date.now()) / 1000));
+    if (P.remaining === 0) return ppdtNextPhase();
+    paintPpdt();
+  }
+
+  function finishPpdt() {
+    var P = ppdtState();
+    stopPpdtTimer();
+    cue('end');
+    window.api.keepAwake(false);
+    P.mode = 'review';
+    P.model = null;
+    render();
+    window.api.ppdtStories(P.pic.id).then(function (res) {
+      P.model = res || false;
+      if (S.view === 'ppdt' && P.mode === 'review') render();
+    });
+  }
+
+  function ppdtGenError(r) {
+    if (!r) return 'Nothing came back.';
+    if (r.error === 'offline') return 'Turn online lookup on in Settings to write stories.';
+    if (r.error === 'no-ai') return 'Open the Ollama app on this PC (signed in) — it writes the stories.';
+    if (r.error === 'no-key') return 'Add your Ollama key in Settings → Sound and internet to write stories on the phone.';
+    if (r.error === 'bad-key') return 'Ollama did not accept the key in Settings. Check it and try again.';
+    return 'Could not write the stories just now' + (r.detail ? ' (' + r.detail + ')' : '') + '.';
+  }
+
+  function renderPpdtReview() {
+    var P = ppdtState();
+    var m = P.model;
+    var perc = m && m.perception;
+    var stories = (m && m.stories) || [];
+    var tab = Math.min(P.tab || 0, Math.max(0, stories.length - 1));
+    var s = stories[tab];
+    var chars = perc && perc.characters ? perc.characters.map(function (c) {
+      return '<li><b>' + esc(c.who || 'person') + '</b> — ' + esc([c.age ? c.age + ' yrs' : '', c.gender, c.mood].filter(Boolean).join(', ')) +
+        (c.action ? ': ' + esc(c.action) : '') + '</li>';
+    }).join('') : '';
+    var model = m === null
+      ? '<div class="empty">Opening the model stories…</div>'
+      : stories.length
+        ? (perc ? '<div class="card"><h3>What the picture shows</h3><ul class="ppdt-chars">' + chars + '</ul>' +
+            (perc.setting ? '<p class="small muted">' + esc(perc.setting) + (perc.theme ? ' — ' + esc(perc.theme) : '') + '</p>' : '') + '</div>' : '') +
+          '<div class="tabs ppdt-tabs">' + stories.map(function (st, i) {
+            return '<button class="navlink' + (i === tab ? ' active' : '') + '" data-pptab="' + i + '">' + esc(st.type || PPDT_TYPES[i] || 'Story ' + (i + 1)) + '</button>';
+          }).join('') + '</div>' +
+          '<div class="card ppdt-story"><h3>' + esc(s.title || s.type) + '</h3><p>' + esc(s.story) + '</p>' +
+          (s.olqs && s.olqs.length ? '<div class="words">' + s.olqs.map(function (q) { return '<span class="chip">' + esc(q) + '</span>'; }).join('') + '</div>' : '') +
+          '</div>'
+        : '<div class="note">No model stories for this picture yet. Press <b>Write 5 stories</b> to have them written now.</div>';
+    body(
+      '<h1>PPDT — compare your story</h1>' +
+        '<div class="ppdt-review"><img class="ppdt-img clear" alt="PPDT picture" src="' + esc(fileUrl(P.pic.file)) + '" /></div>' +
+        '<div class="row" style="margin:14px 0">' +
+        '<button class="btn primary" id="ppdtAgain">Next picture</button>' +
+        '<button class="btn" id="ppdtGen"' + (P.gen && P.gen.busy ? ' disabled' : '') + '>' +
+        (P.gen && P.gen.busy ? 'Writing stories…' : stories.length ? 'Write 5 new stories' : 'Write 5 stories') + '</button>' +
+        '<button class="btn ghost" id="ppdtHome">Dashboard</button></div>' +
+        (P.gen && P.gen.error ? '<div class="note">' + esc(P.gen.error) + '</div>' : '') +
+        model +
+        '<p class="small muted" style="margin-top:12px">Model stories are a guide to the shape, not answers to copy: ' +
+        'compare your hero, your actions and your ending with them.' + (m && m.model ? ' Written by ' + esc(m.model) + '.' : '') + '</p>'
+    );
+    document.getElementById('ppdtAgain').addEventListener('click', startPpdt);
+    document.getElementById('ppdtHome').addEventListener('click', function () { P.mode = 'setup'; goto('home'); });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-pptab]'), function (b) {
+      b.addEventListener('click', function () { P.tab = parseInt(b.getAttribute('data-pptab'), 10); render(); });
+    });
+    document.getElementById('ppdtGen').addEventListener('click', function () {
+      if (P.gen && P.gen.busy) return;
+      var pic = P.pic;
+      P.gen = { busy: true };
+      render();
+      window.api.ppdtGenerate(pic.id, pic.file).then(function (r) {
+        if (P.pic !== pic) return;
+        P.gen = { busy: false, error: r && r.ok ? '' : ppdtGenError(r) };
+        if (r && r.ok) {
+          P.model = { perception: r.perception, stories: r.stories, model: r.model };
+          P.tab = 0;
+          toast('Five stories written');
+        }
+        if (S.view === 'ppdt') render();
+      });
+    });
   }
 
   /* ------------------------------------------- lecturette — 3-minute pattern */
@@ -2974,7 +3254,8 @@
       window.api.tatClassic(),
       window.api.listTatImages(),
       window.api.tatBin(),
-      window.api.tatGoneList()
+      window.api.tatGoneList(),
+      window.api.ppdtList ? window.api.ppdtList() : []
     ]).then(function (res) {
       S.tatLibrary = res[0] || [];
       S.tatClassic = res[1] || [];
@@ -2982,6 +3263,7 @@
       S.tatBin = res[3] || [];
       S.tatGoneItems = res[4] || [];
       S.tatGone = S.tatGoneItems.length;
+      S.ppdt = res[5] || [];
     });
   }
 
@@ -3854,6 +4136,13 @@
           'and at the end' + (onPhone() ? '; the phone also buzzes' : '') + '. Taps on buttons click softly.', 'soundOn') +
         toggleField('Online lookup', 'Live news, the lecturette writer, word meanings and extra museum pictures. ' +
           'Everything else works with no connection.', 'onlineEnabled') +
+        // The PC writes PPDT stories through the local Ollama app; a phone needs the owner's Ollama key.
+        (onPhone()
+          ? '<div class="field"><label>Ollama key<br><span class="small muted">For <b>Write 5 stories</b> in PPDT: an API key from ollama.com ' +
+            '(Settings → Keys). It stays on this phone.</span></label>' +
+            '<div class="ctl"><input id="ollamaKey" type="password" class="textinput" autocomplete="off" placeholder="paste your key" value="' +
+            esc(S.config.ollamaKey || '') + '" /></div></div>'
+          : '') +
         '</div>' +
 
 
@@ -3873,6 +4162,15 @@
         '<div class="card">' +
         numField('Seconds to view each slide', 'Standard is 30 seconds.', 'tatViewSec', 5, 120, 'sec') +
         numField('Seconds to write each story', 'Standard is 4 minutes (240 seconds).', 'tatWriteSec', 30, 900, 'sec') +
+        '</div>' +
+
+        '<h2>PPDT</h2>' +
+        '<div class="card">' +
+        numField('Seconds to look', 'The hazy picture is shown this long. Standard is 30 seconds.', 'ppdtViewSec', 5, 120, 'sec') +
+        numField('Seconds to think', 'Note the characters before writing.', 'ppdtThinkSec', 0, 120, 'sec') +
+        numField('Seconds to write', 'Standard is 4 minutes (240 seconds).', 'ppdtWriteSec', 30, 600, 'sec') +
+        numField('Blur', 'How hazy the picture looks; 0 is a clear picture.', 'ppdtBlur', 0, 80, '%') +
+        toggleField('Mix in TAT pictures', 'Now and then a classic TAT plate instead of a PPDT picture.', 'ppdtTatMix') +
         '</div>' +
 
         '<h2>Add your own practice set</h2>' +
@@ -3937,6 +4235,15 @@
     if (tMist) tMist.addEventListener('click', function () { setTheme('mist'); });
     var tAlpine = document.getElementById('themeAlpine');
     if (tAlpine) tAlpine.addEventListener('click', function () { setTheme('alpine'); });
+
+    var keyIn = document.getElementById('ollamaKey');
+    if (keyIn) {
+      keyIn.addEventListener('change', function () {
+        S.config.ollamaKey = keyIn.value.trim();
+        window.api.setConfig({ ollamaKey: S.config.ollamaKey });
+        toast(S.config.ollamaKey ? 'Ollama key saved on this phone' : 'Ollama key removed');
+      });
+    }
 
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-num]'), function (inp) {
       inp.addEventListener('change', function () {
@@ -4416,8 +4723,10 @@
         '<span class="chip">' + (d.reference ? 'bundled offline' : d.cached ? 'saved copy' : 'fresh') + '</span>' +
         '<span class="spacer"></span>' +
         '<button class="btn primary sm" id="digBuild">' + (DG.phoneBusy ? 'Building…' : 'Refresh') + '</button>' +
+        '<button class="btn sm" id="digPdf"' + (DG.pdfBusy ? ' disabled' : '') + '>' + (DG.pdfBusy ? 'Making PDF…' : 'Make 12-page PDF') + '</button>' +
         '<button class="btn ghost sm" id="digHome">Dashboard</button>' +
         '</div>' +
+        '<div class="small muted" id="digPdfStatus" style="margin-top:8px">' + esc(DG.pdfStatus || '') + '</div>' +
         (d.reference
           ? '<div class="note">' + esc(d.note || 'Standing context bundled with the app.') +
             ' Turn online lookup on in Settings for today\'s headlines.</div>'
@@ -4437,6 +4746,27 @@
       renderDigest();
     });
     document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+    // The colour PDF the desktop engine makes, built here from the same free feeds.
+    document.getElementById('digPdf').addEventListener('click', function () {
+      if (DG.pdfBusy || !window.api.digestPdf) return;
+      DG.pdfBusy = true;
+      DG.pdfStatus = 'Reading today\'s news…';
+      renderDigest();
+      window.api.digestPdf(function (text, done, total) {
+        DG.pdfStatus = text + (total ? ' (' + done + '/' + total + ')' : '');
+        var el = document.getElementById('digPdfStatus');
+        if (el) el.textContent = DG.pdfStatus;
+      }).then(function (res) {
+        DG.pdfBusy = false;
+        DG.pdfStatus = res && res.ok
+          ? res.name + ' — ' + res.pages + ' pages from ' + res.headlines + ' headlines, saved to ' + res.where + '.'
+          : res && res.error === 'offline'
+            ? 'Turn online lookup on in Settings to make the PDF — it reads today\'s news.'
+            : 'Could not make the PDF' + (res && res.detail ? ' (' + res.detail + ')' : '') + '. Try again in a minute.';
+        if (res && res.ok) toast('PDF ready — choose where to open or save it');
+        if (S.view === 'digest') renderDigest();
+      });
+    });
   }
 
   function renderDigest() {
@@ -6003,6 +6333,7 @@
       ['Loading lecturettes', function () { return window.api.lecturesList(); }, 'lectures'],
       ['Opening WAT hints', function () { return window.api.watHints(); }, 'hints'],
       ['Reading the classic set', function () { return window.api.tatClassic(); }, 'classic'],
+      ['Reading the PPDT pictures', function () { return window.api.ppdtList ? window.api.ppdtList() : []; }, 'ppdt'],
       ['Checking removed pictures', function () { return window.api.tatBin(); }, 'bin'],
       ['Checking deleted pictures', function () { return window.api.tatGoneList(); }, 'gone']
     ];
@@ -6032,6 +6363,7 @@
         S.tatLibrary = res.library || [];
         S.lecturesBase = res.lectures || [];
         S.lectures = lectWithWritten(S.lecturesBase);
+        S.ppdt = res.ppdt || [];
         S.hints = res.hints || {};
         S.tatClassic = res.classic || [];
         S.tatBin = res.bin || [];
@@ -6077,6 +6409,13 @@
     if (S.view === 'home') return false;
     var running = !!S.session;
     var lect = S.view === 'lecturette' && lectState().run;
+    var ppdtRun = S.view === 'ppdt' && S.pp && S.pp.mode === 'run';
+    if (ppdtRun) {
+      if (!window.confirm('Leave this PPDT round?')) return true;
+      stopPpdtTimer();
+      S.pp.mode = 'setup';
+      window.api.keepAwake(false);
+    }
     if (running || lect) {
       var ok = window.confirm('Leave this practice session? The attempt will not be saved.');
       if (!ok) return true;

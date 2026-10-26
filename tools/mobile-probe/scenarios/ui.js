@@ -27,7 +27,7 @@ module.exports = async function (page) {
     await page.ev('JSON.stringify({handled: window.__ssbBack(), tiles: document.querySelectorAll("[data-tile]").length})')
   );
   check('back from a section is handled by the app', out.fromSettings.handled === true, out.fromSettings);
-  check('back lands on the dashboard', out.fromSettings.tiles === 10, out.fromSettings);
+  check('back lands on the dashboard', out.fromSettings.tiles === 11, out.fromSettings);
 
   // Back on the dashboard itself: not handled, so the app may leave.
   out.fromHome = await page.ev('window.__ssbBack()');

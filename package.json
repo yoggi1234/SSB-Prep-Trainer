@@ -1,7 +1,7 @@
 {
   "name": "ssb-prep-trainer",
   "productName": "SSB Prep Trainer",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Offline SSB psychology test trainer - timed TAT, WAT and SRT practice with real SSB timings, no internet or AI needed.",
   "main": "src/main.js",
   "author": "SSB Prep Trainer",
@@ -73,10 +73,13 @@
     }
   },
   "devDependencies": {
+    "@capacitor-community/file-opener": "^8.0.1",
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
     "electron": "^44.8.0",
     "electron-builder": "^26.15.3"
   }

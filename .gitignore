@@ -14,6 +14,8 @@ build/
 # It is not covered by this project's licence and must not be redistributed,
 # so it is deliberately left out of this repository.
 data/tat-classic/
+# The PPDT practice pictures are user-supplied too: kept out of the repository.
+data/ppdt/
 
 # Throwaway screenshot folders from repeated local smoke runs.
 screenshots2/

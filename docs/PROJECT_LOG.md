@@ -5,6 +5,77 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-10-25 — 1.0.7: PPDT section, 418 more pictures, cleaner word library
+
+**PPDT.** 471 pictures were extracted from the owner's "PPDT 400+ practice images" PDF, shrunk to 720 px,
+de-duplicated by difference hash (42 repeats, and none already in the classic set) and cleaned (7 tiny
+images, a blank page, two logos and one screenshot with overlaid text removed; plain borders trimmed):
+418 pictures in `data/ppdt/` (user-supplied, git-ignored like the classic plates) with `data/ppdt.json`.
+A new **PPDT** tile (the eleventh) runs Look (30 s, picture blurred 40% — `blur(3.2px)`) → Think (30 s,
+picture hidden, note the characters) → Write (4 min), all three times and the blur in Settings, with a
+classic TAT plate now and then. The review shows the picture clearly, what it shows (characters with age,
+sex, mood, action) and five model stories — Leadership, Social responsibility, Courage in a crisis,
+Initiative and achievement, Teamwork — in the PPDT form taken from SSB coaching sources (Problem → Action
+→ Outcome, named hero, past tense, realistic end, officer-like qualities). Stories were written ahead for
+55 pictures by `tools/build-ppdt-stories.py` with the owner's Ollama `gemma4:31b-cloud` (vision); every
+other picture has **Write 5 stories**: on the PC through the local Ollama app, on the phone through
+Ollama's cloud API with the owner's key (Settings). The prompt is shared (`data/ppdt-prompt.txt`).
+TAT's default picture source is now **Classic + PPDT** (461 pictures).
+
+**Word library.** `tools/clean-dictionary.js` removed 23,504 entries no use for practice: fragments
+("'hood"), single letters, "a/an/the" phrases, names of three or more words, people (life years), plant
+and animal groups, and foreign towns and rivers (countries and anything in India's neighbourhood kept);
+a word goes only when every meaning is such a name, so "nice" and "eagle" stay. Every word the WAT sets,
+hints and action verbs use is kept, and so is every word with a positive or negative tag (a first pass
+that dropped meaningless inflections took the positive list from 1,175 to 873 — the smoke check caught
+it). 123,913 remain; positive 1,174, negative 2,200.
+
+**Digest check against the original engine.** Run at the same moment as `digest run today` (AI off):
+the same lead story on 12 of 12 pages, the same war, the same counts of tiles, key points and full forms
+on almost every page, many key points word for word. The phone now reads schema.org `articleBody` first;
+three pages still get shorter paragraphs than trafilatura gives.
+
+**Verified.** One PPDT round driven on the served bundle (11 tiles, blur style, phases advance by
+deadline, picture hidden while thinking and writing, review clear, stories for ppdt-010: 5 × 116–121
+words); `ppdtGenerate` in the PC app returned 5 stories in 7 s. `npm run smoke`: 0 failures, with a new
+check for the PPDT pictures and stories. **Not verified:** writing stories on the phone (needs an Ollama key).
+
+---
+
+## 2026-10-25 — 1.0.6: the 12-page colour digest PDF on the phone
+
+**Why.** The owner wanted the phone to make the same colour PDF the desktop's news-digest engine makes
+(reference: `Daily_News_Digest_12_Oct_2026_Colour.pdf`), "the way D:\news-digest does it". A WebView
+cannot run that Python engine, so it was ported.
+
+**Changed.**
+
+- `mobile/edition.js` — a port of `digest-tool/newsdigest` sources.py, util.py, writer.py and draft.py
+  (rule-based path, no AI model): the same 14 publisher feeds and Google News searches for the last day,
+  junk and repeat filtering against the last three editions (kept in localStorage), merging the same story
+  across outlets, war of the day, section scoring, full text of the lead articles, and every page field —
+  paragraph from the article's own sentences, figure tiles, story cards, key points, glossary full forms,
+  benefit, advanced point, also in the news, sources and confidence. The engine's data files
+  (glossary, hardwords, facts, wars) ship in the APK under `data/digest/`. Article text replaces
+  trafilatura with a simpler `<p>`-paragraph extractor.
+- `mobile/pdf.js` — a port of render.py with a small built-in PDF writer (Helvetica metrics taken from
+  reportlab): the same page geometry, colours, shrink-to-fit text and drop-whole-bullets fallback.
+- `digestPdf()` in `mobile/digest.js` and a **Make 12-page PDF** button on the phone digest: the PDF is
+  saved to Documents and offered to the share sheet.
+- **New dependencies** `@capacitor/filesystem` and `@capacitor/share` (official, devDependencies like the
+  other Capacitor packages): a WebView cannot download or share a file without them.
+
+**Verified.** The JS renderer drawn from the desktop engine's own 24 Oct draft matches the PDF the Python
+engine drew from it, page for page (page 1 and the war page with its flowchart compared as images); the
+only differences are font-level: "₹" prints "Rs" and the bullet dot is smaller, as reportlab does without
+Arial. The engine run in Node on the live feeds: 42 feeds/searches, 1,521 headlines, 1,188 stories, 101
+full articles, 12 pages in 18 s, every page with tiles, key points, cards and full forms; war page Iran
+(111 headlines). Bundle boots with the new modules; `npm run smoke` 0 failures.
+
+**Not verified yet.** Saving and sharing on the phone (needs the device connected).
+
+---
+
 ## 2026-10-24 — 1.0.4 / 1.0.5: fixes from a hands-on pass on a real phone
 
 **Why.** The 1.0.3 APK was installed on the owner's Motorola Edge 50 Fusion and every screen was tapped

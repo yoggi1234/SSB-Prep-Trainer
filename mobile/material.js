@@ -149,6 +149,21 @@
         });
       },
 
+      // The PPDT practice pictures (data/ppdt.json), hidden while they sit in the bin.
+      ppdtList: function () {
+        return json('ppdt.json').then(function (list) {
+          var hidden = window.SSB.store.tatHidden();
+          return (Array.isArray(list) ? list : []).filter(function (r) { return !hidden[r.id]; }).map(function (r) {
+            return { id: r.id, file: DATA + 'ppdt/' + r.file, title: r.title || 'PPDT picture', source: r.source || '', ppdt: true };
+          });
+        }, function () { return []; });
+      },
+
+      // The model stories written ahead for a picture, or null.
+      ppdtStories: function (id) {
+        return json('ppdt-stories.json').then(function (all) { return (all && all[id]) || null; }, function () { return null; });
+      },
+
       tatClassic: function () {
         return json('tat-classic.json').then(function (list) {
           classic = (Array.isArray(list) ? list : []).map(tatItem);

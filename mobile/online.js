@@ -173,6 +173,41 @@
           });
       },
 
+      // Five fresh PPDT stories for one picture, as ppdt:generate in src/main.js. A
+      // phone has no local Ollama app, so it asks Ollama's cloud API with the
+      // owner's own key (Settings -> Sound and internet).
+      ppdtGenerate: function (id, file) {
+        if (!onlineOn()) return Promise.resolve({ ok: false, error: 'offline' });
+        var key = String(store.config().ollamaKey || '').trim();
+        if (!key) return Promise.resolve({ ok: false, error: 'no-key' });
+        var image = fetch(file).then(function (r) { return r.blob(); }).then(function (blob) {
+          return new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload = function () { resolve(String(fr.result).split(',')[1]); };
+            fr.onerror = reject;
+            fr.readAsDataURL(blob);
+          });
+        });
+        var prompt = fetch('data/ppdt-prompt.txt').then(function (r) { return r.text(); });
+        return Promise.all([prompt, image])
+          .then(function (r) {
+            return net.getText('https://ollama.com/api/chat', 180000, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+              body: JSON.stringify({ model: 'gemma4:31b', stream: false, format: 'json', think: false,
+                options: { temperature: 0.7 }, messages: [{ role: 'user', content: r[0], images: [r[1]] }] })
+            });
+          })
+          .then(function (txt) {
+            var out = JSON.parse(JSON.parse(txt).message.content);
+            if (!out || !Array.isArray(out.stories) || !out.stories.length) throw new Error('no stories in the answer');
+            return { ok: true, perception: out.perception || null, stories: out.stories, model: 'gemma4:31b (Ollama cloud)' };
+          })
+          .catch(function (err) {
+            return { ok: false, error: /401|403/.test(err.message) ? 'bad-key' : 'failed', detail: err.message, id: id };
+          });
+      },
+
       newsIndex: function (opts) {
         var force = !!(opts && opts.force);
         var cached = store.readJson('ssb-news', null);

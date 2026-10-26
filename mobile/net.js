@@ -30,6 +30,19 @@
       .then(function (body) { done(); return body; }, function (err) { done(); throw err; });
   }
 
+  // Raw text (feeds, article pages) with a timeout; `init` may carry a POST body.
+  function getText(url, timeoutMs, init) {
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, timeoutMs || 15000) : null;
+    var done = function () { if (timer) clearTimeout(timer); };
+    return fetch(url, Object.assign({ signal: ctrl ? ctrl.signal : undefined }, init || {}))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (body) { done(); return body; }, function (err) { done(); throw err; });
+  }
+
   function decodeEntities(text) {
     return String(text)
       .replace('<![CDATA[', '')
@@ -123,6 +136,7 @@
 
   SSB.net = {
     getJson: getJson,
+    getText: getText,
     googleNews: googleNews,
     nativeHttp: nativeHttp,
     isoDay: isoDay

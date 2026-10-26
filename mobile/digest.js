@@ -210,6 +210,53 @@
     });
   }
 
+  /* ------------------------------------------------------------ PDF saving */
+
+  function base64(bytes) {
+    var out = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(out);
+  }
+
+  // A WebView cannot download a file, so the PDF goes through the Capacitor
+  // Filesystem plugin (a copy kept in Documents), then Android's "Open with"
+  // list of PDF apps (FileOpener). With no PDF app installed, the share sheet
+  // is offered instead.
+  function savePdf(name, bytes) {
+    var plugins = (window.Capacitor && window.Capacitor.Plugins) || {};
+    var fsys = plugins.Filesystem;
+    var share = plugins.Share;
+    var opener = plugins.FileOpener;
+    if (!fsys) {
+      // Desktop browser (tests): a normal download.
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return Promise.resolve({ where: 'Downloads' });
+    }
+    var data = base64(bytes);
+    var kept = fsys.writeFile({ path: name, data: data, directory: 'DOCUMENTS' })
+      .then(function () { return 'Documents'; }, function () { return ''; });
+    return kept.then(function (where) {
+      return fsys.writeFile({ path: name, data: data, directory: 'CACHE' }).then(function (res) {
+        var shareIt = function () {
+          if (share) share.share({ title: name, files: [res.uri], dialogTitle: 'Share the digest' }).catch(function () {});
+        };
+        if (opener) {
+          opener.open({ filePath: res.uri, contentType: 'application/pdf', openWithDefault: false }).catch(shareIt);
+        } else {
+          shareIt();
+        }
+        return { where: where || 'this phone' };
+      });
+    });
+  }
+
   /* ------------------------------------------------------------------- api */
 
   // Nothing here can succeed: the engine is a Python process the desktop owns.
@@ -259,6 +306,36 @@
           })
           .catch(function (err) {
             return digestFallback(cached, err.message);
+          });
+      },
+
+      // The 12-page colour PDF, made the way the desktop's news-digest engine
+      // makes it (edition.js + pdf.js), saved to the phone's Documents folder and
+      // offered to the share sheet. progress(text, done, total) reports each step.
+      digestPdf: function (progress) {
+        if (!window.SSB.online.enabled()) return Promise.resolve({ ok: false, error: 'offline' });
+        var io = {
+          fetchText: net.getText,
+          read: store.readJson,
+          write: store.writeJson
+        };
+        var data = {};
+        return Promise.all(['glossary', 'hardwords', 'facts', 'wars'].map(function (k) {
+          return fetch('data/digest/' + k + '.json').then(function (r) { return r.json(); }).then(function (j) { data[k] = j; });
+        }))
+          .then(function () { return SSB.edition.collect(io, data, { progress: progress }); })
+          .then(function (draft) {
+            if (progress) progress('Drawing the PDF', 12, 12);
+            var bytes = SSB.pdf.render(draft);
+            var name = 'Daily_News_Digest_' + draft.date + '.pdf';
+            return savePdf(name, bytes).then(function (saved) {
+              SSB.edition.record(io, draft);
+              return { ok: true, name: name, where: saved.where, pages: draft.pages.length, headlines: draft.headlines,
+                articles: draft.articles, war: draft.war.name };
+            });
+          })
+          .catch(function (err) {
+            return { ok: false, error: err && err.message === 'no-news' ? 'network' : 'failed', detail: err && err.message };
           });
       },
 

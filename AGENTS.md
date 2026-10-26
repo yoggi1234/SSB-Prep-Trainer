@@ -45,7 +45,7 @@ and run the packaged smoke. Never weaken a check to make it pass — a failing c
   destructive actions and urgency. Verify from computed styles in the running app (the smoke
   asserts the ground colour and a 7:1 contrast for body text in both palettes, and that
   `prefers-reduced-motion` stops the animations).
-- **The dashboard is the only navigation.** Sections are tiles, not a top menu: ten tiles, one
+- **The dashboard is the only navigation.** Sections are tiles, not a top menu: eleven tiles, one
   highlighted at a time, arrow keys and Enter, and the highlight walks on its own until the person
   touches it. Add a section by adding a tile and a `render()` branch. Removing a menu item is a
   design decision, not a missing feature.
