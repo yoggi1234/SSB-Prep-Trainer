@@ -3316,7 +3316,7 @@ async function runSmoke() {
       step: 'the dashboard carries every section as a tile, with no settings menu in the top bar',
       result:
         !!dash &&
-        dash.tiles === 12 &&
+        dash.tiles === 13 &&
         dash.settingsInTopBar === false &&
         dash.topLinks === 1 &&
         dash.selected !== null &&
@@ -3707,7 +3707,16 @@ async function runSmoke() {
       result: !!newScreens && newScreens.stateBox && newScreens.timeline && newScreens.providers === 4,
       got: newScreens
     });
-    const paperB64 = fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'test-paper.pdf')).toString('base64');
+    const tut = await js('window.__smoke.tutorialInfo()', 'How to use this app');
+    await takeShot('42-how-to-use');
+    results.push({
+      step: '"How to use this app" is the first row and holds the video, the AI-key steps and a guide to every section',
+      result: !!tut && tut.first && tut.title === 'How to use this app' && tut.video && tut.preloadNone &&
+        /topics-db\/video\/tutorial\.mp4$/.test(tut.src) && tut.steps >= 5 && tut.guideRows === 12 && tut.blurbsFilled,
+      got: tut
+    });
+    // The test paper is not packaged; a packaged build is tested with SSB_PAPER_FIXTURE.
+    const paperB64 = fs.readFileSync(process.env.SSB_PAPER_FIXTURE || path.join(ROOT, 'tools', 'fixtures', 'test-paper.pdf')).toString('base64');
     const paperRun = await js('window.__smoke.paperFlow(' + JSON.stringify(paperB64) + ')', 'Newspaper flow');
     await takeShot('41-newspaper');
     results.push({

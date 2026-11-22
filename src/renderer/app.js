@@ -162,6 +162,7 @@
   // the top bar keeps nothing but the name and the connection light. Adding a
   // screen means adding a tile here (and a branch in render()).
   var TILES = [
+    { id: 'tutorial', label: 'How to use this app', code: 'HELP' },
     { id: 'tat', label: 'TAT', code: 'TAT', test: true },
     { id: 'wat', label: 'WAT', code: 'WAT', test: true },
     { id: 'srt', label: 'SRT', code: 'SRT', test: true },
@@ -308,6 +309,7 @@
     if (S.view === 'timeline') return renderTimeline();
     if (S.view === 'topics') return renderTopics();
     if (S.view === 'paper') return renderPaper();
+    if (S.view === 'tutorial') return renderTutorial();
     if (S.view === 'add') return renderAdd();
     if (S.view === 'bin') return renderBin();
     if (S.view === 'diagnostics') return renderDiagnostics();
@@ -429,6 +431,17 @@
           '<li><span>TAT pictures</span><b>' + (S.tatImages || []).length + ' yours</b></li>' +
           '<li><span>WAT sets</span><b>' + customSets('wat').length + ' yours</b></li>' +
           '<li><span>Wrong picture?</span><b>move to bin</b></li>'
+      };
+    }
+    if (t.id === 'tutorial') {
+      return {
+        code: t.code,
+        chip: 'start here',
+        blurb: 'A Hindi–English video of every feature, a short guide to each section, and how to add free AI keys for better answers.',
+        rows:
+          '<li><span>Video</span><b>Hindi + English</b></li>' +
+          '<li><span>Guide</span><b>every section</b></li>' +
+          '<li><span>AI keys</span><b>step by step</b></li>'
       };
     }
     if (t.id === 'paper') {
@@ -2696,6 +2709,65 @@
       b.addEventListener('click', function () { P.tab = b.getAttribute('data-ptab'); renderPaper(); });
     });
     wirePaperStories(list);
+  }
+
+  /* --------------------------------------------- How to use this app */
+  // The tutorial video lives on the repo's topics-db branch (like the study
+  // PDFs), so it can be replaced without a new app version and does not make
+  // the app bigger. It streams only when the person presses play.
+  var TUTORIAL_URL = 'https://raw.githubusercontent.com/yoggi1234/SSB-Prep-Trainer/topics-db/video/tutorial.mp4';
+  var TUTORIAL_PAGE = 'https://github.com/yoggi1234/SSB-Prep-Trainer/blob/topics-db/video/tutorial.mp4';
+  // [seconds, title] for the chapter buttons, filled in once the video is made.
+  var TUTORIAL_CHAPTERS = [];
+
+  function renderTutorial() {
+    var online = !!(S.config && S.config.onlineEnabled);
+    var video = online
+      ? '<div class="tut-video"><video id="tutVideo" controls playsinline preload="none" src="' + TUTORIAL_URL + '"></video></div>' +
+        '<div class="small muted" id="tutVideoNote">Press play to stream the video (it needs the internet; it is not saved on this ' + (onPhone() ? 'phone' : 'computer') + ').</div>'
+      : '<div class="empty">Turn on <b>Online lookup</b> in Settings to watch the video. The written guide below works offline.</div>';
+    var chapters = TUTORIAL_CHAPTERS.length
+      ? '<div class="row tut-chapters">' + TUTORIAL_CHAPTERS.map(function (c) {
+          var m = Math.floor(c[0] / 60);
+          var s = ('0' + (c[0] % 60)).slice(-2);
+          return '<button class="btn ghost sm" data-seek="' + c[0] + '">' + m + ':' + s + ' ' + esc(c[1]) + '</button>';
+        }).join('') + '</div>'
+      : '';
+    var guide = TILES.filter(function (t) { return t.id !== 'tutorial'; }).map(function (t) {
+      var m = dashMeta(t);
+      return '<div class="card tut-row"><div><b>' + esc(t.label) + '</b><div class="small">' + esc(m.blurb || '') + '</div></div>' +
+        '<button class="btn sm" data-goto="' + t.id + '">Open</button></div>';
+    }).join('');
+    body(
+      '<h1>How to use this app</h1>' +
+      '<p class="lead">Watch the video once (Hindi + English). It shows every section step by step and how to add free AI keys. ' +
+      'The same app runs on the phone and on the PC.</p>' +
+      video + chapters +
+      '<div class="row" style="margin:8px 0 18px"><button class="btn ghost sm" data-external="' + TUTORIAL_PAGE + '">Open the video on GitHub</button></div>' +
+      '<h2>Better answers with free AI keys</h2>' +
+      '<div class="card"><ol class="tut-steps">' +
+      '<li>Open <b>Settings</b> and turn on <b>Online lookup</b>.</li>' +
+      '<li>In <b>AI writing</b>, press <b>Log in / Sign up</b> next to <b>Google Gemini</b> (free). Sign in with Google and press <b>Create API key</b>.</li>' +
+      '<li>Copy the key and paste it in the box next to Google Gemini. It is kept only on this ' + (onPhone() ? 'phone' : 'computer') + '.</li>' +
+      '<li>Optional: add free keys for <b>Groq</b>, <b>OpenRouter</b> or <b>Ollama cloud</b> the same way. The app tries them in order, so if one is busy the next one answers.</li>' +
+      (onPhone() ? '' : '<li>On a PC you can also run the free <b>Ollama</b> app; the trainer uses it first when it is open.</li>') +
+      '<li>AI is used for lecturettes, PPDT model stories and newspaper notes. Everything else works without it.</li>' +
+      '</ol><button class="btn primary sm" data-goto="settings">Open Settings</button></div>' +
+      '<h2>Every section in one line</h2>' + guide
+    );
+    var v = document.getElementById('tutVideo');
+    if (v) {
+      v.addEventListener('error', function () {
+        var n = document.getElementById('tutVideoNote');
+        if (n) n.textContent = 'The video could not be loaded. Check the internet, or open it on GitHub with the button below.';
+      });
+      Array.prototype.forEach.call(appEl.querySelectorAll('[data-seek]'), function (b) {
+        b.addEventListener('click', function () {
+          v.currentTime = +b.getAttribute('data-seek');
+          v.play().catch(function () {});
+        });
+      });
+    }
   }
 
   function wireExternal(root) {
@@ -6601,6 +6673,24 @@
       var providers = document.querySelectorAll('[data-aikey]').length;
       goto('home');
       return { stateBox: stateBox, timeline: timeline, providers: providers };
+    },
+    // How to use this app: first on the dashboard, the video (not loaded until
+    // play), the AI-key steps and one guide row per section.
+    tutorialInfo: function () {
+      goto('home');
+      var firstRow = appEl.querySelector('.dash-row');
+      goto('tutorial');
+      var v = appEl.querySelector('#tutVideo');
+      return {
+        first: firstRow ? firstRow.textContent.indexOf('How to use this app') >= 0 : false,
+        title: (appEl.querySelector('h1') || {}).textContent,
+        video: !!v,
+        preloadNone: !!v && v.getAttribute('preload') === 'none',
+        src: v ? v.getAttribute('src') : '',
+        steps: appEl.querySelectorAll('.tut-steps li').length,
+        guideRows: appEl.querySelectorAll('.tut-row').length,
+        blurbsFilled: Array.prototype.every.call(appEl.querySelectorAll('.tut-row .small'), function (d) { return d.textContent.trim().length > 20; })
+      };
     },
     // Newspaper: the bundled test paper is analysed, saved, shown, its notes
     // and Line opened, then deleted again.

@@ -49,7 +49,7 @@ function main() {
       // Only the few hosts the online extras use are allowed. Everything else
       // stays locked out, exactly like the desktop CSP's connect-src 'none'.
       // img-src needs blob: because the pictures you add are shown as object URLs.
-      'content="default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: blob: https://upload.wikimedia.org https://www.artic.edu; font-src \'self\' data:; connect-src \'self\' https://api.datamuse.com https://commons.wikimedia.org https://upload.wikimedia.org https://en.wikipedia.org https://raw.githubusercontent.com; object-src \'none\'; base-uri \'none\'; form-action \'none\'"'
+      'content="default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: blob: https://upload.wikimedia.org https://www.artic.edu; media-src \'self\' https://raw.githubusercontent.com; font-src \'self\' data:; connect-src \'self\' https://api.datamuse.com https://commons.wikimedia.org https://upload.wikimedia.org https://en.wikipedia.org https://raw.githubusercontent.com; object-src \'none\'; base-uri \'none\'; form-action \'none\'"'
     )
     .replace(
       '<script src="app.js"></script>',

@@ -3135,3 +3135,9 @@ body::before { opacity: 0.09; }
 .mk-key.mk-k { background: #ffd200; }
 .mk-key.mk-f { background: #3ccb80; }
 .paper-ai-text { line-height: 1.5; margin-bottom: 6px; }
+/* How to use this app: the tutorial video, chapters and the feature guide. */
+.tut-video video { display: block; width: 100%; max-height: 70vh; border-radius: 10px; background: #000; }
+.tut-chapters { flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tut-steps { margin: 0 0 12px; padding-left: 20px; }
+.tut-steps li { margin: 6px 0; line-height: 1.5; }
+.tut-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin: 6px 0; }

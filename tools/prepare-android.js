@@ -42,12 +42,16 @@ function main() {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'mobile', 'android.json'), 'utf8'));
 
-  // 1. version
+  // 1. version, and the app id. From 1.0.24 the app is published under
+  // mobile/android.json's applicationId: the key that signed 1.0.23 (id
+  // in.ssbprep.trainer) was lost, and Android only installs an update signed
+  // with the same key, so the new app installs beside the old one instead.
   const gradlePath = path.join(APP, 'build.gradle');
   let gradle = fs.readFileSync(gradlePath, 'utf8');
   gradle = gradle
     .replace(/versionCode\s+\d+/, `versionCode ${cfg.versionCode}`)
     .replace(/versionName\s+"[^"]*"/, `versionName "${pkg.version}"`);
+  if (cfg.applicationId) gradle = gradle.replace(/applicationId\s+"[^"]*"/, `applicationId "${cfg.applicationId}"`);
   fs.writeFileSync(gradlePath, gradle);
 
   // 2. extra permissions
@@ -68,14 +72,21 @@ function main() {
 
   // 4. --dev: a side-by-side test install ("SSB Prep (test)", id ...trainer.dev),
   // so a build signed with a different key never forces the real app (and the
-  // attempts and sets saved in it) to be uninstalled.
+  // attempts and sets saved in it) to be uninstalled. Without --dev the real
+  // name is put back, in case the last build here was a test one.
+  const stringsPath = path.join(RES_DST, 'values', 'strings.xml');
+  if (!process.argv.includes('--dev')) {
+    const strings = fs.readFileSync(stringsPath, 'utf8')
+      .replace(/(<string name="app_name">)[^<]*(<\/string>)/, '$1SSB Prep Trainer$2')
+      .replace(/(<string name="title_activity_main">)[^<]*(<\/string>)/, '$1SSB Prep Trainer$2');
+    fs.writeFileSync(stringsPath, strings);
+  }
   if (process.argv.includes('--dev')) {
     gradle = fs.readFileSync(gradlePath, 'utf8');
     if (!/applicationIdSuffix/.test(gradle)) {
       gradle = gradle.replace(/buildTypes\s*\{/, 'buildTypes {\n        debug {\n            applicationIdSuffix ".dev"\n        }');
       fs.writeFileSync(gradlePath, gradle);
     }
-    const stringsPath = path.join(RES_DST, 'values', 'strings.xml');
     const strings = fs.readFileSync(stringsPath, 'utf8')
       .replace(/(<string name="app_name">)[^<]*(<\/string>)/, '$1SSB Prep (test)$2')
       .replace(/(<string name="title_activity_main">)[^<]*(<\/string>)/, '$1SSB Prep (test)$2');
@@ -83,7 +94,7 @@ function main() {
     console.log('dev build: installs beside the real app as "SSB Prep (test)"');
   }
 
-  console.log(`android prepared: version ${pkg.version} (code ${cfg.versionCode}), ` +
+  console.log(`android prepared: ${cfg.applicationId || 'id unchanged'}, version ${pkg.version} (code ${cfg.versionCode}), ` +
     `permissions ${(cfg.permissions || []).join(', ') || 'none'}, ${files} resource files`);
 }
 
