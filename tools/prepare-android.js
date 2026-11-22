@@ -66,6 +66,23 @@ function main() {
   // 3. icons, splash screens, icon background colour
   const files = copyDir(RES_SRC, RES_DST);
 
+  // 4. --dev: a side-by-side test install ("SSB Prep (test)", id ...trainer.dev),
+  // so a build signed with a different key never forces the real app (and the
+  // attempts and sets saved in it) to be uninstalled.
+  if (process.argv.includes('--dev')) {
+    gradle = fs.readFileSync(gradlePath, 'utf8');
+    if (!/applicationIdSuffix/.test(gradle)) {
+      gradle = gradle.replace(/buildTypes\s*\{/, 'buildTypes {\n        debug {\n            applicationIdSuffix ".dev"\n        }');
+      fs.writeFileSync(gradlePath, gradle);
+    }
+    const stringsPath = path.join(RES_DST, 'values', 'strings.xml');
+    const strings = fs.readFileSync(stringsPath, 'utf8')
+      .replace(/(<string name="app_name">)[^<]*(<\/string>)/, '$1SSB Prep (test)$2')
+      .replace(/(<string name="title_activity_main">)[^<]*(<\/string>)/, '$1SSB Prep (test)$2');
+    fs.writeFileSync(stringsPath, strings);
+    console.log('dev build: installs beside the real app as "SSB Prep (test)"');
+  }
+
   console.log(`android prepared: version ${pkg.version} (code ${cfg.versionCode}), ` +
     `permissions ${(cfg.permissions || []).join(', ') || 'none'}, ${files} resource files`);
 }

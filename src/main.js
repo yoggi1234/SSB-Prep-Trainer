@@ -3326,14 +3326,14 @@ async function runSmoke() {
       got: dash
     });
     results.push({
-      step: 'the highlighted tile carries a running light animation',
-      result: !!dash && dash.ringAnimation === 'ring-spin',
-      got: dash && dash.ringAnimation
+      step: 'the dashboard is a plain list of rows: no wheel, no spinning light, nothing moves by itself',
+      result: !!dash && dash.rows === dash.tiles && !dash.ring && !dash.wheel && !dash.moved && dash.auto === false && dash.columns <= 2,
+      got: dash
     });
     const keyRight = await js('window.__smoke.dashKey("ArrowRight")', 'right arrow on the dashboard');
     const keyDown = await js('window.__smoke.dashKey("ArrowDown")', 'down arrow on the dashboard');
     results.push({
-      step: 'arrow keys move the highlight between tiles and stop the auto-rotation',
+      step: 'arrow keys move the highlight between dashboard rows',
       result:
         !!keyRight &&
         keyRight.selected !== (dash && dash.selected) &&

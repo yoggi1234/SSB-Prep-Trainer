@@ -473,18 +473,17 @@
     };
   }
 
+  // One plain, full-width row per section: the dashboard is a list you scroll
+  // and tap, on the phone and on the PC alike.
   function dashTile(t, i) {
     var meta = dashMeta(t);
     return (
-      '<button class="card dash-tile" data-tile="' + t.id + '" data-index="' + i + '" style="--i:' + i + '">' +
-      '<span class="dash-ring" aria-hidden="true"></span>' +
-      '<span class="dash-in">' +
-      '<span class="tile-head"><span class="tile-code">' + esc(meta.code) + '</span>' +
-      '<span class="chip">' + esc(meta.chip) + '</span></span>' +
-      '<span class="dash-blurb">' + esc(meta.blurb) + '</span>' +
-      '<ul class="tile-meta">' + meta.rows + '</ul>' +
-      '</span>' +
-      '<span class="dash-open">Open →</span>' +
+      '<button class="dash-row" data-tile="' + t.id + '" data-index="' + i + '">' +
+      '<span class="dash-code">' + esc(meta.code) + '</span>' +
+      '<span class="dash-text"><span class="dash-title">' + esc(t.label) + '</span>' +
+      '<span class="dash-sub">' + esc(meta.blurb) + '</span></span>' +
+      '<span class="chip dash-chip">' + esc(meta.chip) + '</span>' +
+      '<span class="dash-go" aria-hidden="true">›</span>' +
       '</button>'
     );
   }
@@ -542,126 +541,30 @@
     goto(id);
   }
 
-  // The highlight walks the tiles until the person takes over: hovering,
-  // focusing or pressing a key stops it. Movement is the point, not a lottery.
-  // Where each tile sits on the plate, `turn` being the selection plus any finger drag.
-  function wheelPlace(turn) {
-    var tiles = dashTiles();
-    var n = tiles.length;
-    var radius = Math.min(window.innerWidth * 0.62, 300);
-    tiles.forEach(function (b, i) {
-      var a = ((i - turn) / n) * 2 * Math.PI;
-      var depth = (Math.cos(a) + 1) / 2;
-      b.style.transform = 'translate3d(' + (Math.sin(a) * radius).toFixed(1) + 'px, 0, ' + ((Math.cos(a) - 1) * radius).toFixed(1) + 'px) rotateY(' + (a * 57.3 * 0.55).toFixed(1) + 'deg)';
-      b.style.opacity = (0.15 + depth * 0.85).toFixed(2);
-      b.style.zIndex = Math.round(depth * 100);
-      b.style.pointerEvents = depth > 0.45 ? 'auto' : 'none';
-    });
-  }
-
-  function wireWheel() {
-    var dash = document.getElementById('dash');
-    var n = dashTiles().length;
-    var startX = 0;
-    var moved = 0;
-    dash.classList.add('dash-wheel');
-    wheelPlace(S.dashSel || 0);
-    var perTile = window.innerWidth * 0.75; // a full swipe moves one tile, a long one two
-    var touched = null;
-    var tappedAt = 0;
-    var act = function (b) {
-      var i = dashTiles().indexOf(b);
-      if (i === S.dashSel) {
-        openTile(b.getAttribute('data-tile'));
-      } else {
-        selectTile(i);
-        wheelPlace(i);
-      }
-    };
-    dash.addEventListener('touchstart', function (e) {
-      startX = e.touches[0].clientX;
-      moved = 0;
-      touched = e.target.closest('.dash-tile');
-      dash.classList.add('dragging');
-    }, { passive: true });
-    dash.addEventListener('touchmove', function (e) {
-      moved = e.touches[0].clientX - startX;
-      wheelPlace((S.dashSel || 0) - moved / perTile);
-    }, { passive: true });
-    // The tap is decided here, not left to the click: right after a swipe the
-    // WebView can swallow the click, and the tile then seems not to respond.
-    dash.addEventListener('touchend', function (e) {
-      dash.classList.remove('dragging');
-      if (Math.abs(moved) < 24) {
-        wheelPlace(S.dashSel || 0);
-        if (touched) {
-          e.preventDefault();
-          tappedAt = Date.now();
-          act(touched);
-        }
-        return;
-      }
-      var steps = (moved < 0 ? 1 : -1) * Math.max(1, Math.round(Math.abs(moved) / perTile));
-      S.dashSel = (((S.dashSel || 0) + steps) % n + n) % n;
-      selectTile(S.dashSel);
-      wheelPlace(S.dashSel);
-    }, { passive: false });
-    dash.addEventListener('touchcancel', function () {
-      dash.classList.remove('dragging');
-      wheelPlace(S.dashSel || 0);
-    }, { passive: true });
-    // A screen reader or a keyboard still arrives as a click.
-    dash.addEventListener('click', function (e) {
-      var b = e.target.closest('.dash-tile');
-      if (!b) return;
-      e.stopPropagation();
-      e.preventDefault();
-      if (Date.now() - tappedAt > 700) act(b);
-    }, true);
-  }
-
   function wireUpdate() {
     var later = document.getElementById('updateLater');
     if (later) later.addEventListener('click', function () { S.updateHidden = S.update.latest; render(); });
     if (document.querySelector('.update-note')) wireExternal(document.querySelector('.update-note'));
   }
 
+  // A plain list: one tap or click opens a section, the page scrolls normally,
+  // and on the PC the arrow keys move between rows (Enter opens). Nothing moves
+  // on its own.
   function wireDash() {
     wireUpdate();
     var tiles = dashTiles();
     if (!tiles.length) return;
     stopDashTimer();
+    S.dashAuto = false;
     S.dashSel = Math.min(S.dashSel || 0, tiles.length - 1);
     selectTile(S.dashSel);
-    if (onPhone()) {
-      wireWheel();
-      return;
-    }
-    // The highlight only walks on its own when movement is welcome; a person
-    // who asked for less motion keeps the first tile until they move it.
-    S.dashAuto = !motionReduced();
     tiles.forEach(function (b, i) {
-      b.addEventListener('mouseenter', function () {
-        S.dashAuto = false;
-        selectTile(i);
-      });
-      b.addEventListener('focus', function () {
-        S.dashAuto = false;
-        selectTile(i);
-      });
-      b.addEventListener('click', function () {
-        openTile(b.getAttribute('data-tile'));
-      });
+      b.addEventListener('focus', function () { selectTile(i); });
+      b.addEventListener('click', function () { openTile(b.getAttribute('data-tile')); });
     });
     if (!S.dashKeysBound) {
       document.addEventListener('keydown', onDashKey);
       S.dashKeysBound = true;
-    }
-    if (!motionReduced()) {
-      S.dashTimer = setInterval(function () {
-        if (!S.dashAuto || S.view !== 'home') return;
-        selectTile(S.dashSel + 1);
-      }, 4500);
     }
   }
 
@@ -685,15 +588,12 @@
     body(
       '<div class="dashhead">' +
       '<div>' +
-      '<h1>SSB psychology test trainer</h1>' +
-      '<p class="lead">Everything for the board on one dashboard. ' +
+      '<h1>SSB Prep Trainer</h1>' +
+      '<p class="lead">' + (onPhone() ? 'Tap' : 'Click') + ' a section to open it. ' +
       (S.config.onlineEnabled
-        ? 'Online extras are on and fall back to what is already saved on this ' + (onPhone() ? 'phone' : 'computer') +
-          ', so a lost connection never stops a session. '
-        : 'This copy runs offline: every test uses the material already saved here, so nothing waits on a connection. ') +
-      (onPhone()
-        ? 'Swipe the plate left or right, then tap the front tile.</p>'
-        : 'Move with <b>← ↑ ↓ →</b> and open with <b>Enter</b>: the highlight walks the tiles until you take over.</p>') +
+        ? 'Everything works offline; online extras refresh when there is a connection.'
+        : 'Online extras are off, so everything runs from what is saved here.') +
+      (onPhone() ? '' : ' Keys: <b>↑ ↓</b> to move, <b>Enter</b> to open.') + '</p>' +
       '</div>' +
       '<div class="dashbadge"><b>' + TILES.length + '</b><span>sections</span></div>' +
       '</div>' +
@@ -6456,7 +6356,11 @@
         topLinks: document.querySelectorAll('.topnav [data-goto]').length,
         bg: root.getPropertyValue('--bg').trim(),
         auto: !!S.dashAuto,
-        ringAnimation: tiles[0] ? getComputedStyle(tiles[0].querySelector('.dash-ring')).animationName : ''
+        rows: document.querySelectorAll('.dash-row').length,
+        ring: !!document.querySelector('.dash-ring'),
+        wheel: !!document.querySelector('.dash-wheel'),
+        moved: tiles.some(function (t) { var tr = getComputedStyle(t).transform; return tr && tr !== 'none'; }),
+        columns: dashColumns()
       };
     },
     dashKey: function (key) {

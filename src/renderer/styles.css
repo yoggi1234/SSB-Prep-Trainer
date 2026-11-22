@@ -3015,3 +3015,95 @@ body::before { opacity: 0.09; }
   min-width: 0;
   box-sizing: border-box;
 }
+
+/* ------------------------------------------------------------------
+   Dashboard as a plain, scrollable list (replaces the tile grid and the
+   phone's swipe wheel). One row per section; tap or click to open.
+   ------------------------------------------------------------------ */
+.dash {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+  perspective: none;
+  height: auto;
+}
+@media (min-width: 900px) {
+  .dash { grid-template-columns: 1fr 1fr; }
+}
+.dash-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: linear-gradient(155deg, var(--glass-1), var(--glass-2));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 26px -22px var(--shadow-2);
+  cursor: pointer;
+  transform: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.dash-row:hover,
+.dash-row.sel,
+.dash-row:focus-visible {
+  border-color: var(--line-hot);
+  outline: none;
+}
+.dash-row:active {
+  background: var(--tint);
+}
+.dash-code {
+  flex: 0 0 auto;
+  min-width: 56px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 700;
+  font-size: calc(12px * var(--scale));
+  letter-spacing: 0.04em;
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.dash-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-title {
+  font-weight: 700;
+  font-size: calc(16px * var(--scale));
+  color: var(--heading);
+}
+.dash-sub {
+  font-size: calc(13px * var(--scale));
+  color: var(--muted);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.dash-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.dash-go {
+  flex: 0 0 auto;
+  font-size: calc(22px * var(--scale));
+  color: var(--muted);
+  line-height: 1;
+}
+@media (max-width: 520px) {
+  .dash-chip { display: none; }
+  .dash-row { gap: 12px; padding: 12px; }
+  .dashbadge { display: none; }
+}
