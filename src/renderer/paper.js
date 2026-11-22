@@ -298,7 +298,10 @@
       if (/^([A-Za-z]\s)+[A-Za-z]$/.test(t)) t = t.replace(/\s/g, ''); // "W E L L N E S S"
       l.labelText = t;
       var nw = (t.match(/\S+/g) || []).length;
-      return /^times\b/i.test(t) || (nw <= 4 && t === t.toUpperCase() && /[A-Z]{3}/.test(t));
+      // "TIMES NATION", "OPINION", or a label in normal case as The Hindu
+      // prints it ("World", "Sport", "Business").
+      return /^times\b/i.test(t) || (nw <= 4 && t === t.toUpperCase() && /[A-Z]{3}/.test(t)) ||
+        /^(news|nation|national|city|states?|business|world|international|sports?|science|opinion|editorial|op-ed|ideas|comment|views|lead|profiles|regional)$/i.test(t);
     });
     var kind = '';
     var hit = null;
