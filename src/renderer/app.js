@@ -2725,8 +2725,12 @@
   // not make the app bigger; it streams full screen only when asked.
   var TUTORIAL_URL = 'https://raw.githubusercontent.com/yoggi1234/SSB-Prep-Trainer/topics-db/video/tutorial.mp4';
   var TUTORIAL_PAGE = 'https://github.com/yoggi1234/SSB-Prep-Trainer/blob/topics-db/video/tutorial.mp4';
-  // [seconds, title] for the chapter buttons on the video, when known.
-  var TUTORIAL_CHAPTERS = [];
+  // [seconds, title] for the chapter buttons on the video (13 min 10 s).
+  var TUTORIAL_CHAPTERS = [
+    [0, 'Intro'], [33, 'Dashboard'], [84, 'TAT · WAT · SRT'], [221, 'PPDT'], [305, 'Lecturette'],
+    [358, 'Important Topics'], [397, 'News Digest · Timeline'], [457, 'Newspaper'], [559, 'Add material'],
+    [603, 'Bin'], [623, 'Settings · AI keys'], [760, 'Outro']
+  ];
 
   // Each step: the screen to open, the part to light up (a selector; '' for a
   // card in the middle) and what the card says, in Roman Hindi-English. The
