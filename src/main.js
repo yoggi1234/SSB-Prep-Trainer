@@ -3711,7 +3711,7 @@ async function runSmoke() {
     await takeShot('42-how-to-use');
     results.push({
       step: '"How to use this app" is the first row and holds the video, the AI-key steps and a guide to every section',
-      result: !!tut && tut.first && tut.title === 'How to use this app' && tut.video && tut.preloadNone &&
+      result: !!tut && tut.first && tut.title === 'How to use this app' && tut.video && tut.preloadNone && tut.poster === 'tutorial-poster.jpg' &&
         /topics-db\/video\/tutorial\.mp4$/.test(tut.src) && tut.steps >= 5 && tut.guideRows === 12 && tut.blurbsFilled,
       got: tut
     });

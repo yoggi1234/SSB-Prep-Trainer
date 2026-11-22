@@ -245,6 +245,19 @@
     return out;
   }
 
+  // Lines that are not part of what the story says: the reporter's byline
+  // ("AmitAnand.Choudhary", "@timesofindia.com", "TNN", "Special Correspondent")
+  // and pointers to another page ("NMC backs, P 16", "Continued on P 12").
+  function notStoryText(t) {
+    if (t.length > 45) return false;
+    return /@\w+(\.\w+)+/.test(t) ||
+      /^[A-Z][A-Za-z]+(\.[A-Z][A-Za-z]+)+$/.test(t) ||
+      /^(tnn|pti|ani|ians|reuters|afp|ap|agencies|times news network|express news service)$/i.test(t) ||
+      /^(by\s+)?(our|staff|special|a)\s+(correspondent|reporter|bureau)$/i.test(t) ||
+      /^continued (on|from) (page|p)\.?\s?\d+/i.test(t) ||
+      (t.length <= 30 && /^[^.!?]{0,26}\|?\s*P\s?\d{1,2}$/.test(t));
+  }
+
   // The type size of a story's text: the first full lines of the leftmost
   // column under its headline (a story starts there; a boxed panel beside it,
   // or a short byline, does not decide it).
@@ -411,7 +424,8 @@
         var bottom = h.yLast - h.h * 0.3;
         cols.forEach(function (c) {
           c.lines.sort(function (a, b) { return b.y - a.y; }).forEach(function (l) {
-            var t = l.text.replace(/\s+/g, ' ').trim();
+            var t = l.text.replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (!t || notStoryText(t)) return;
             var s;
             if (/-$/.test(text) && /^[a-z]/.test(t)) {
               text = text.slice(0, -1);

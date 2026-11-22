@@ -2723,7 +2723,7 @@
   function renderTutorial() {
     var online = !!(S.config && S.config.onlineEnabled);
     var video = online
-      ? '<div class="tut-video"><video id="tutVideo" controls playsinline preload="none" src="' + TUTORIAL_URL + '"></video></div>' +
+      ? '<div class="tut-video"><video id="tutVideo" controls playsinline preload="none" poster="tutorial-poster.jpg" src="' + TUTORIAL_URL + '"></video></div>' +
         '<div class="small muted" id="tutVideoNote">Press play to stream the video (it needs the internet; it is not saved on this ' + (onPhone() ? 'phone' : 'computer') + ').</div>'
       : '<div class="empty">Turn on <b>Online lookup</b> in Settings to watch the video. The written guide below works offline.</div>';
     var chapters = TUTORIAL_CHAPTERS.length
@@ -6686,6 +6686,7 @@
         title: (appEl.querySelector('h1') || {}).textContent,
         video: !!v,
         preloadNone: !!v && v.getAttribute('preload') === 'none',
+        poster: v ? v.getAttribute('poster') : '',
         src: v ? v.getAttribute('src') : '',
         steps: appEl.querySelectorAll('.tut-steps li').length,
         guideRows: appEl.querySelectorAll('.tut-row').length,

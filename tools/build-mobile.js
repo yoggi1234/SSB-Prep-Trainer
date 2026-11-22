@@ -59,6 +59,8 @@ function main() {
   copy(path.join(SRC, 'styles.css'), path.join(OUT, 'styles.css'));
   copy(path.join(SRC, 'app.js'), path.join(OUT, 'app.js'));
   if (fs.existsSync(path.join(SRC, 'logo.png'))) copy(path.join(SRC, 'logo.png'), path.join(OUT, 'logo.png'));
+  // The cover shown on the tutorial video before it plays.
+  copy(path.join(SRC, 'tutorial-poster.jpg'), path.join(OUT, 'tutorial-poster.jpg'));
   for (const f of BRIDGE) copy(path.join(ROOT, 'mobile', f), path.join(OUT, f));
 
   // The newspaper analyser engine and Mozilla pdf.js (Apache-2.0), shared with
