@@ -1,5 +1,5 @@
 {
   "applicationId": "in.ssbprep.trainer2",
-  "versionCode": 25,
+  "versionCode": 26,
   "permissions": ["android.permission.VIBRATE"]
 }

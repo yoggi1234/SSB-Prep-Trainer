@@ -40,7 +40,8 @@ function main() {
     process.exit(1);
   }
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'mobile', 'android.json'), 'utf8'));
+  // A byte-order mark (Windows editors add one) is not JSON; drop it.
+  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'mobile', 'android.json'), 'utf8').replace(/^﻿/, ''));
 
   // 1. version, and the app id. From 1.0.24 the app is published under
   // mobile/android.json's applicationId: the key that signed 1.0.23 (id

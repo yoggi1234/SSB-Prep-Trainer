@@ -83,8 +83,10 @@
   ];
 
   // Adverts and notices: tenders, jobs, missing-person appeals, shop offers.
-  var AD_HEAD = /^(appeal for identification|search for missing|missing|public notice|notice|e-?tender|tenders?|corrigendum|change of name|recruitment|admissions?|walk-?in|obituary|in memoriam|wanted|vacanc(y|ies)|for sale|e-?auction|auction|classifieds?)\b|\b(required|wanted|vacanc(y|ies)|tender)$|https?:|www\.|\.(com|in|org)\b|tender id/i;
-  var AD_CUES = [/\btenders?\b/i, /\be-?tender/i, /\bbid(s|der|ders|ding)?\b/i, /\bcorrigendum\b/i, /\badvt\b/i, /\bapply (online|now|before)\b/i, /\blast date\b/i, /\bwalk-?in\b/i, /\bvacanc(y|ies)\b/i, /\brecruitment\b/i, /\beligib(le|ility)\b/i, /\badmissions? open\b/i, /\bcall (now|us|on)\b/i, /\bwhats ?app\b/i, /\btoll[- ]free\b/i, /\bhelpline\b/i, /\bterms (and|&) conditions\b/i, /\bpvt\.? ltd\b/i, /\bshowroom\b/i, /\bemi\b/i, /\bdiscount\b/i, /\bwww\./i, /https?:\/\//i, /[\w.-]+@[\w-]+\.[a-z]{2,}/i, /\b(ph|mob|mobile|tel|contact)\s*(no\.?)?\s*[:.]/i, /\b[6-9]\d{9}\b/, /\b0\d{2,4}[\s-]\d{6,8}\b/, /\bnotice inviting\b/i, /\be-?auction\b/i, /\bsd\/-/i, /\bnit no\b/i];
+  var AD_HEAD = /^(appeal for identification|search for missing|missing|public notice|notice|e-?tender|tenders?|corrigendum|change of name|recruitment|admissions?|walk-?in|obituary|in memoriam|wanted|vacanc(y|ies)|for sale|e-?auction|auction|classifieds?|benefits? (up ?to|worth|of)|offers?\b|cashback|discount|mega sale|festive offer)\b|\b(required|wanted|vacanc(y|ies)|tender)$|https?:|www\.|\.(com|in|org)\b|tender id|(up ?to|worth|save|off)\s*(₹|rs\.?)\s*[\d,]/i;
+  var AD_CUES = [/\btenders?\b/i, /\be-?tender/i, /\bbid(s|der|ders|ding)?\b/i, /\bcorrigendum\b/i, /\badvt\b/i, /\bapply (online|now|before)\b/i, /\blast date\b/i, /\bwalk-?in\b/i, /\bvacanc(y|ies)\b/i, /\brecruitment\b/i, /\beligib(le|ility)\b/i, /\badmissions? open\b/i, /\bcall (now|us|on)\b/i, /\bwhats ?app\b/i, /\btoll[- ]free\b/i, /\bhelpline\b/i, /\bterms (and|&) conditions\b/i, /\bpvt\.? ltd\b/i, /\bshowroom\b/i, /\bemi\b/i, /\bdiscount\b/i, /\bwww\./i, /https?:\/\//i, /[\w.-]+@[\w-]+\.[a-z]{2,}/i, /\b(ph|mob|mobile|tel|contact)\s*(no\.?)?\s*[:.]/i, /\b[6-9]\d{9}\b/, /\b0\d{2,4}[\s-]\d{6,8}\b/, /\bnotice inviting\b/i, /\be-?auction\b/i, /\bsd\/-/i, /\bnit no\b/i,
+    /\bwarranty\b/i, /\broadside assistance\b/i, /\bex-?showroom\b/i, /\bon-?road price\b/i, /\btest drive\b/i, /\bbook (now|today|your)\b/i,
+    /\bexchange bonus\b/i, /\bcashback\b/i, /\bconditions apply\b/i, /\boffer (valid|ends|period)\b/i, /\bthird party\b/i, /\b3rd party\b/i];
 
   var COUNTRIES = ['India', 'China', 'Pakistan', 'United States', 'US', 'USA', 'Russia', 'Ukraine', 'Israel', 'Iran', 'Bangladesh', 'Nepal', 'Bhutan', 'Sri Lanka', 'Maldives', 'Myanmar', 'Afghanistan', 'Japan', 'Australia', 'France', 'Germany', 'UK', 'Britain', 'Saudi Arabia', 'UAE', 'Qatar', 'Turkey', 'Taiwan', 'North Korea', 'South Korea', 'Vietnam', 'Philippines', 'Indonesia', 'Canada', 'Egypt', 'Syria', 'Iraq', 'Yemen', 'Sudan', 'European Union', 'EU', 'Gaza', 'Palestine', 'Mauritius', 'Seychelles'];
   var COUNTRY_ALIAS = { US: 'United States', USA: 'United States', Britain: 'UK', EU: 'European Union', Palestine: 'Gaza / Palestine', Gaza: 'Gaza / Palestine' };
@@ -480,10 +482,16 @@
 
   // Text from a font the PDF does not map to letters (often Hindi type) comes
   // out as junk like "dk;kZy; uxj": too few real words to be read.
+  // Old Hindi fonts (Kruti Dev and similar) come out as Latin letters mixed
+  // with ; [ ] { } inside words: "j[ks] u;s fgUnqLrku".
+  var LEGACY_WORD = /[A-Za-z][;\[\]{}|~][A-Za-z]|^[A-Za-z]+[;\[\]{}]$/;
+
   function isJunk(a) {
     var t = a.headline + ' ' + a.text.slice(0, 1500);
     if ((t.match(/[ऀ-ॿ]/g) || []).length > t.length * 0.05) return true;
     var toks = t.match(/\S+/g) || [];
+    var legacy = toks.filter(function (w) { return LEGACY_WORD.test(w); }).length;
+    if (legacy >= 2 && legacy >= toks.length * 0.15) return true;
     if (toks.length < 8) return false;
     var good = toks.filter(function (w) {
       return /^[("'‘“]*[A-Za-z][A-Za-z'’\-]*[.,:;!?'’"”)]*$/.test(w) || /^[(₹$`]*[\d.,:%\-\/]+[a-zA-Z]{0,3}[.,:;)]*$/.test(w);
@@ -715,11 +723,32 @@
       var mast = {};
       seg.pages.forEach(function (p) { if (p.masthead) mast[p.n] = 1; });
       var skipped = 0;
+      var junk = 0;
       var arts = seg.articles.filter(function (a) {
-        if (isAd(a) || isJunk(a)) { skipped++; return false; }
+        if (isJunk(a)) { junk++; return false; }
+        if (isAd(a)) { skipped++; return false; }
         a.masthead = !!mast[a.page];
         return true;
       });
+      // A Hindi paper (or one whose font does not map to letters) leaves almost
+      // nothing readable: say so instead of showing a few scraps.
+      var deva = 0;
+      var letters = 0;
+      read.pages.forEach(function (p) {
+        p.items.forEach(function (it) {
+          deva += (it.str.match(/[ऀ-ॿ]/g) || []).length;
+          letters += (it.str.match(/[A-Za-zऀ-ॿ]/g) || []).length;
+        });
+      });
+      var readable = arts.filter(function (a) { return !a.brief && a.words >= 60; }).length;
+      if ((letters && deva / letters > 0.3) || (junk > readable * 2 && readable < 10)) {
+        return {
+          ok: false,
+          error: 'language',
+          detail: 'This looks like a Hindi newspaper, or one printed in a font whose letters cannot be read as text. ' +
+            'The newspaper reader works with English e-papers, such as The Hindu, Indian Express or The Times of India.'
+        };
+      }
       var front = frontPages(arts);
       var df = {};
       arts.forEach(function (a) {
