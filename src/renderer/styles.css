@@ -3107,3 +3107,31 @@ body::before { opacity: 0.09; }
   .dash-row { gap: 12px; padding: 12px; }
   .dashbadge { display: none; }
 }
+
+/* Newspaper analyser: tap-to-open story cards */
+.paper-story { padding: 12px 14px; margin: 8px 0; }
+.paper-story > summary { cursor: pointer; list-style: none; }
+.paper-story > summary::-webkit-details-marker { display: none; }
+.paper-story > summary b { color: var(--heading); font-size: calc(15.5px * var(--scale)); }
+.paper-story[open] > summary { margin-bottom: 8px; }
+.paper-body h4 { margin: 12px 0 4px; color: var(--accent); font-size: calc(13px * var(--scale)); letter-spacing: 0.03em; text-transform: uppercase; }
+.paper-body ul, .paper-body ol { margin: 0; padding-left: 20px; }
+.paper-body li { margin: 3px 0; line-height: 1.45; }
+.paper-full { margin-top: 10px; }
+.paper-full summary { cursor: pointer; color: var(--muted); }
+.paper-full p { white-space: normal; line-height: 1.5; max-height: 360px; overflow: auto; }
+/* The story cut out of the page, with the note lines marked on it. */
+.cut-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 8px; color: var(--muted); }
+.cut-tools span { display: inline-flex; align-items: center; gap: 5px; }
+.cut-scroll { overflow: auto; max-height: 72vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.cut-wrap { position: relative; width: 100%; max-width: var(--cw, 100%); margin: 0 auto; }
+.cut-wrap.zoom { width: 220%; max-width: none; }
+.cut-wrap img { display: block; width: 100%; height: auto; }
+.mk { position: absolute; border-radius: 2px; pointer-events: none; mix-blend-mode: multiply; }
+.mk-k { background: rgba(255, 210, 0, 0.5); }
+.mk-f { background: rgba(40, 190, 110, 0.4); }
+.cut-wrap.nomarks .mk { display: none; }
+.mk-key { display: inline-block; width: 16px; height: 10px; border-radius: 2px; }
+.mk-key.mk-k { background: #ffd200; }
+.mk-key.mk-f { background: #3ccb80; }
+.paper-ai-text { line-height: 1.5; margin-bottom: 6px; }

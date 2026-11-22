@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { app, BrowserWindow, ipcMain, dialog, shell, powerSaveBlocker, nativeImage } = require('electron');
 const path = require('path');
@@ -1706,7 +1706,7 @@ function writeLog(scope, msg) {
   const LOG_LINE_MAX = 8000;
   let text = String(msg);
   if (text.length > LOG_LINE_MAX) {
-    text = text.slice(0, LOG_LINE_MAX) + ' …[' + (text.length - LOG_LINE_MAX) + ' chars omitted]';
+    text = text.slice(0, LOG_LINE_MAX) + ' â€¦[' + (text.length - LOG_LINE_MAX) + ' chars omitted]';
   }
   const line = new Date().toISOString() + ' [' + scope + '] ' + text;
   logRing.push(line);
@@ -1854,7 +1854,7 @@ ipcMain.handle('diag:save', async () => {
   const info = diagInfo();
   const log = tailLog(400);
   const lines = [];
-  lines.push('SSB Prep Trainer — diagnostics report');
+  lines.push('SSB Prep Trainer â€” diagnostics report');
   lines.push('Generated: ' + new Date().toISOString());
   lines.push('');
   lines.push('== Environment ==');
@@ -2368,7 +2368,7 @@ async function runSmoke() {
     });
     const watUi = await js('window.__smoke.watScreen()', 'the WAT screen');
     results.push({
-      step: 'WAT has no answer box — you write in your practice copy',
+      step: 'WAT has no answer box â€” you write in your practice copy',
       result: !!watUi && watUi.textareas === 0 && watUi.clearBtn === false,
       got: watUi && watUi.textareas
     });
@@ -2452,7 +2452,7 @@ async function runSmoke() {
       source: tatUi && tatUi.source
     });
     results.push({
-      step: 'TAT has no writing box — the story goes in your practice copy',
+      step: 'TAT has no writing box â€” the story goes in your practice copy',
       result: !!tatUi && tatUi.textareas === 0 && tatUi.copyNote === true,
       got: tatUi && tatUi.textareas
     });
@@ -3039,9 +3039,9 @@ async function runSmoke() {
         !!scriptTopic &&
         scriptTopic.source === 'draft' &&
         scriptText.length > 250 &&
-        /Introduction — 30 seconds/.test(scriptText) &&
-        /Body — 2 minutes/.test(scriptText) &&
-        /Conclusion — 30 seconds/.test(scriptText) &&
+        /Introduction â€” 30 seconds/.test(scriptText) &&
+        /Body â€” 2 minutes/.test(scriptText) &&
+        /Conclusion â€” 30 seconds/.test(scriptText) &&
         /speaking now/i.test(scriptText),
       got: { script: scriptText.length }
     });
@@ -3058,10 +3058,10 @@ async function runSmoke() {
         source: 'Smoke test',
         checkedAt: Date.now() - 200 * 86400000,
         points: [
-          { text: 'Smoke point one — saved copy.', source: 'Smoke', date: '2026-01-01', link: '', group: 'now' },
-          { text: 'Smoke point two — saved copy.', source: 'Smoke', date: '2026-01-02', link: '', group: 'india' },
-          { text: 'Smoke point three — saved copy.', source: 'Smoke', date: '2026-01-03', link: '', group: 'gain' },
-          { text: 'Smoke point four — saved copy.', source: 'Smoke', date: '2026-01-04', link: '', group: 'world' }
+          { text: 'Smoke point one â€” saved copy.', source: 'Smoke', date: '2026-01-01', link: '', group: 'now' },
+          { text: 'Smoke point two â€” saved copy.', source: 'Smoke', date: '2026-01-02', link: '', group: 'india' },
+          { text: 'Smoke point three â€” saved copy.', source: 'Smoke', date: '2026-01-03', link: '', group: 'gain' },
+          { text: 'Smoke point four â€” saved copy.', source: 'Smoke', date: '2026-01-04', link: '', group: 'world' }
         ]
       });
     }
@@ -3140,7 +3140,7 @@ async function runSmoke() {
     });
     const lectInputs = await js('window.__smoke.lectureHasInput()', 'typing fields in the lecturette');
     results.push({
-      step: 'the lecturette has no typing field — it is spoken, with notes on paper',
+      step: 'the lecturette has no typing field â€” it is spoken, with notes on paper',
       result: lectInputs === 0
     });
     const introText = await js('window.__smoke.lectureBodyText()', 'the intro content');
@@ -3316,7 +3316,7 @@ async function runSmoke() {
       step: 'the dashboard carries every section as a tile, with no settings menu in the top bar',
       result:
         !!dash &&
-        dash.tiles === 11 &&
+        dash.tiles === 12 &&
         dash.settingsInTopBar === false &&
         dash.topLinks === 1 &&
         dash.selected !== null &&
@@ -3599,7 +3599,7 @@ async function runSmoke() {
       step: 'Save report writes a complete diagnostics file',
       result:
         !!(savedReport && savedReport.saved) &&
-        /SSB Prep Trainer — diagnostics report/.test(reportText) &&
+        /SSB Prep Trainer â€” diagnostics report/.test(reportText) &&
         /== Environment ==/.test(reportText) &&
         /== Recent log/.test(reportText) &&
         /marker-8f3a2/.test(reportText),
@@ -3706,6 +3706,18 @@ async function runSmoke() {
       step: 'the digest asks the state first, the timeline opens, and Settings offers the AI providers',
       result: !!newScreens && newScreens.stateBox && newScreens.timeline && newScreens.providers === 4,
       got: newScreens
+    });
+    const paperB64 = fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'test-paper.pdf')).toString('base64');
+    const paperRun = await js('window.__smoke.paperFlow(' + JSON.stringify(paperB64) + ')', 'Newspaper flow');
+    await takeShot('41-newspaper');
+    results.push({
+      step: 'the newspaper reader cuts a PDF into sorted, ranked stories with notes, a 30-minute plan, the Line and marked cut-outs',
+      result: !!paperRun && paperRun.engine && paperRun.ok && paperRun.stories === 7 &&
+        paperRun.sections === 'defence,economy,editorial,intsec,ir,natsec,policy' && paperRun.topIsFront &&
+        paperRun.pointsEach && paperRun.plan >= 4 && paperRun.cards >= 6 && paperRun.lineFilled &&
+        paperRun.cuts === 7 && paperRun.marked === 7 && paperRun.cutsStored === 7 && paperRun.cutShown && paperRun.cutMarks > 0 &&
+        paperRun.aiButton && paperRun.removed,
+      got: paperRun
     });
     const topicsRun = await js('window.__smoke.topicsFlow()', 'Important Topics flow');
     await takeShot('40-topics');

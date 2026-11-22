@@ -170,6 +170,7 @@
     { id: 'topics', label: 'Important Topics', code: 'NOTES' },
     { id: 'digest', label: 'News Digest', code: 'NEWS' },
     { id: 'timeline', label: 'News Timeline', code: 'LINE' },
+    { id: 'paper', label: 'Newspaper', code: 'PAPER' },
     { id: 'add', label: 'Add material', code: 'ADD' },
     { id: 'bin', label: 'Bin', code: 'BIN' },
     { id: 'settings', label: 'Settings', code: 'SET' }
@@ -306,6 +307,7 @@
     if (S.view === 'digest') return renderDigest();
     if (S.view === 'timeline') return renderTimeline();
     if (S.view === 'topics') return renderTopics();
+    if (S.view === 'paper') return renderPaper();
     if (S.view === 'add') return renderAdd();
     if (S.view === 'bin') return renderBin();
     if (S.view === 'diagnostics') return renderDiagnostics();
@@ -427,6 +429,14 @@
           '<li><span>TAT pictures</span><b>' + (S.tatImages || []).length + ' yours</b></li>' +
           '<li><span>WAT sets</span><b>' + customSets('wat').length + ' yours</b></li>' +
           '<li><span>Wrong picture?</span><b>move to bin</b></li>'
+      };
+    }
+    if (t.id === 'paper') {
+      return {
+        code: t.code,
+        chip: 'your PDF',
+        blurb: 'Load a newspaper PDF: stories ranked and sorted, key points, notes and a 30-minute plan.',
+        rows: ''
       };
     }
     if (t.id === 'topics') {
@@ -2347,6 +2357,345 @@
         });
       });
     });
+  }
+
+  /* ------------------------------------------------- Newspaper analyser */
+  // The engine is src/renderer/paper.js (window.SSBPaper), shared with the
+  // phone. A PDF is read on the device; only the extracted text is kept.
+
+  function paperState() {
+    return S.paperUi || (S.paperUi = { list: null, cur: null, tab: 'plan', busy: '', hist: null });
+  }
+
+  function paperPriority(p) {
+    return p >= 70 ? 'High' : p >= 45 ? 'Medium' : 'Low';
+  }
+
+  // Notes from the free AI chain are a study aid only, so the prompt holds the
+  // model to the story's own facts.
+  var PAPER_AI_PROMPT =
+    'You are an SSB interview and group discussion coach. Read this newspaper story and write short study notes in simple English (class 10 level).\n' +
+    'Use ONLY facts that are in the story. Do not add any number, name or date that is not in it. If the story does not say something, leave it out.\n\n' +
+    'Give, with these headings:\n' +
+    'Summary: 3 short lines.\n' +
+    'Key facts: up to 5 bullet points, each with its number, name or place.\n' +
+    'Why it matters for India: 2 lines.\n' +
+    'GD points: one point for and one against.\n' +
+    'Interview questions: two questions an SSB interviewer might ask on this.\n\n' +
+    'HEADLINE: {{head}}\n\nSTORY:\n{{text}}';
+
+  function paperAiHtml(text) {
+    return '<div class="paper-ai-text">' + esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>') + '</div>' +
+      '<div class="small muted">Written by a free AI from the story\'s text. Check any fact against the cut-out above before you use it.</div>';
+  }
+
+  // The story's cut-out with the key points (yellow) and the facts (green)
+  // marked where they are printed. Marks are placed in % of the story's area.
+  function paperCutHtml(a, url, px) {
+    var b = a.box;
+    var W = b[2] - b[0] || 1;
+    var H = b[1] - b[3] || 1;
+    var pc = function (v) { return Math.max(0, Math.min(100, v)).toFixed(2) + '%'; };
+    var marks = (a.marks || []).map(function (m) {
+      return '<i class="mk mk-' + m[0] + '" style="left:' + pc(((m[1] - b[0]) / W) * 100) + ';top:' + pc(((b[1] - m[2]) / H) * 100) +
+        ';width:' + pc(((m[3] - m[1]) / W) * 100) + ';height:' + pc(((m[2] - m[4]) / H) * 100) + '"></i>';
+    }).join('');
+    return '<div class="cut-tools small"><span><i class="mk-key mk-k"></i>key points</span><span><i class="mk-key mk-f"></i>numbers and facts</span>' +
+      '<button class="btn ghost sm" data-cutmarks>Hide marks</button><button class="btn ghost sm" data-cutzoom>Zoom in</button></div>' +
+      // Never wider than the picture itself, so a one-column story stays sharp.
+      '<div class="cut-scroll"><div class="cut-wrap" style="--cw:' + (px ? Math.round(px) + 'px' : '100%') + '"><img src="' + url + '" alt="This story as printed in the paper" />' + marks + '</div></div>';
+  }
+
+  function paperStory(a, i) {
+    var meta = [esc(a.sectionLabel), 'page ' + a.page, paperPriority(a.priority) + ' priority']
+      .concat(a.frontPage ? ['front page'] : [])
+      .concat(a.countries.length ? [esc(a.countries.join(', '))] : []);
+    return (
+      '<details class="card paper-story" data-story="' + i + '">' +
+      '<summary><b>' + esc(a.headline) + '</b>' +
+      (a.deck ? '<div class="small">' + esc(a.deck) + '</div>' : '') +
+      '<div class="small muted">' + meta.join(' · ') + '</div></summary>' +
+      '<div class="paper-body">' +
+      (a.cut ? '<h4>From the page</h4><div class="paper-cut" data-cut="' + i + '"><span class="small muted">Loading the cut-out…</span></div>' : '') +
+      '<h4>Key points</h4><ul>' + a.points.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' +
+      '<h4>Micro-notes</h4><ul class="small">' +
+      (a.facts.length ? a.facts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') : '') +
+      (a.terms.length ? '<li><b>Key terms:</b> ' + esc(a.terms.join(', ')) + '</li>' : '') +
+      (a.names.length ? '<li><b>Names:</b> ' + esc(a.names.join(', ')) + '</li>' : '') +
+      '<li><b>Reading time:</b> about ' + a.minutes + ' min for the full story</li>' +
+      '</ul>' +
+      '<h4>Think about it</h4><ol class="small">' + a.prompts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      '<h4>Line: earlier stories</h4><div class="small paper-line" data-line="' + i + '">Looking for earlier stories…</div>' +
+      '<h4>AI notes <span class="muted">(optional)</span></h4><div class="paper-ai" data-ai="' + i + '">' +
+      (a.ai ? paperAiHtml(a.ai) : '<button class="btn ghost sm" data-aibtn="' + i + '">Ask the free AI for notes</button>' +
+        ' <span class="small muted">Needs the internet. Everything above is made on this ' + (onPhone() ? 'phone' : 'computer') + ' without AI.</span>') +
+      '</div>' +
+      '<details class="paper-full"><summary class="small">Full text</summary><p class="small">' + esc(a.text) + '</p></details>' +
+      '</div></details>'
+    );
+  }
+
+  function showPaperCut(d, a) {
+    var box = d.querySelector('[data-cut]');
+    if (!box || box.getAttribute('data-done')) return;
+    box.setAttribute('data-done', '1');
+    var P = paperState();
+    window.SSBPaper.db.cut(a.id).then(function (c) {
+      if (!c || !c.blob) {
+        if (P.cutting && P.cur && P.cutting.id === P.cur.id) {
+          // Still being made in the background: look again in a moment.
+          box.innerHTML = '<span class="small muted">Being cut out of the page… it appears here in a moment.</span>';
+          setTimeout(function () {
+            if (!document.body.contains(box)) return;
+            box.removeAttribute('data-done');
+            showPaperCut(d, a);
+          }, 3000);
+          return;
+        }
+        box.innerHTML = '<span class="small muted">No cut-out for this story (pictures are kept for the newest 5 papers only). The notes are still here.</span>';
+        return;
+      }
+      var url = URL.createObjectURL(c.blob);
+      (P.urls = P.urls || []).push(url);
+      box.innerHTML = paperCutHtml(a, url, c.w);
+      var wrap = box.querySelector('.cut-wrap');
+      box.querySelector('[data-cutmarks]').addEventListener('click', function (e) {
+        var off = wrap.classList.toggle('nomarks');
+        e.target.textContent = off ? 'Show marks' : 'Hide marks';
+      });
+      box.querySelector('[data-cutzoom]').addEventListener('click', function (e) {
+        var big = wrap.classList.toggle('zoom');
+        e.target.textContent = big ? 'Zoom out' : 'Zoom in';
+      });
+    }, function () {
+      box.innerHTML = '<span class="small muted">The cut-out could not be opened.</span>';
+    });
+  }
+
+  function askPaperAi(btn, a) {
+    var box = btn.closest('[data-ai]');
+    if (!aiReady()) {
+      toast('Turn on Online lookup in Settings (AI writing) to use this. The notes above need no AI.');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Writing notes…';
+    var text = a.text.length > 6000 ? a.text.slice(0, 6000) : a.text;
+    aiAsk(PAPER_AI_PROMPT.replace('{{head}}', a.headline).replace('{{text}}', text)).then(function (r) {
+      if (!r || !r.ok || !r.text) {
+        btn.disabled = false;
+        btn.textContent = 'Ask the free AI for notes';
+        toast(aiErrorText(r));
+        return;
+      }
+      a.ai = String(r.text).trim();
+      box.innerHTML = paperAiHtml(a.ai);
+      var P = paperState();
+      if (P.cur) window.SSBPaper.db.save(P.cur).catch(function () {});
+    });
+  }
+
+  function paperHistory() {
+    var P = paperState();
+    if (P.hist) return Promise.resolve(P.hist);
+    var mine = window.SSBPaper.db.history(P.cur && P.cur.id).catch(function () { return []; });
+    var tl = Promise.resolve(window.api.timelineLoad ? window.api.timelineLoad() : []).catch(function () { return []; });
+    return Promise.all([mine, tl]).then(function (r) {
+      var fromTimeline = [];
+      (r[1] || []).forEach(function (t) {
+        (t.events || []).forEach(function (e) {
+          fromTimeline.push({ headline: e.headline, points: [], date: e.date || '', paper: 'News Timeline', sectionLabel: t.section });
+        });
+      });
+      P.hist = (r[0] || []).concat(fromTimeline);
+      return P.hist;
+    });
+  }
+
+  function wirePaperStories(list) {
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-story]'), function (d) {
+      var ai = d.querySelector('[data-aibtn]');
+      if (ai) ai.addEventListener('click', function () { askPaperAi(ai, list[+d.getAttribute('data-story')]); });
+      d.addEventListener('toggle', function () {
+        if (!d.open) return;
+        var a = list[+d.getAttribute('data-story')];
+        if (a.cut) showPaperCut(d, a);
+        var box = d.querySelector('[data-line]');
+        if (!box || box.getAttribute('data-done')) return;
+        paperHistory().then(function (hist) {
+          var rel = window.SSBPaper.related(a, hist);
+          box.setAttribute('data-done', '1');
+          box.innerHTML = rel.length
+            ? '<ul>' + rel.map(function (h) {
+                return '<li><b>' + esc(h.date) + '</b> · ' + esc(h.headline) + ' <span class="muted">(' + esc(h.paper) + ')</span></li>';
+              }).join('') + '</ul>'
+            : '<span class="muted">No earlier story on this yet. Each paper you load builds the Line.</span>';
+        });
+      });
+    });
+  }
+
+  function paperCutStatus() {
+    var c = paperState().cutting;
+    return 'Cutting the main stories out of the page in the background' + (c && c.total ? ' (page ' + c.n + ' of ' + c.total + ')' : '') +
+      '. You can read meanwhile; each picture appears when it is ready.';
+  }
+
+  function loadPaperFile(file) {
+    var P = paperState();
+    if (P.cutting) {
+      toast('The last paper is still being cut out. Load the next one when it finishes.');
+      return;
+    }
+    P.busy = 'Opening ' + file.name + '…';
+    renderPaper();
+    var say = function (t) {
+      P.busy = t;
+      var el = document.getElementById('paperBusy');
+      if (el) el.textContent = t;
+    };
+    Promise.all([import('./lib/pdf.min.js'), file.arrayBuffer()])
+      .then(function (r) {
+        var lib = r[0];
+        lib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+        return window.SSBPaper.analyze(lib, r[1], file.name, function (n, total, phase) {
+          if (phase !== 'cut') return say('Reading page ' + n + ' of ' + total + '…');
+          if (!P.cutting) return;
+          P.cutting.n = n;
+          P.cutting.total = total;
+          var el = document.getElementById('paperCutStatus');
+          if (el) el.textContent = paperCutStatus();
+        }, { background: true });
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.detail || res.error);
+        if (!res.paper.articles.length) throw new Error('no stories could be found in this PDF');
+        say('Saving…');
+        return window.SSBPaper.db.save(res.paper).then(function () {
+          if (res.cutting) {
+            P.cutting = { id: res.paper.id, n: 0, total: 0 };
+            res.cutting.then(function (made) {
+              P.cutting = null;
+              var el = document.getElementById('paperCutStatus');
+              if (el) el.textContent = made + ' stories cut out of the page. Open a story to see it with its key lines marked.';
+            });
+          }
+          return res.paper;
+        });
+      })
+      .then(function (paper) {
+        P.busy = '';
+        P.list = null;
+        P.cur = paper;
+        P.tab = 'plan';
+        P.hist = null;
+        toast(paper.articles.length + ' stories found and sorted' + (paper.adsSkipped ? ', ' + paper.adsSkipped + ' adverts skipped.' : '.'));
+        renderPaper();
+      })
+      .catch(function (err) {
+        P.busy = '';
+        toast('Could not read that PDF: ' + ((err && err.message) || 'unknown error'));
+        renderPaper();
+      });
+  }
+
+  function renderPaper() {
+    var P = paperState();
+    var SP = window.SSBPaper;
+    if (!SP) {
+      body('<h1>Newspaper</h1><div class="empty">The newspaper reader did not load. Please restart the app.</div>');
+      return;
+    }
+    if (P.cur) return renderPaperView();
+    if (!P.list) {
+      body('<h1>Newspaper</h1><div class="empty">Opening your newspapers…</div>');
+      SP.db.list().then(function (l) { P.list = l; }, function () { P.list = []; }).then(function () { if (S.view === 'paper') renderPaper(); });
+      return;
+    }
+    body(
+      '<h1>Newspaper</h1>' +
+      '<p class="lead">Load today\'s newspaper PDF. The app cuts it into stories, skips the adverts, ranks the stories, sorts them into your sections and writes notes. ' +
+      'The main stories are also cut out of the page with the key lines marked. ' +
+      'Everything happens on this ' + (onPhone() ? 'phone' : 'computer') + ': the PDF is not uploaded or kept, only the text and the cut-outs of the newest ' +
+      '5 papers.</p>' +
+      '<div class="row" style="margin:12px 0">' +
+      '<label class="btn primary">Load a newspaper PDF<input id="paperFile" type="file" accept="application/pdf,.pdf" hidden /></label></div>' +
+      (P.busy ? '<div class="note" id="paperBusy">' + esc(P.busy) + '</div>' : '') +
+      '<h2>Your newspapers</h2>' +
+      (P.list.length
+        ? P.list.map(function (p) {
+            return '<div class="card lectcard"><div class="lechead"><div>' +
+              '<div class="lectitle">' + esc(p.name.replace(/\.pdf$/i, '')) + '</div>' +
+              '<div class="small muted">' + new Date(p.addedAt).toLocaleDateString() + ' · ' + p.count + ' stories · ' + p.pagesRead + ' pages read</div></div>' +
+              '<div class="row"><button class="btn primary sm" data-popen="' + esc(p.id) + '">Open</button>' +
+              '<button class="btn ghost sm" data-pdel="' + esc(p.id) + '" title="Delete this paper">×</button></div></div></div>';
+          }).join('')
+        : '<div class="empty">No newspaper yet. Load one above; text-based e-paper PDFs work best (a scanned image PDF has no text to read).</div>')
+    );
+    var input = document.getElementById('paperFile');
+    input.addEventListener('change', function () { if (input.files && input.files[0]) loadPaperFile(input.files[0]); });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-popen]'), function (b) {
+      b.addEventListener('click', function () {
+        SP.db.get(b.getAttribute('data-popen')).then(function (p) {
+          if (!p) return;
+          P.cur = p;
+          P.tab = 'plan';
+          P.hist = null;
+          renderPaper();
+        });
+      });
+    });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-pdel]'), function (b) {
+      b.addEventListener('click', function () {
+        if (!window.confirm('Delete this newspaper and its notes from this ' + (onPhone() ? 'phone' : 'computer') + '?')) return;
+        SP.db.remove(b.getAttribute('data-pdel')).then(function () { P.list = null; renderPaper(); });
+      });
+    });
+  }
+
+  function renderPaperView() {
+    var P = paperState();
+    var SP = window.SSBPaper;
+    (P.urls || []).forEach(function (u) { URL.revokeObjectURL(u); });
+    P.urls = [];
+    var paper = P.cur;
+    var arts = paper.articles;
+    var tabs = [['plan', '30-min plan'], ['sections', 'By section'], ['editorial', 'Editorials'], ['all', 'All stories']];
+    var list = [];
+    var html = '';
+    if (P.tab === 'plan') {
+      SP.plan(paper).forEach(function (b) {
+        html += '<h2>' + esc(b.label) + ' <span class="small muted">· about ' + b.minutes + ' min</span></h2>';
+        b.items.forEach(function (a) { html += paperStory(a, list.length); list.push(a); });
+      });
+      if (!list.length) html = '<div class="empty">No stories to plan.</div>';
+    } else if (P.tab === 'sections') {
+      SP.SECTIONS.forEach(function (s) {
+        var group = arts.filter(function (a) { return a.sectionKey === s.key; });
+        if (!group.length) return;
+        html += '<h2>' + esc(s.label) + ' <span class="small muted">· ' + group.length + '</span></h2>';
+        group.forEach(function (a) { html += paperStory(a, list.length); list.push(a); });
+      });
+    } else {
+      list = arts.filter(function (a) { return P.tab === 'all' || a.sectionKey === 'editorial'; });
+      html = list.length ? list.map(paperStory).join('') : '<div class="empty">No editorial page was found in this paper.</div>';
+    }
+    body(
+      '<div class="row"><button class="btn sm" id="paperBack">← Newspapers</button></div>' +
+      '<h1>' + esc(paper.name.replace(/\.pdf$/i, '')) + '</h1>' +
+      '<div class="small muted">' + new Date(paper.addedAt).toLocaleDateString() + ' · ' + arts.length + ' stories · ' +
+      paper.pagesRead + ' of ' + paper.numPages + ' pages read · tap a story to see its notes</div>' +
+      (P.cutting && P.cutting.id === paper.id ? '<div class="note small" id="paperCutStatus" style="margin-top:8px">' + esc(paperCutStatus()) + '</div>' : '') +
+      '<div class="tabs" style="margin:12px 0">' + tabs.map(function (t) {
+        return '<button class="navlink' + (t[0] === P.tab ? ' active' : '') + '" data-ptab="' + t[0] + '">' + esc(t[1]) + '</button>';
+      }).join('') + '</div>' +
+      html
+    );
+    document.getElementById('paperBack').addEventListener('click', function () { P.cur = null; P.list = null; renderPaper(); });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-ptab]'), function (b) {
+      b.addEventListener('click', function () { P.tab = b.getAttribute('data-ptab'); renderPaper(); });
+    });
+    wirePaperStories(list);
   }
 
   function wireExternal(root) {
@@ -6252,6 +6601,57 @@
       var providers = document.querySelectorAll('[data-aikey]').length;
       goto('home');
       return { stateBox: stateBox, timeline: timeline, providers: providers };
+    },
+    // Newspaper: the bundled test paper is analysed, saved, shown, its notes
+    // and Line opened, then deleted again.
+    paperFlow: function (b64) {
+      var bin = atob(b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      var out = { engine: !!window.SSBPaper };
+      return import('./lib/pdf.min.js').then(function (lib) {
+        lib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+        return window.SSBPaper.analyze(lib, bytes.buffer, 'smoke-test-paper.pdf');
+      }).then(function (res) {
+        out.ok = !!res.ok;
+        if (!res.ok) { out.error = res.error; return out; }
+        var arts = res.paper.articles;
+        out.stories = arts.length;
+        out.sections = arts.map(function (a) { return a.sectionKey; }).sort().join(',');
+        out.topIsFront = arts[0].frontPage;
+        out.pointsEach = arts.every(function (a) { return a.points.length > 0 && a.prompts.length === 3; });
+        out.plan = window.SSBPaper.plan(res.paper).length;
+        out.cuts = res.cuts.length;
+        out.marked = arts.filter(function (a) { return a.cut && a.marks && a.marks.length; }).length;
+        return window.SSBPaper.db.save(res.paper, res.cuts).then(function () {
+          var P = paperState();
+          P.cur = res.paper;
+          P.tab = 'plan';
+          P.hist = null;
+          goto('paper');
+          out.cards = appEl.querySelectorAll('.paper-story').length;
+          var first = appEl.querySelector('.paper-story');
+          first.open = true;
+          first.dispatchEvent(new Event('toggle'));
+          return new Promise(function (r) { setTimeout(r, 800); });
+        }).then(function () {
+          var line = appEl.querySelector('[data-line]');
+          out.lineFilled = !!line && !!line.getAttribute('data-done');
+          var img = appEl.querySelector('.paper-story .cut-wrap img');
+          out.cutShown = !!img && img.complete && img.naturalWidth > 40;
+          out.cutMarks = appEl.querySelectorAll('.paper-story .cut-wrap .mk').length;
+          out.aiButton = !!appEl.querySelector('[data-aibtn]');
+          return window.SSBPaper.db.countCuts(res.paper.id);
+        }).then(function (n) {
+          out.cutsStored = n;
+          return window.SSBPaper.db.remove(res.paper.id);
+        }).then(function () {
+          return Promise.all([window.SSBPaper.db.list(), window.SSBPaper.db.countCuts(res.paper.id)]);
+        }).then(function (r2) {
+          out.removed = !r2[0].some(function (p) { return p.id === res.paper.id; }) && r2[1] === 0;
+          return out;
+        });
+      });
     },
     // Important Topics: real list from GitHub, the smallest PDF downloaded,
     // checksum-checked, opened (stubbed under --smoke) and removed again.

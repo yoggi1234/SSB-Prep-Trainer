@@ -61,8 +61,10 @@ function main() {
   if (fs.existsSync(path.join(SRC, 'logo.png'))) copy(path.join(SRC, 'logo.png'), path.join(OUT, 'logo.png'));
   for (const f of BRIDGE) copy(path.join(ROOT, 'mobile', f), path.join(OUT, f));
 
-  // Mozilla pdf.js (Apache-2.0): lets the phone read newspaper PDFs offline.
-  if (fs.existsSync(path.join(ROOT, 'mobile', 'lib'))) copyDir(path.join(ROOT, 'mobile', 'lib'), path.join(OUT, 'lib'));
+  // The newspaper analyser engine and Mozilla pdf.js (Apache-2.0), shared with
+  // the desktop renderer: newspaper PDFs are read on the device, offline.
+  copy(path.join(SRC, 'paper.js'), path.join(OUT, 'paper.js'));
+  copyDir(path.join(SRC, 'lib'), path.join(OUT, 'lib'));
 
   // Phone-only data: the News Timeline's starting events, and the app version
   // that the update check compares with the latest GitHub release.
