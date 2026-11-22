@@ -2184,7 +2184,16 @@
   function loadTopics(force) {
     var T = topicsState();
     T.loading = true;
-    return Promise.resolve(window.api.topicsIndex({ force: !!force }))
+    var ask = function () { return Promise.resolve(window.api.topicsIndex({ force: !!force })); };
+    return ask()
+      // A phone that has just woken up can take a few seconds to get its
+      // network back, so a failed first fetch is tried once more on its own.
+      .then(function (r) {
+        if (r && !r.index && r.enabled) {
+          return new Promise(function (res) { setTimeout(res, 3000); }).then(ask);
+        }
+        return r;
+      })
       .then(function (r) { T.data = r || { ok: false }; })
       .catch(function (e) { T.data = { ok: false, error: (e && e.message) || 'unknown' }; })
       .then(function () {
