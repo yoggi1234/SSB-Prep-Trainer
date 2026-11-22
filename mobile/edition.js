@@ -951,6 +951,60 @@
     return ((rare.length >= 2 && shared.length >= 2) || shared.length >= 4) && shared.length / Math.max(1, Math.min(ka.size, kb.size)) >= 0.5;
   }
 
+  /* ------------------------------------------- edition-wide duplicate check */
+  var NUM_WORDS = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' };
+  function stem(w) {
+    if (NUM_WORDS[w]) return NUM_WORDS[w];
+    if (w.length > 4 && /ies$/.test(w)) return w.slice(0, -3) + 'y';
+    if (w.length > 3 && /[^s]s$/.test(w)) return w.slice(0, -1);
+    return w;
+  }
+  var HEAD_CACHE = {};
+  function headKey(title) {
+    var hit = HEAD_CACHE[title];
+    if (hit) return hit;
+    var t =stripSourceSuffix(String(title || '').replace(/^UPDATE:\s*/i, '')).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ');
+    var list = (t.match(/[a-z0-9]+/g) || []).filter(function (w) { return !STOP[w] && (w.length > 2 || /^\d+$/.test(w)); }).map(stem);
+    return (HEAD_CACHE[title] = { words: new Set(list), text: ' ' + list.join(' ') + ' ' });
+  }
+  function duplicateTitles(a, b) {
+    var ka = headKey(a);
+    var kb = headKey(b);
+    if (!ka.words.size || !kb.words.size) return false;
+    if ((ka.words.size >= 4 && kb.text.indexOf(ka.text) >= 0) || (kb.words.size >= 4 && ka.text.indexOf(kb.text) >= 0)) return true;
+    var shared = Array.from(ka.words).filter(function (w) { return kb.words.has(w); });
+    var jac = shared.length / (ka.words.size + kb.words.size - shared.length);
+    if (jac >= 0.6) return true;
+    var overlap = shared.length / Math.min(ka.words.size, kb.words.size);
+    if (shared.length >= 4 && overlap >= 0.6) return true;
+    var specific = shared.filter(function (w) { return !TL_GENERIC.has(w) && !TL_GENERIC.has(w + 's') && !/^\d+$/.test(w); });
+    return shared.length >= 3 && specific.length >= 2 && shared.length / Math.min(ka.words.size, kb.words.size) >= 0.5;
+  }
+  // lists: arrays of stories in priority order; edited in place. Returns how many were dropped.
+  function dedupStories(lists) {
+    var kept = [];
+    var dropped = 0;
+    lists.forEach(function (b) {
+      b.slice().forEach(function (c) {
+        var titles = [c.title].concat((c.items || []).slice(0, 4).map(function (i) { return i.title; }));
+        var same = kept.filter(function (k) {
+          return k !== c && titles.some(function (t) { return k.titles.some(function (u) { return duplicateTitles(t, u); }); });
+        })[0];
+        if (!same) { c.titles = titles; kept.push(c); return; }
+        b.splice(b.indexOf(c), 1);
+        dropped++;
+        same.sources = same.sources || [];
+        (c.sources || []).forEach(function (s) { if (same.sources.indexOf(s) < 0) same.sources.push(s); });
+        same.items = (same.items || []).concat(c.items || []);
+        if ((c.text || '').length > (same.text || '').length) same.text = c.text;
+        if ((c.summary || '').length > (same.summary || '').length) same.summary = c.summary;
+        if (!same.link && c.link) same.link = c.link;
+      });
+    });
+    kept.forEach(function (k) { delete k.titles; });
+    return dropped;
+  }
+
   function addToTimeline(threads, draft) {
     var date = draft.date;
     threads.forEach(function (t) { t.events = t.events.filter(function (e) { return e.date !== date; }); });
@@ -1318,6 +1372,9 @@
           });
         };
         mergeEvents();
+        // One more pass over the whole edition: the same story is printed once, war page first, then state page, then topics.
+        var dd = dedupStories([warClusters, stateStories].concat(Object.keys(buckets).map(function (k) { return buckets[k]; })));
+        if (dd) progress('Removed ' + dd + ' repeated stories');
 
         // As explain_headlines in writer.py: only stories with no word of their own, marked, no new figures.
         var bare = [];
@@ -1401,5 +1458,5 @@
     io.write('ssb-timeline', addToTimeline(io.read('ssb-timeline', []), draft));
   }
 
-  root.SSB.edition = { articleText: articleText, readPapers: readPapers, pdfDate: pdfDate, Seen: Seen, dropRepeats: dropRepeats, addToTimeline: addToTimeline, sameStory: sameStory, Writer: Writer, collect: collect, record: record, today: todayIst, sentences: sentences, keyFigures: keyFigures };
+  root.SSB.edition = { articleText: articleText, readPapers: readPapers, pdfDate: pdfDate, Seen: Seen, dropRepeats: dropRepeats, addToTimeline: addToTimeline, sameStory: sameStory, dedupStories: dedupStories, duplicateTitles: duplicateTitles, Writer: Writer, collect: collect, record: record, today: todayIst, sentences: sentences, keyFigures: keyFigures };
 })();
