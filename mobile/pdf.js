@@ -79,7 +79,22 @@
     this.H = h;
     this.pages = [];
     this.ops = [];
+    this.links = [];      // links on the page being drawn: [x1, y1, x2, y2, target name]
+    this.pageLinks = [];  // links of each finished page
+    this.marks = {};      // target name -> page index
+    this.outline = [];    // [title, target name]
   }
+
+  Canvas.prototype.link = function (x1, y1, x2, y2, target) {
+    this.links.push([x1, y1, x2, y2, target]);
+  };
+  // A web address rather than a page in this PDF; anything else is not a link.
+  Canvas.prototype.linkUrl = function (x1, y1, x2, y2, url) {
+    if (/^https?:\/\//.test(String(url || ''))) this.links.push([x1, y1, x2, y2, null, String(url)]);
+  };
+  Canvas.prototype.mark = function (name) {
+    this.marks[name] = this.pages.length;
+  };
 
   Canvas.prototype.fill = function (hex) {
     var c = rgb(hex);
@@ -134,6 +149,8 @@
   Canvas.prototype.showPage = function () {
     this.pages.push(this.ops.join('\n'));
     this.ops = [];
+    this.pageLinks.push(this.links);
+    this.links = [];
   };
 
   Canvas.prototype.bytes = function (title) {
@@ -145,12 +162,30 @@
     var f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
     var kids = [];
     var self = this;
-    this.pages.forEach(function (stream) {
+    // Each page is a content object then a page object, so any page's number is known up front.
+    var pageObj = function (i) { return f2 + 2 * (i + 1); };
+    var dest = function (target) { return '[' + pageObj(self.marks[target]) + ' 0 R /Fit]'; };
+    this.pages.forEach(function (stream, i) {
       var content = add('<< /Length ' + latin1Length(stream) + ' >>\nstream\n' + stream + '\nendstream');
+      var annots = self.pageLinks[i].map(function (l) {
+        return '<< /Type /Annot /Subtype /Link /Rect [' + [l[0], l[1], l[2], l[3]].map(num).join(' ') + '] /Border [0 0 0] ' + (l[5] ? '/A << /S /URI /URI ' + pdfString(l[5]) + ' >>' : '/Dest ' + dest(l[4])) + ' >>';
+      }).join(' ');
       kids.push(add('<< /Type /Page /Parent ' + pagesObj + ' 0 R /MediaBox [0 0 ' + num(self.W) + ' ' + num(self.H) +
-        '] /Resources << /Font << /F1 ' + f1 + ' 0 R /F2 ' + f2 + ' 0 R >> >> /Contents ' + content + ' 0 R >>'));
+        '] /Resources << /Font << /F1 ' + f1 + ' 0 R /F2 ' + f2 + ' 0 R >> >> /Contents ' + content + ' 0 R' +
+        (annots ? ' /Annots [' + annots + ']' : '') + ' >>'));
     });
-    objs[catalog - 1] = '<< /Type /Catalog /Pages ' + pagesObj + ' 0 R >>';
+    var outlineRoot = this.outline.length ? add('') : 0;
+    if (outlineRoot) {
+      var first = objs.length + 1;
+      var n = this.outline.length;
+      this.outline.forEach(function (o, i) {
+        add('<< /Title ' + pdfString(tidy(o[0])) + ' /Parent ' + outlineRoot + ' 0 R' +
+          (i ? ' /Prev ' + (first + i - 1) + ' 0 R' : '') + (i < n - 1 ? ' /Next ' + (first + i + 1) + ' 0 R' : '') +
+          ' /Dest ' + dest(o[1]) + ' >>');
+      });
+      objs[outlineRoot - 1] = '<< /Type /Outlines /First ' + first + ' 0 R /Last ' + (first + n - 1) + ' 0 R /Count ' + n + ' >>';
+    }
+    objs[catalog - 1] = '<< /Type /Catalog /Pages ' + pagesObj + ' 0 R' + (outlineRoot ? ' /Outlines ' + outlineRoot + ' 0 R' : '') + ' >>';
     objs[pagesObj - 1] = '<< /Type /Pages /Kids [' + kids.map(function (k) { return k + ' 0 R'; }).join(' ') +
       '] /Count ' + kids.length + ' >>';
     var info = add('<< /Title ' + pdfString(tidy(title)) + ' /Producer (SSB Prep Trainer) >>');
@@ -340,6 +375,8 @@
     this.fitLine(String(p.name).toUpperCase(), M, H - 44, W - 2 * M - 2 * r - 16, 30, 12, true, WHITE);
     var sub = (draft.title || 'Daily News Digest') + ' | ' + draft.day + ' | Category ' + p.n + ' of ' + total;
     this.fitLine(sub, M, H - 64, W - 2 * M - 2 * r - 16, 10.5, 7, false, '#cfd9e6');
+    this.fitLine('< Back to index', M, H - 76, 80, 8, 6, true, '#f6c48d');
+    c.link(M, H - 79, M + 80, H - 68, 'index');
     return H - h;
   };
 
@@ -348,6 +385,7 @@
     var h = 28;
     this.box(M, top, W - 2 * M, h, this.col.orange, null, 4);
     this.fitLine(p.headline + (p.headline_verify ? '  (verify)' : ''), M + 10, top - 18.5, W - 2 * M - 20, 13, 7.5, true, WHITE);
+    if (p.stories && p.stories[0]) this.c.linkUrl(M, top - h, W - M, top, p.stories[0].link);
     return top - h;
   };
 
@@ -428,6 +466,8 @@
         }
         if (cards) {
           var parts = String(s).split('\n');
+          var story = (p.stories || []).filter(function (st) { return plainTitle(st.title) === parts[0]; })[0];
+          if (story) c.linkUrl(x, yTop - bh, x + bw, yTop, story.link);
           var items = [runs(parts[0], self.col.text, true)];
           if ((parts[1] || '').trim()) items.push(runs(parts.slice(1).join(' '), self.col.text));
           self.fitPara(items, x + 7, yTop - 5, bw - 14, bh - 9, { size: 8, min: 5.5 });
@@ -471,12 +511,10 @@
     var dot = this.col.orange;
     var text = this.col.text;
     var ff = (p.full_forms || []).map(function (f) {
-      var same = String(f.full).toLowerCase() === String(f.abbr).toLowerCase();
-      return [{ t: '•  ', b: true, c: dot }, { t: tidy(f.abbr), b: true, c: text }]
-        .concat(runs(same ? ' - ' + f.does : ' - ' + f.full + ' (' + f.does + ')', text));
+      return [{ t: '•  ', b: true, c: dot }, { t: tidy(f.abbr), b: true, c: text }].concat(runs(' - ' + f.full, text));
     });
-    if (!ff.length) ff = [runs('No abbreviations on this page.', text)];
-    this.barBox(M + w + gap, top, w, h, 'FULL FORMS (WHAT IT DOES)', this.col.navy, ff, 8.5);
+    if (!ff.length) ff = [runs('No new abbreviations on this page.', text)];
+    this.barBox(M + w + gap, top, w, h, 'FULL FORMS', this.col.navy, ff, 8.5);
     return top - h;
   };
 
@@ -516,6 +554,188 @@
     this.footer(p, total, top, Math.min(34, top - 26));
   };
 
+  function plainTitle(title) {
+    return String(title).replace(/\s+\|\s+[^|]{2,40}$/, '').replace(/\s+-\s+[^-]{2,40}$/, '');
+  }
+
+  // Each story on a page, as articles() in render.py.
+  function articles(p) {
+    var stories = p.stories || [];
+    var cards = {};
+    ((p.flow && p.flow.steps) || []).forEach(function (s) {
+      var parts = String(s).split('\n');
+      cards[parts[0]] = parts.slice(1).join(' ');
+    });
+    var out = [{ title: p.headline, para: p.paragraph || '', link: stories[0] ? stories[0].link : '' }];
+    stories.slice(1, 13).forEach(function (s) {
+      var plain = plainTitle(s.title);
+      var t = plain.replace('UPDATE: ', 'UPDATE - ');
+      if (!out.some(function (a) { return a.title === t; })) out.push({ title: t, para: s.para || cards[plain] || '', link: s.link });
+    });
+    return out;
+  }
+
+  function wrapText(text, bold, size, w) {
+    var lines = [];
+    var line = '';
+    tidy(text).split(/\s+/).filter(Boolean).forEach(function (word) {
+      var next = line ? line + ' ' + word : word;
+      if (line && width(next, bold, size) > w) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // At most five lines, ending on a whole sentence whenever one fits.
+  function fiveLines(text, size, w) {
+    var kept = [];
+    // As five_lines: a feed summary can carry the same headline twice in a row; say it once.
+    text = tidy(text).replace(/(\b.{30,}?)(?:\s+\1)+\b/g, '$1');
+    var parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z"'(])/);
+    for (var i = 0; i < parts.length; i++) {
+      if (wrapText(kept.concat(parts[i]).join(' '), false, size, w).length > 5) break;
+      kept.push(parts[i]);
+    }
+    if (kept.length) return wrapText(kept.join(' '), false, size, w);
+    var lines = wrapText(text, false, size, w).slice(0, 5);
+    if (lines.length) lines[lines.length - 1] = lines[lines.length - 1].slice(0, -4).replace(/\s+$/, '') + ' ...';
+    return lines;
+  }
+
+  function formsFor(p, text) {
+    return (p.full_forms || []).filter(function (f) {
+      return f.full && new RegExp('(?<![A-Za-z0-9])' + String(f.abbr).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9])').test(text);
+    });
+  }
+
+  // Clickable contents at the front, as draw_index in render.py.
+  function drawIndex(c, draft, page, pagesOf) {
+    var W = c.W;
+    var H = c.H;
+    var line = 11.5;
+    var sheet = function (title) {
+      if (title === 'INDEX') c.mark('index');
+      c.fill(page.col.navy);
+      c.rect(0, H - 60, W, 60);
+      page.fitLine(title, M, H - 32, W - 2 * M, 22, 12, true, WHITE);
+      page.fitLine((draft.title || 'Daily News Digest') + ' | ' + draft.day + ' | tap a line to read it, or Source for the article', M, H - 49, W - 2 * M, 9.5, 7, false, '#cfd9e6');
+      return H - 76;
+    };
+    var y = sheet('INDEX');
+    (draft.pages || []).forEach(function (p) {
+      if (y - line * 2.4 < 30) { c.showPage(); y = sheet('INDEX (continued)'); }
+      c.fill(page.col.light);
+      c.rect(M, y - 13, W - 2 * M, 16);
+      page.fitLine(p.n + '. ' + String(p.name).toUpperCase(), M + 5, y - 9, W - 2 * M - 60, 10, 7, true, page.col.navy);
+      c.link(M, y - 13, W - M, y + 3, 'p' + p.n);
+      y -= 18;
+      articles(p).forEach(function (a, k) {
+        if (y - line < 30) { c.showPage(); y = sheet('INDEX (continued)'); }
+        var key = 's' + p.n + '_' + k;
+        page.fitLine('- ' + a.title, M + 10, y - 8, W - 2 * M - 92, 8.5, 7, false, page.col.text);
+        page.fitLine('p.' + (pagesOf[key] || ''), W - M - 76, y - 8, 28, 8, 6, false, page.col.muted);
+        c.link(M, y - 11, W - M - 44, y, key);
+        if (/^https?:\/\//.test(String(a.link || ''))) {
+          page.fitLine('Source', W - M - 38, y - 8, 36, 8.5, 7, true, page.col.teal);
+          c.linkUrl(W - M - 44, y - 11, W - M, y, a.link);
+        }
+        y -= line;
+      });
+      y -= 5;
+    });
+    c.outline.push(['Index', 'index']);
+    (draft.pages || []).forEach(function (p) { c.outline.push([p.name, 'p' + p.n]); });
+    c.showPage();
+  }
+
+  // One section: a block for each story, as draw_section in render.py.
+  function drawSection(c, draft, p, total, page, pagesOf) {
+    var W = c.W - 2 * M;
+    var body = 9.5;
+    var lead = 12.4;
+    var number = function () {
+      page.fitLine('Page ' + (c.pages.length + 1), M, 14, W, 7.5, 6, false, page.col.muted, 'center');
+    };
+    c.mark('p' + p.n);
+    var top = page.header(draft, p, total) - 10;
+    if (p.flow && p.flow.mode === 'flow' && (p.flow.steps || []).length) top = page.flow(p, top, 120) - 10;
+    var stories = articles(p);
+    // As draw_section: a headline with no readable article is listed, not boxed.
+    var brief = [];
+    stories.forEach(function (a, k) {
+      if (k && !String(a.para || '').trim()) { brief.push([k, a]); return; }
+      var title = wrapText(a.title, true, 10.5, W - 16).slice(0, 2);
+      var para = fiveLines(a.para, body, W - 16);
+      var forms = formsFor(p, a.title + ' ' + a.para);
+      var formLines = forms.length
+        ? wrapText('Full forms: ' + forms.map(function (f) { return f.abbr + ' - ' + f.full; }).join('; '), false, 8.5, W - 16).slice(0, 3)
+        : [];
+      var h = 8 + title.length * 13 + para.length * lead + formLines.length * 11 + 22;
+      if (top - h < 28) {
+        number();
+        c.showPage();
+        top = c.H - 24;
+      }
+      page.box(M, top, W, h, page.col.light, null, 5);
+      c.fill(page.col.navy);
+      c.rect(M, top - h, 3, h);
+      var key = 's' + p.n + '_' + k;
+      c.mark(key);
+      pagesOf[key] = c.pages.length + 1;
+      var y = top - 13;
+      title.forEach(function (t) { c.text(M + 9, y, t, true, 10.5, page.col.navy); y -= 13; });
+      y -= 1;
+      para.forEach(function (t) { c.text(M + 9, y, t, false, body, page.col.text); y -= lead; });
+      formLines.forEach(function (t) { c.text(M + 9, y, t, false, 8.5, page.col.teal); y -= 11; });
+      var ly = top - h + 6;
+      page.fitLine('< Back to index', M + 9, ly, 80, 8.5, 7, true, page.col.orange);
+      c.link(M + 5, ly - 4, M + 92, ly + 10, 'index');
+      if (/^https?:\/\//.test(String(a.link || ''))) {
+        page.fitLine('Read the source >', M + W - 92, ly, 84, 8.5, 7, true, page.col.teal);
+        c.linkUrl(M + W - 96, ly - 4, M + W - 4, ly + 10, a.link);
+      }
+      top -= h + 7;
+    });
+    if (brief.length) {
+      if (top - 30 < 28) { number(); c.showPage(); top = c.H - 24; }
+      page.fitLine('ALSO IN THE NEWS', M, top - 10, W, 9, 7, true, page.col.teal);
+      top -= 18;
+      brief.forEach(function (b) {
+        if (top - 14 < 28) { number(); c.showPage(); top = c.H - 24; }
+        var key = 's' + p.n + '_' + b[0];
+        c.mark(key);
+        pagesOf[key] = c.pages.length + 1;
+        page.fitLine('- ' + b[1].title, M + 6, top - 9, W - 56, 8.5, 7, false, page.col.text);
+        if (/^https?:\/\//.test(String(b[1].link || ''))) {
+          page.fitLine('Source', M + W - 40, top - 9, 38, 8.5, 7, true, page.col.teal);
+          c.linkUrl(M + W - 44, top - 12, M + W, top + 1, b[1].link);
+        }
+        top -= 12.5;
+      });
+      top -= 8;
+    }
+    var extra = [[String(p.benefit_label || 'BENEFIT FOR INDIA').toUpperCase(), page.col.green, p.benefit, 'green'],
+      ['ADVANCED POINT', page.col.orange, p.advanced, 'orange']].filter(function (e) {
+      return e[2] && e[2].length && String(e[2][0]) !== '-';
+    });
+    if (extra.length) {
+      if (top - 96 < 28) {
+        number();
+        c.showPage();
+        top = c.H - 24;
+      }
+      var w = (W - 8 * (extra.length - 1)) / extra.length;
+      extra.forEach(function (e, i) { page.barBox(M + i * (w + 8), top, w, 90, e[0], e[1], page.bullets(e[2], e[3]), 8); });
+    }
+    number();
+    c.showPage();
+  }
+
   // config.py "colors"
   var COLORS = { navy: '#14365d', orange: '#f08a24', light: '#eef3f8', teal: '#0b8aa6', green: '#2e8b57',
     grey: '#f3f4f6', text: '#1d2733', muted: '#5b6675' };
@@ -523,12 +743,16 @@
   SSB.pdf = {
     // A draft (the same shape draft.py writes) -> the bytes of an A4 PDF.
     render: function (draft) {
-      var c = new Canvas(595.2756, 841.8898);
       var pages = draft.pages || [];
-      pages.forEach(function (p) {
-        new Page(c, COLORS).draw(draft, p, pages.length);
-        c.showPage();
-      });
+      var pagesOf = {};
+      var c;
+      // Drawn twice: the index prints page numbers it only knows once the stories are placed.
+      for (var pass = 0; pass < 2; pass++) {
+        c = new Canvas(595.2756, 841.8898);
+        var page = new Page(c, COLORS);
+        drawIndex(c, draft, page, pagesOf);
+        pages.forEach(function (p) { drawSection(c, draft, p, pages.length, page, pagesOf); });
+      }
       return c.bytes((draft.title || 'Daily News Digest') + ' - ' + draft.date);
     },
     width: width

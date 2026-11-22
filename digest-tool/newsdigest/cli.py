@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 
 from . import draft as D
-from . import render, ui, util
+from . import render, timeline, ui, util
 from .config import (DEFAULT_CONFIG, load_config, load_json, read_user_config, save_config, save_json,
                      user_file)
 
@@ -97,7 +97,7 @@ def cmd_collect(cfg, a):
     date = parse_day(a.date)
     with ui.Loader(f"Collecting news for {util.nice_date(date)}") as ld:
         d = D.collect(cfg, date, pdfs=a.pdf or [], war=a.war, expect=a.expect or [], no_web=a.no_web,
-                      log=ld.log, progress=ld.progress, headline=ld.headline)
+                      log=ld.log, progress=ld.progress, headline=ld.headline, state=a.state)
     summary(d)
     print()
     ui.ok(f"Draft saved: {D.draft_path(cfg, date)}")
@@ -147,6 +147,31 @@ def cmd_build(cfg, a):
         open_file(out)
 
 
+def cmd_timeline(cfg, a):
+    path = os.path.join(cfg["paths"]["timeline"], "timeline.json")
+    threads = timeline.rebuild(cfg) if a.rebuild else load_json(path, {"threads": []})["threads"]
+    timeline.write_dashboard(cfg, threads)
+    page = os.path.join(cfg["paths"]["timeline"], "dashboard.html")
+    ui.ok(f"{len(threads)} stories, {sum(1 for t in threads if len(t['events']) > 1)} with follow-ups: {page}")
+    if not a.no_open:
+        open_file(page)
+
+
+def ask_state(cfg):
+    """Asked each time the tool opens; Enter keeps the last answer."""
+    last = cfg.get("home_state", "")
+    print(ui.c("Which state's news should get its own page after the war page?", "orange", bold=True))
+    print(ui.c("  " + ", ".join(D.STATE_NAMES), "grey"))
+    ans = ui.ask(f"State (Enter = {last or 'none'}): ", last).strip()
+    match = next((s for s in D.STATE_NAMES if ans and s.lower().startswith(ans.lower())), "")
+    if ans and not match:
+        ui.warn(f"'{ans}' is not a state I know; leaving the state page out.")
+    cfg["home_state"] = match
+    user = read_user_config()
+    user["home_state"] = match
+    save_config(user)
+
+
 def record_history(cfg, d):
     hp = os.path.join(cfg["paths"]["state"], "history.json")
     hist = load_json(hp, {})
@@ -164,9 +189,12 @@ def record_history(cfg, d):
         if c["id"] in d.get("corrections", []):
             c["applied_in"] = d["date"]
     save_json(cp, corr)
+    timeline.record(cfg, d)
 
 
 def cmd_run(cfg, a):
+    # one date for both steps: a run that crosses midnight must build the draft it collected
+    a.date = parse_day(a.date).isoformat()
     cmd_collect(cfg, a)
     a.out = None
     cmd_build(cfg, a)
@@ -511,7 +539,10 @@ def cmd_config(cfg, a):
 # ------------------------------------------------------------------ simple menu
 def menu(cfg):
     ui.banner()
+    if sys.stdin.isatty():
+        ask_state(cfg)
     opts = [("Make today's PDF (collect + build)", ["run", "today", "--open"]),
+            ("Open the news timeline dashboard", ["timeline"]),
             ("Make PDF for another date / choose the war", "date"),
             ("Add newspaper PDFs and make today's PDF", "pdf"),
             ("Collect only (then edit before building)", ["collect", "today"]),
@@ -570,10 +601,16 @@ def build_parser():
         p.add_argument("--war", help="war for page 12, e.g. 'Sudan' (default: auto, rotated)")
         p.add_argument("--expect", nargs="*", help="items you expect today; reported if missing")
         p.add_argument("--no-web", action="store_true", help="use only the PDFs, no internet")
+        p.add_argument("--state", help="state for the page after the war page (default: the last one chosen)")
         p.add_argument("--llm", choices=["auto", "on", "off"], help="free local Ollama rewriting")
         if name == "run":
             p.add_argument("--open", action="store_true", help="open the PDF when done")
             p.add_argument("--text", action="store_true", help="also save a bullet-point .txt")
+
+    p = sp.add_parser("timeline", help="open the news timeline dashboard")
+    p.add_argument("--rebuild", action="store_true", help="make it again from every saved draft")
+    p.add_argument("--no-open", action="store_true", help="write the page without opening it")
+    p.set_defaults(fn=cmd_timeline)
 
     p = dated("build", "render the PDF from the draft", cmd_build)
     p.add_argument("--out", help="output file")

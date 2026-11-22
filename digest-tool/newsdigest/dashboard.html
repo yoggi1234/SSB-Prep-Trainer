@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>News Timeline</title>
+<style>
+:root{--bg:#0e1a15;--panel:#16261f;--panel2:#1b2d25;--text:#e6efe9;--muted:#9db3a6;--accent:#64bf71;--line:#2b4237}
+@media (prefers-color-scheme:light){:root{--bg:#e8f1ec;--panel:#f8fcfa;--panel2:#eef6f1;--text:#12251b;--muted:#4f6659;--accent:#2f7150;--line:#c6d8cd}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Segoe UI,Arial,sans-serif}
+.wrap{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+nav{background:var(--panel);padding:16px 10px;border-right:1px solid var(--line)}
+h1{font-size:19px;margin:0 8px 12px}nav button{display:flex;justify-content:space-between;gap:8px;width:100%;padding:8px 10px;margin:2px 0;background:none;border:0;border-radius:6px;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+nav button:hover{background:var(--panel2)}nav button.on{background:var(--accent);color:var(--bg);font-weight:600}
+main{padding:18px;max-width:980px;width:100%}#q{width:100%;padding:10px 12px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;font:inherit;margin-bottom:6px}
+label{display:block;color:var(--muted);margin:6px 0 14px}details{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:0 14px}
+summary{cursor:pointer;padding:12px 0;font-weight:600}.n{color:var(--accent);font-weight:400;margin-left:6px;white-space:nowrap}.when{display:block;color:var(--muted);font-weight:400;font-size:13px}
+ol{list-style:none;margin:0 0 12px;padding:0 0 0 16px;border-left:2px solid var(--accent)}li{position:relative;padding:0 0 14px 6px}li:before{content:"";position:absolute;left:-22px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.d{color:var(--muted);font-size:13px}.h{font-weight:600}li p{margin:4px 0}a{color:var(--accent)}.empty{color:var(--muted);padding:30px 0}
+@media (max-width:700px){.wrap{grid-template-columns:1fr}nav{border-right:0;border-bottom:1px solid var(--line)}}
+</style></head><body><div class="wrap"><nav><h1>News Timeline</h1><div id="secs"></div></nav>
+<main><input id="q" type="search" placeholder="Search a topic, for example container" aria-label="Search">
+<label><input id="only" type="checkbox">Only stories with follow-ups</label><div id="out"></div></main></div>
+<script>
+var T=/*TIMELINE*/[];var sec='All';
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function last(t){return t.events[t.events.length-1].date}
+function draw(){var q=document.getElementById('q').value.toLowerCase(),only=document.getElementById('only').checked;
+var counts={All:T.length};T.forEach(function(t){counts[t.section]=(counts[t.section]||0)+1});
+document.getElementById('secs').innerHTML=Object.keys(counts).map(function(s){return '<button data-s="'+esc(s)+'" class="'+(s===sec?'on':'')+'"><span>'+esc(s)+'</span><span>'+counts[s]+'</span></button>'}).join('');
+var list=T.filter(function(t){return (sec==='All'||t.section===sec)&&(!only||t.events.length>1)&&(!q||JSON.stringify(t.events).toLowerCase().indexOf(q)>=0)})
+.sort(function(a,b){return last(b).localeCompare(last(a))||b.events.length-a.events.length}).slice(0,300);
+document.getElementById('out').innerHTML=list.length?list.map(function(t){return '<details'+(t.events.length>1&&q?' open':'')+'><summary>'+esc(t.events[t.events.length-1].headline)+(t.events.length>1?'<span class="n">'+(t.events.length-1)+' follow-up'+(t.events.length>2?'s':'')+'</span>':'')+'<span class="when">'+esc(t.section)+' · '+esc(t.events[0].date)+(t.events.length>1?' to '+esc(last(t)):'')+'</span></summary><ol>'+t.events.map(function(e){var safe=/^https?:\/\//.test(e.link||'');return '<li><div class="d">'+esc(e.date)+(e.sources&&e.sources.length?' · '+esc(e.sources.join(', ')):'')+'</div><div class="h">'+(safe?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener">'+esc(e.headline)+'</a>':esc(e.headline))+'</div>'+(e.text?'<p>'+esc(e.text)+'</p>':'')+'</li>'}).join('')+'</ol></details>'}).join(''):'<div class="empty">No stories match.</div>'}
+document.getElementById('secs').addEventListener('click',function(e){var b=e.target.closest('button');if(b){sec=b.getAttribute('data-s');draw()}});
+document.getElementById('q').addEventListener('input',draw);document.getElementById('only').addEventListener('change',draw);draw();
+</script></body></html>

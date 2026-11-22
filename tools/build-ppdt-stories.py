@@ -20,7 +20,7 @@ OUT = os.path.join(DATA, 'ppdt-stories.json')
 
 # The PPDT format: perception (characters, age, sex, mood, action) then a Problem -> Action -> Outcome
 # story with a named hero, past tense, realistic positive end (sources: SSBCrack, PW, OliveGreens).
-PROMPT = open(os.path.join(DATA, 'ppdt-prompt.txt'), encoding='utf-8').read()
+PROMPT = open(os.path.join(ROOT, 'tools', 'ppdt-prompt.txt'), encoding='utf-8').read()
 TYPES = ['Leadership', 'Social responsibility', 'Courage in a crisis', 'Initiative and achievement', 'Teamwork']
 
 

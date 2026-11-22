@@ -586,5 +586,69 @@
   "FM": {
     "full": "Finance Minister",
     "does": "minister in charge of the economy and the Budget"
+  },
+  "CEA": {
+    "full": "Chief Economic Adviser",
+    "does": ""
+  },
+  "NVS": {
+    "full": "Navigation with Indian Constellation Satellite",
+    "does": ""
+  },
+  "NavIC": {
+    "full": "Navigation with Indian Constellation",
+    "does": ""
+  },
+  "NCRB": {
+    "full": "National Crime Records Bureau",
+    "does": ""
+  },
+  "UAPA": {
+    "full": "Unlawful Activities (Prevention) Act",
+    "does": ""
+  },
+  "PLI": {
+    "full": "Production Linked Incentive",
+    "does": ""
+  },
+  "CPEC": {
+    "full": "China-Pakistan Economic Corridor",
+    "does": ""
+  },
+  "IOR": {
+    "full": "Indian Ocean Region",
+    "does": ""
+  },
+  "DAC": {
+    "full": "Defence Acquisition Council",
+    "does": ""
+  },
+  "CCS": {
+    "full": "Cabinet Committee on Security",
+    "does": ""
+  },
+  "AMCA": {
+    "full": "Advanced Medium Combat Aircraft",
+    "does": ""
+  },
+  "NPA": {
+    "full": "Non-Performing Asset",
+    "does": ""
+  },
+  "NEP": {
+    "full": "National Education Policy",
+    "does": ""
+  },
+  "IMEC": {
+    "full": "India-Middle East-Europe Economic Corridor",
+    "does": ""
+  },
+  "IPCC": {
+    "full": "Intergovernmental Panel on Climate Change",
+    "does": ""
+  },
+  "UNEP": {
+    "full": "United Nations Environment Programme",
+    "does": ""
   }
 }

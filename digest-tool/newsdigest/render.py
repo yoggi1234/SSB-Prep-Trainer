@@ -1,5 +1,6 @@
 """Draws the one-page-per-section infographic PDF with reportlab. Every text box shrinks its font
 until the text fits, so nothing ever overflows."""
+import io
 import os
 import re
 from xml.sax.saxutils import escape
@@ -8,10 +9,13 @@ from reportlab.lib.colors import HexColor, white
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4, letter
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.utils import simpleSplit
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
+
+from . import util
 
 FONT, BOLD = "Helvetica", "Helvetica-Bold"
 
@@ -146,6 +150,8 @@ class Page:
         self.fit_line(p["name"].upper(), self.M, self.H - 44, self.W - 2 * self.M - 2 * r - 16, 30, 12, BOLD, white)
         sub = f"{draft.get('title', 'Daily News Digest')} | {draft['day']} | Category {p['n']} of {total}"
         self.fit_line(sub, self.M, self.H - 64, self.W - 2 * self.M - 2 * r - 16, 10.5, 7, FONT, HexColor("#cfd9e6"))
+        self.fit_line("< Back to index", self.M, self.H - 77, 80, 8, 6, BOLD, HexColor("#f6c48d"))
+        c.linkAbsolute("Index", "index", (self.M, self.H - 79, self.M + 80, self.H - 68), Border="[0 0 0]")
         return self.H - h
 
     def headline(self, p, top):
@@ -153,6 +159,9 @@ class Page:
         self.rect(self.M, top, self.W - 2 * self.M, h, self.col["orange"], r=4)
         text = p["headline"] + ("  (verify)" if p.get("headline_verify") else "")
         self.fit_line(text, self.M + 10, top - 18.5, self.W - 2 * self.M - 20, 13, 7.5, BOLD, white)
+        link = web_link((p.get("stories") or [None])[0])
+        if link:
+            self.c.linkURL(link, (self.M, top - h, self.W - self.M, top), relative=0, thickness=0)
         return top - h
 
     def main_box(self, p, top, h):
@@ -221,6 +230,9 @@ class Page:
                 if cards:
                     head, _, ctx = str(s).partition("\n")
                     html = f"<b>{safe(head)}</b>" + (f"<br/>{safe(ctx)}" if ctx.strip() else "")
+                    story = next((st for st in p.get("stories", []) if util.strip_source_suffix(st["title"]) == head), None)
+                    if web_link(story):
+                        c.linkURL(web_link(story), (x, y_top - bh, x + bw, y_top), relative=0, thickness=0)
                     self.fit_para(html, x + 7, y_top - 5, bw - 14, bh - 9, size=8, min_size=5.5)
                     continue
                 m = re.match(r"^([^:]{2,30}):\s+(.*)$", str(s))
@@ -266,11 +278,9 @@ class Page:
         w = (self.W - 2 * self.M - gap) / 2
         self.bar_box(self.M, top, w, h, "KEY POINTS", self.col["teal"], self.bullets(p.get("key_points", []), "teal"), 8.5)
         dot = "<font color='%s'>%s</font>&nbsp; " % (self.cfg["colors"]["orange"], DOT())
-        ff = "<br/>".join(
-            dot + (f"<b>{safe(f['abbr'])}</b> - {safe(f['does'])}" if f["full"].lower() == f["abbr"].lower()
-                   else f"<b>{safe(f['abbr'])}</b> - {safe(f['full'])} ({safe(f['does'])})")
-            for f in p.get("full_forms", [])) or "No abbreviations on this page."
-        self.bar_box(self.M + w + gap, top, w, h, "FULL FORMS (WHAT IT DOES)", self.col["navy"], ff, 8.5)
+        ff = "<br/>".join(dot + f"<b>{safe(f['abbr'])}</b> - {safe(f['full'])}" for f in p.get("full_forms", [])) \
+            or "No new abbreviations on this page."
+        self.bar_box(self.M + w + gap, top, w, h, "FULL FORMS", self.col["navy"], ff, 8.5)
         return top - h
 
     def bottom(self, p, top, h):
@@ -306,19 +316,205 @@ class Page:
         self.footer(p, total, top, min(34, top - 26))
 
 
+def web_link(s):
+    """Only a real web address may become a link in the PDF."""
+    link = str((s or {}).get("link") or "")
+    return link if re.match(r"https?://", link) else ""
+
+
+def articles(p):
+    """Each story on a page: title, paragraph, link. An old draft has no story paragraphs, so its cards fill in."""
+    stories = p.get("stories", [])
+    cards = {str(s).partition("\n")[0]: str(s).partition("\n")[2] for s in (p.get("flow") or {}).get("steps", [])}
+    out = [{"title": p["headline"], "para": p.get("paragraph", ""), "link": web_link(stories[0]) if stories else ""}]
+    for s in stories[1:13]:
+        t = util.strip_source_suffix(s["title"]).replace("UPDATE: ", "UPDATE - ")
+        if util.similarity(t, p["headline"]) < 0.9 and t not in [a["title"] for a in out]:
+            out.append({"title": t, "para": s.get("para") or cards.get(util.strip_source_suffix(s["title"]), ""), "link": web_link(s)})
+    return out
+
+
+def forms_for(p, text):
+    """The page's full forms that this one story uses."""
+    return [f for f in p.get("full_forms", []) if f.get("full") and
+            re.search(r"(?<![A-Za-z0-9])" + re.escape(f["abbr"]) + r"(?![A-Za-z0-9])", text)]
+
+
+def five_lines(text, font, size, width):
+    """At most five lines, ending on a whole sentence whenever one fits."""
+    text = str(text or "").translate(ODD_CHARS).strip()
+    # a feed summary can carry the same headline twice in a row; say it once
+    text = re.sub(r"(\b.{30,}?)(?:\s+\1)+\b", r"\1", text)
+    if FONT == "Helvetica":
+        text = text.replace("₹", "Rs ")
+    kept = []
+    for s in re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", text):
+        if len(simpleSplit(" ".join(kept + [s]), font, size, width)) > 5:
+            break
+        kept.append(s)
+    if kept:
+        return simpleSplit(" ".join(kept), font, size, width)
+    lines = simpleSplit(text, font, size, width)[:5]
+    if lines:
+        lines[-1] = lines[-1][:-4].rstrip() + " ..."
+    return lines
+
+
+def draw_index(c, cfg, draft, width, height, pages_of):
+    """Clickable contents at the front: every section and the topics under it, with their page numbers."""
+    page = Page(c, cfg, width, height)
+    M, line = page.M, 11.5
+
+    def new_sheet(title):
+        if title == "INDEX":
+            c.bookmarkPage("index")
+        c.setFillColor(page.col["navy"])
+        c.rect(0, height - 60, width, 60, fill=1, stroke=0)
+        page.fit_line(title, M, height - 32, width - 2 * M, 22, 12, BOLD, white)
+        page.fit_line(f"{draft.get('title', 'Daily News Digest')} | {draft['day']} | tap a line to read it, or Source for the article",
+                      M, height - 49, width - 2 * M, 9.5, 7, FONT, HexColor("#cfd9e6"))
+        return height - 76
+
+    y = new_sheet("INDEX")
+    for p in draft["pages"]:
+        if y - line * 2.4 < 30:
+            c.showPage()
+            y = new_sheet("INDEX (continued)")
+        c.setFillColor(page.col["light"])
+        c.rect(M, y - 13, width - 2 * M, 16, fill=1, stroke=0)
+        page.fit_line(f"{p['n']}. {p['name'].upper()}", M + 5, y - 9, width - 2 * M - 60, 10, 7, BOLD, page.col["navy"])
+        c.linkAbsolute(p["name"], f"p{p['n']}", (M, y - 13, width - M, y + 3), Border="[0 0 0]")
+        y -= 18
+        for k, a in enumerate(articles(p)):
+            if y - line < 30:
+                c.showPage()
+                y = new_sheet("INDEX (continued)")
+            key = f"s{p['n']}_{k}"
+            page.fit_line("- " + a["title"], M + 10, y - 8, width - 2 * M - 92, 8.5, 7, FONT, page.col["text"])
+            page.fit_line(f"p.{pages_of.get(key, '')}", width - M - 76, y - 8, 28, 8, 6, FONT, page.col["muted"])
+            c.linkAbsolute(a["title"][:40], key, (M, y - 11, width - M - 44, y), Border="[0 0 0]")
+            if a["link"]:  # the title goes to the story in this PDF, "Source" to the article itself
+                page.fit_line("Source", width - M - 38, y - 8, 36, 8.5, 7, BOLD, page.col["teal"])
+                c.linkURL(a["link"], (width - M - 44, y - 11, width - M, y), relative=0, thickness=0)
+            y -= line
+        y -= 5
+    c.addOutlineEntry("Index", "index", 0)
+    for p in draft["pages"]:
+        c.addOutlineEntry(p["name"], f"p{p['n']}", 0)
+    c.showPage()
+
+
+def draw_section(c, cfg, draft, p, total, width, height, pages_of):
+    """One section: a block for each story, running onto further pages when it must."""
+    page = Page(c, cfg, width, height)
+    M, W = page.M, width - 2 * page.M
+    body, lead = 9.5, 12.4
+
+    def number():
+        page.fit_line(f"Page {c.getPageNumber()}", M, 14, W, 7.5, 6, FONT, page.col["muted"], align="center")
+
+    c.bookmarkPage(f"p{p['n']}")
+    top = page.header(draft, p, total) - 10
+    if (p.get("flow") or {}).get("mode") == "flow" and p["flow"].get("steps"):
+        top = page.flow(p, top, 120) - 10  # how a war began: the one graphic worth its space
+    stories = articles(p)
+    # a site that would not give its article leaves only a headline: list it, do not box it
+    full = [(k, a) for k, a in enumerate(stories) if not k or str(a["para"]).strip()]
+    brief = [(k, a) for k, a in enumerate(stories) if k and not str(a["para"]).strip()]
+    for k, a in full:
+        title = simpleSplit(str(a["title"]).translate(ODD_CHARS), BOLD, 10.5, W - 16)[:2]
+        para = five_lines(a["para"], FONT, body, W - 16)
+        forms = forms_for(p, a["title"] + " " + a["para"])
+        form_text = "Full forms: " + "; ".join(f"{f['abbr']} - {f['full']}" for f in forms) if forms else ""
+        form_lines = simpleSplit(form_text.translate(ODD_CHARS), FONT, 8.5, W - 16)[:3]
+        h = 8 + len(title) * 13 + len(para) * lead + len(form_lines) * 11 + 22
+        if top - h < 28:
+            number()
+            c.showPage()
+            top = height - 24
+        page.rect(M, top, W, h, page.col["light"], r=5)
+        c.setFillColor(page.col["navy"])
+        c.rect(M, top - h, 3, h, fill=1, stroke=0)
+        key = f"s{p['n']}_{k}"
+        c.bookmarkPage(key, fit="XYZ", top=top + 6)
+        pages_of[key] = c.getPageNumber()
+        y = top - 13
+        for t in title:
+            c.setFont(BOLD, 10.5)
+            c.setFillColor(page.col["navy"])
+            c.drawString(M + 9, y, t)
+            y -= 13
+        y -= 1
+        c.setFont(FONT, body)
+        c.setFillColor(page.col["text"])
+        for t in para:
+            c.drawString(M + 9, y, t)
+            y -= lead
+        c.setFont(FONT, 8.5)
+        c.setFillColor(page.col["teal"])
+        for t in form_lines:
+            c.drawString(M + 9, y, t)
+            y -= 11
+        ly = top - h + 6
+        page.fit_line("< Back to index", M + 9, ly, 80, 8.5, 7, BOLD, page.col["orange"])
+        c.linkAbsolute("Index", "index", (M + 5, ly - 4, M + 92, ly + 10), Border="[0 0 0]")
+        if a["link"]:
+            page.fit_line("Read the source >", M + W - 92, ly, 84, 8.5, 7, BOLD, page.col["teal"])
+            c.linkURL(a["link"], (M + W - 96, ly - 4, M + W - 4, ly + 10), relative=0, thickness=0)
+        top -= h + 7
+    if brief:
+        if top - 30 < 28:
+            number()
+            c.showPage()
+            top = height - 24
+        page.fit_line("ALSO IN THE NEWS", M, top - 10, W, 9, 7, BOLD, page.col["teal"])
+        top -= 18
+        for k, a in brief:
+            if top - 14 < 28:
+                number()
+                c.showPage()
+                top = height - 24
+            key = f"s{p['n']}_{k}"
+            c.bookmarkPage(key, fit="XYZ", top=top + 6)
+            pages_of[key] = c.getPageNumber()
+            page.fit_line("- " + a["title"], M + 6, top - 9, W - 56, 8.5, 7, FONT, page.col["text"])
+            if a["link"]:
+                page.fit_line("Source", M + W - 40, top - 9, 38, 8.5, 7, BOLD, page.col["teal"])
+                c.linkURL(a["link"], (M + W - 44, top - 12, M + W, top + 1), relative=0, thickness=0)
+            top -= 12.5
+        top -= 8
+    extra = [(p.get("benefit_label", "BENEFIT FOR INDIA").upper(), page.col["green"], p.get("benefit"), "green"),
+             ("ADVANCED POINT", page.col["orange"], p.get("advanced"), "orange")]
+    extra = [e for e in extra if e[2] and e[2] != ["-"]]
+    if extra:
+        if top - 96 < 28:
+            number()
+            c.showPage()
+            top = height - 24
+        w = (W - 8 * (len(extra) - 1)) / len(extra)
+        for i, (label, col, items, dot) in enumerate(extra):
+            page.bar_box(M + i * (w + 8), top, w, 90, label, col, page.bullets(items, dot), 8)
+    number()
+    c.showPage()
+
+
 def render(cfg, draft, out_path, progress=None):
     setup_fonts(cfg)
     size = letter if cfg["layout"]["page_size"].lower() == "letter" else A4
-    c = canvas.Canvas(out_path, pagesize=size)
-    c.setTitle(f"{draft.get('title', 'Daily News Digest')} - {draft['date']}")
-    c.setAuthor("news-digest CLI")
     pages = draft["pages"]
-    for i, p in enumerate(pages, 1):
-        if progress:
-            progress(f"Drawing page {i}: {p['name']}", i, len(pages))
-        Page(c, cfg, *size).draw(draft, p, len(pages))
-        c.showPage()
-    c.save()
+    pages_of = {}
+    # drawn twice: the index prints page numbers it only knows once the stories are placed
+    for final in (False, True):
+        c = canvas.Canvas(out_path if final else io.BytesIO(), pagesize=size)
+        c.setTitle(f"{draft.get('title', 'Daily News Digest')} - {draft['date']}")
+        c.setAuthor("news-digest CLI")
+        draw_index(c, cfg, draft, *size, pages_of)
+        for i, p in enumerate(pages, 1):
+            if progress and final:
+                progress(f"Drawing section {i}: {p['name']}", i, len(pages))
+            draw_section(c, cfg, draft, p, len(pages), *size, pages_of)
+        if final:
+            c.save()
     return out_path
 
 
@@ -336,7 +532,7 @@ def text_digest(draft):
                 head, _, ctx = str(s).partition("\n")
                 out.append(f"  + {head}" + (f": {ctx}" if ctx.strip() else ""))
         for f in p.get("full_forms", []):
-            out.append(f"  - {f['abbr']}: {f['full']} ({f['does']})")
+            out.append(f"  - {f['abbr']}: {f['full']}")
         for b in p.get("benefit", []):
             out.append(f"  {p.get('benefit_label', 'BENEFIT FOR INDIA').title()}: {b}")
         adv = p.get("advanced") or []

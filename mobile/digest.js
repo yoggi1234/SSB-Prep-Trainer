@@ -210,6 +210,39 @@
     });
   }
 
+  /* ------------------------------------------------------- reading a paper */
+
+  // Lines rebuilt from pdf.js text runs by height on the page; a wide gap is a blank line,
+  // which is what separates stories, and \f separates pages, as pdftotext gives the desktop.
+  function pdfToText(lib, buf) {
+    return lib.getDocument({ data: buf, isEvalSupported: false }).promise.then(function (doc) {
+      var pages = [];
+      var next = function (n) {
+        if (n > doc.numPages) return pages.join('\f');
+        return doc.getPage(n).then(function (p) { return p.getTextContent(); }).then(function (tc) {
+          var lines = [];
+          var lastY = null;
+          var cur = '';
+          tc.items.forEach(function (it) {
+            var y = it.transform[5];
+            var h = it.height || 10;
+            if (lastY !== null && Math.abs(y - lastY) > h * 0.5) {
+              lines.push(cur);
+              cur = '';
+              if (Math.abs(y - lastY) > h * 1.8) lines.push('');
+            }
+            cur += it.str;
+            lastY = y;
+          });
+          lines.push(cur);
+          pages.push(lines.join('\n'));
+          return next(n + 1);
+        });
+      };
+      return next(1);
+    });
+  }
+
   /* ------------------------------------------------------------ PDF saving */
 
   function base64(bytes) {
@@ -224,7 +257,28 @@
   // Filesystem plugin (a copy kept in Documents), then Android's "Open with"
   // list of PDF apps (FileOpener). With no PDF app installed, the share sheet
   // is offered instead.
-  function savePdf(name, bytes) {
+  var LIBRARY = 'ssb-pdf-library';
+
+  function shareable(name) {
+    var fsys = ((window.Capacitor && window.Capacitor.Plugins) || {}).Filesystem;
+    return fsys.readFile({ path: 'news-pdfs/' + name, directory: 'DATA' }).then(function (r) {
+      return fsys.writeFile({ path: name, data: r.data, directory: 'CACHE' });
+    }).then(function (res) { return res.uri; });
+  }
+
+  // The app's own storage needs no permission on any Android version, and the copy
+  // stays readable after a reinstall of the same app's data, unlike a shared folder.
+  function keepInApp(name, data, pages) {
+    var fsys = (window.Capacitor && window.Capacitor.Plugins || {}).Filesystem;
+    if (!fsys) return Promise.resolve();
+    return fsys.writeFile({ path: 'news-pdfs/' + name, data: data, directory: 'DATA', recursive: true }).then(function () {
+      var list = store.readJson(LIBRARY, []).filter(function (x) { return x.name !== name; });
+      list.unshift({ name: name, pages: pages, at: Date.now() });
+      store.writeJson(LIBRARY, list);
+    });
+  }
+
+  function savePdf(name, bytes, pages) {
     var plugins = (window.Capacitor && window.Capacitor.Plugins) || {};
     var fsys = plugins.Filesystem;
     var share = plugins.Share;
@@ -241,19 +295,9 @@
     }
     var data = base64(bytes);
     var kept = fsys.writeFile({ path: name, data: data, directory: 'DOCUMENTS' })
-      .then(function () { return 'Documents'; }, function () { return ''; });
+      .then(function () { return 'Documents and inside the app'; }, function () { return 'inside the app'; });
     return kept.then(function (where) {
-      return fsys.writeFile({ path: name, data: data, directory: 'CACHE' }).then(function (res) {
-        var shareIt = function () {
-          if (share) share.share({ title: name, files: [res.uri], dialogTitle: 'Share the digest' }).catch(function () {});
-        };
-        if (opener) {
-          opener.open({ filePath: res.uri, contentType: 'application/pdf', openWithDefault: false }).catch(shareIt);
-        } else {
-          shareIt();
-        }
-        return { where: where || 'this phone' };
-      });
+      return keepInApp(name, data, pages).then(function () { return { where: where }; });
     });
   }
 
@@ -272,8 +316,9 @@
       // opens yesterday's edition instead of a dead form.
       digestOnPhone: function (opts) {
         var force = !!(opts && opts.force);
+        var state = (opts && opts.state) || '';
         var cached = store.readJson('ssb-digest-phone', null);
-        if (!force && cached && cached.sections && Date.now() - (cached.at || 0) < 20 * 60 * 1000) {
+        if (!force && cached && cached.sections && (cached.state || '') === state && Date.now() - (cached.at || 0) < 20 * 60 * 1000) {
           return Promise.resolve(digestPhonePack(cached, true));
         }
         if (!window.SSB.online.enabled()) {
@@ -283,7 +328,7 @@
         // Current Events portal, which is the transport that survives CSP and CORS.
         var live = net.nativeHttp()
           ? Promise.all(
-              DIGEST_SECTIONS.map(function (sec) {
+              DIGEST_SECTIONS.concat(state ? [{ key: 'state', label: state + ' News', query: '"' + state + '" government OR "chief minister" OR cabinet OR development' }] : []).map(function (sec) {
                 // when:2d keeps evergreen explainer pages out of a daily edition.
                 return net.googleNews(sec.query + ' when:2d', 4).then(
                   function (rows) { return { key: sec.key, label: sec.label, items: rows.slice(0, 4) }; },
@@ -297,6 +342,7 @@
             var total = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
             if (!total) throw new Error('empty');
             var rec = {
+              state: state,
               at: Date.now(),
               source: net.nativeHttp() ? 'Google News (on the phone)' : 'Wikipedia Current Events',
               sections: sections
@@ -312,8 +358,142 @@
       // The 12-page colour PDF, made the way the desktop's news-digest engine
       // makes it (edition.js + pdf.js), saved to the phone's Documents folder and
       // offered to the share sheet. progress(text, done, total) reports each step.
-      digestPdf: function (progress) {
-        if (!window.SSB.online.enabled()) return Promise.resolve({ ok: false, error: 'offline' });
+      // The follow-up threads this phone has built, on top of the set copied from
+      // the PC when the APK was made.
+      timelineLoad: function () {
+        var own = store.readJson('ssb-timeline', []);
+        return fetch('data/timeline-seed.json')
+          .then(function (r) { return r.ok ? r.json() : { threads: [] }; })
+          .catch(function () { return { threads: [] }; })
+          .then(function (seed) {
+            var have = {};
+            own.forEach(function (t) { have[t.events[0].date + t.events[0].headline] = 1; });
+            return own.concat((seed.threads || []).filter(function (t) { return !have[t.events[0].date + t.events[0].headline]; }));
+          });
+      },
+
+      digestLibrary: function () {
+        return Promise.resolve(store.readJson(LIBRARY, []));
+      },
+
+      // Draws a saved edition inside the app. The index links work: a tap scrolls to the page.
+      digestShowPdf: function (name, holder) {
+        var fsys = (window.Capacitor && window.Capacitor.Plugins || {}).Filesystem;
+        return Promise.all([import('./lib/pdf.min.js'), fsys.readFile({ path: 'news-pdfs/' + name, directory: 'DATA' })]).then(function (r) {
+          var lib = r[0];
+          lib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+          var raw = atob(r[1].data);
+          var bytes = new Uint8Array(raw.length);
+          for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+          return lib.getDocument({ data: bytes, isEvalSupported: false }).promise.then(function (doc) {
+            var boxes = [];
+            var draw = function (n) {
+              if (n > doc.numPages) return null;
+              return doc.getPage(n).then(function (page) {
+                var cssW = holder.clientWidth || window.innerWidth;
+                var scale = cssW / page.getViewport({ scale: 1 }).width;
+                var ratio = Math.min(window.devicePixelRatio || 1, 2);
+                var view = page.getViewport({ scale: scale * ratio });
+                var box = document.createElement('div');
+                box.className = 'pdf-page';
+                var canvas = document.createElement('canvas');
+                canvas.width = view.width;
+                canvas.height = view.height;
+                holder.appendChild(box);
+                boxes[n - 1] = box;
+                return page.render({ canvasContext: canvas.getContext('2d'), viewport: view }).promise.then(function () {
+                  return new Promise(function (done) { canvas.toBlob(done, 'image/jpeg', 0.9); });
+                }).then(function (blob) {
+                  var img = document.createElement('img');
+                  img.alt = 'Page ' + n;
+                  img.src = URL.createObjectURL(blob);
+                  img.style.width = cssW + 'px';
+                  box.appendChild(img);
+                  canvas.width = 0;
+                  page.cleanup();
+                  return page.getAnnotations();
+                }).then(function (notes) {
+                  notes.filter(function (a) { return a.subtype === 'Link' && (a.dest || /^https?:\/\//.test(a.url || '')); }).forEach(function (a) {
+                    var rect = view.convertToViewportRectangle(a.rect);
+                    var link = document.createElement('button');
+                    link.className = 'pdf-link';
+                    link.setAttribute('aria-label', 'Go to page');
+                    link.style.cssText = 'left:' + Math.min(rect[0], rect[2]) / ratio + 'px;top:' + Math.min(rect[1], rect[3]) / ratio + 'px;width:' +
+                      Math.abs(rect[2] - rect[0]) / ratio + 'px;height:' + Math.abs(rect[3] - rect[1]) / ratio + 'px';
+                    link.addEventListener('click', function () {
+                      if (!a.dest) {
+                        window.api.openExternal(a.url);
+                        return;
+                      }
+                      Promise.resolve(typeof a.dest === 'string' ? doc.getDestination(a.dest) : a.dest).then(function (dest) {
+                        return doc.getPageIndex(dest[0]);
+                      }).then(function (at) { if (boxes[at]) boxes[at].scrollIntoView(); });
+                    });
+                    box.appendChild(link);
+                  });
+                  return draw(n + 1);
+                });
+              });
+            };
+            return draw(1);
+          });
+        }).then(function () { return { ok: true }; }, function (err) { return { ok: false, detail: err && err.message }; });
+      },
+
+      // The other PDF apps, for sharing or printing.
+      // Other apps cannot read the app's own folder, so a copy goes to the cache, which they can.
+      digestShareSaved: function (name) {
+        var p = (window.Capacitor && window.Capacitor.Plugins) || {};
+        return shareable(name).then(function (uri) {
+          return p.Share.share({ title: name, files: [uri], dialogTitle: 'Share the digest' });
+        }).then(function () { return { ok: true }; }, function (err) { return { ok: false, detail: err && err.message }; });
+      },
+
+      digestOpenSaved: function (name) {
+        var p = (window.Capacitor && window.Capacitor.Plugins) || {};
+        return shareable(name).then(function (uri) {
+          return p.FileOpener.open({ filePath: uri, contentType: 'application/pdf', openWithDefault: false });
+        }).then(function () { return { ok: true }; }, function (err) { return { ok: false, detail: err && err.message }; });
+      },
+
+      // A copy in the phone's Documents folder, where the Files app finds it.
+      digestSaveToPhone: function (name) {
+        var fsys = ((window.Capacitor && window.Capacitor.Plugins) || {}).Filesystem;
+        return fsys.readFile({ path: 'news-pdfs/' + name, directory: 'DATA' }).then(function (r) {
+          return fsys.writeFile({ path: name, data: r.data, directory: 'DOCUMENTS' });
+        }).then(function () { return { ok: true, where: 'Documents' }; }, function (err) { return { ok: false, detail: err && err.message }; });
+      },
+
+      // Reads newspapers the person picked. A file already picked, by content, is not read twice.
+      digestReadPapers: function (files, already) {
+        var have = {};
+        (already || []).forEach(function (p) { have[p.sha] = p.name; });
+        var out = [];
+        var dup = [];
+        return Promise.all([import('./lib/pdf.min.js')]).then(function (m) {
+          var lib = m[0];
+          lib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+          return files.reduce(function (chain, f) {
+            return chain.then(function () { return f.arrayBuffer(); }).then(function (buf) {
+              return crypto.subtle.digest('SHA-256', buf).then(function (d) {
+                var sha = Array.prototype.map.call(new Uint8Array(d), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+                if (have[sha]) {
+                  dup.push(f.name);
+                  return null;
+                }
+                have[sha] = f.name;
+                return pdfToText(lib, buf).then(function (text) { out.push({ name: f.name, sha: sha, text: text }); });
+              });
+            });
+          }, Promise.resolve());
+        }).then(function () { return { ok: true, papers: out, duplicates: dup }; }, function (err) {
+          return { ok: false, detail: err && err.message };
+        });
+      },
+
+      digestPdf: function (progress, opts) {
+        var offline = !window.SSB.online.enabled();
+        if (offline && !(opts && opts.pdfs && opts.pdfs.length)) return Promise.resolve({ ok: false, error: 'offline' });
         var io = {
           fetchText: net.getText,
           read: store.readJson,
@@ -323,15 +503,15 @@
         return Promise.all(['glossary', 'hardwords', 'facts', 'wars'].map(function (k) {
           return fetch('data/digest/' + k + '.json').then(function (r) { return r.json(); }).then(function (j) { data[k] = j; });
         }))
-          .then(function () { return SSB.edition.collect(io, data, { progress: progress }); })
+          .then(function () { return SSB.edition.collect(io, data, { progress: progress, state: opts && opts.state, pdfs: opts && opts.pdfs, ask: opts && opts.ask, noWeb: offline }); })
           .then(function (draft) {
             if (progress) progress('Drawing the PDF', 12, 12);
             var bytes = SSB.pdf.render(draft);
             var name = 'Daily_News_Digest_' + draft.date + '.pdf';
-            return savePdf(name, bytes).then(function (saved) {
+            return savePdf(name, bytes, draft.pages.length).then(function (saved) {
               SSB.edition.record(io, draft);
               return { ok: true, name: name, where: saved.where, pages: draft.pages.length, headlines: draft.headlines,
-                articles: draft.articles, war: draft.war.name };
+                articles: draft.articles, war: draft.war.name, papers: draft.papers };
             });
           })
           .catch(function (err) {

@@ -15,6 +15,7 @@
     watPerWordSec: 15,
     srtTotalMin: 30,
     tatViewSec: 30,
+    tatThinkSec: 30,
     tatWriteSec: 240,
     shuffleWAT: false,
     shuffleSRT: true,

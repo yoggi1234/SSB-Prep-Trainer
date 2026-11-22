@@ -137,8 +137,42 @@
     });
   }
 
-  function mineAdd(files) {
-    return mineLoad()
+  var lastPick = { added: 0, duplicates: 0 };
+
+  function sha256(blob) {
+    return blob.arrayBuffer().then(function (buf) { return crypto.subtle.digest('SHA-256', buf); }).then(function (d) {
+      return Array.prototype.map.call(new Uint8Array(d), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+  }
+
+  // Same content is the same picture, whatever the file is called.
+  function onlyNewPictures(files) {
+    return Promise.all([
+      fetch('data/ppdt.json').then(function (r) { return r.json(); }).catch(function () { return []; }),
+      mineLoad().then(function () { return Promise.all(Object.keys(mineKey).map(function (u) { return fetch(u).then(function (r) { return r.blob(); }).then(sha256); })); })
+    ]).then(function (r) {
+      var have = new Set(r[0].map(function (p) { return p.sha256; }).concat(r[1]));
+      return files.reduce(function (chain, f) {
+        return chain.then(function (keep) {
+          return sha256(f).then(function (h) {
+            if (!have.has(h)) { have.add(h); keep.push(f); }
+            return keep;
+          });
+        });
+      }, Promise.resolve([]));
+    }).then(function (keep) {
+      lastPick = { added: keep.length, duplicates: files.length - keep.length };
+      return keep;
+    });
+  }
+
+  function mineAdd(picked) {
+    var files;
+    return onlyNewPictures(picked)
+      .then(function (keep) {
+        files = keep;
+        return mineLoad();
+      })
       .then(function () {
         return mineTx('readwrite', function (st) {
           var added = [];
@@ -209,6 +243,9 @@
       // the chosen files are kept on the phone (see mineAdd) and survive a restart.
       listTatImages: function () {
         return mineList();
+      },
+      tatLastPick: function () {
+        return Promise.resolve(lastPick);
       },
       pickTatImages: function () {
         return new Promise(function (resolve) {

@@ -42,7 +42,12 @@ contextBridge.exposeInMainWorld('api', {
   lectureFacts: (topic) => ipcRenderer.invoke('lectures:facts', topic),
   ppdtList: () => ipcRenderer.invoke('ppdt:list'),
   ppdtStories: (id) => ipcRenderer.invoke('ppdt:stories', id),
-  ppdtGenerate: (id) => ipcRenderer.invoke('ppdt:generate', id),
+  ppdtGenerate: (id, file, ai) => ipcRenderer.invoke('ppdt:generate', id, file, ai),
+  tatLastPick: () => ipcRenderer.invoke('tat:lastPick'),
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  aiChat: (opts) => ipcRenderer.invoke('ai:chat', opts),
+  aiBuiltIn: () => ipcRenderer.invoke('ai:builtIn'),
+  timelineLoad: () => ipcRenderer.invoke('timeline:load'),
   // A cached batch of headlines, so a WAT word can show one real news example.
   newsIndex: (opts) => ipcRenderer.invoke('news:index', opts),
 

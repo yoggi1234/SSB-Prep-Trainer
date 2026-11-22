@@ -22,6 +22,13 @@ NEGATIVE = re.compile(r"\b(war|attack|strike|killed|dead|clash|protest|row|tensi
                       r"sanction|tariff|riot|violence|border|dispute|ban|accused|arrest|fire|flood|cyclone|"
                       r"earthquake|missile|drone|hostage|conflict|deficit|slump|fall)\w*", re.I)
 
+# Everyone preparing for SSB already knows these; spelling them out only fills the box.
+COMMON_ABBR = set("""PM CM US USA UK UN EU UAE G20 G7 GDP IMF AI IT TV MP MLA MLC BJP RBI ISRO NASA WHO NATO FIR
+IPL ICC FIFA CEO VIP LPG CNG GST IAS IPS IIT IIM AIIMS CBI ED NDA ATM SMS PDF""".split())
+
+# Filler a model writes when it has nothing to say; a line made of it is not printed.
+VAGUE = re.compile(r"\b(significant|important|importance|crucial|key development|highlights?|underscores?|remains? to be seen|various|several aspects|in recent times|it is worth|plays? a (vital|key|major) role|stay tuned|more details|developing story|could have implications|far-reaching)\b", re.I)
+
 BENEFIT_HINT = re.compile(r"\b(will help|help|boost|benefit|strengthen|improve|aims? to|aimed at|enable|"
                           r"create|jobs|self-relian|atmanirbhar|cheaper|faster|security|for india|india's)\w*",
                           re.I)
@@ -33,6 +40,7 @@ class Writer:
         self.llm_ok = self._llm_available()
         self.think = self.cfg["llm"].get("think", "low")
         self.unknown_abbr = {}
+        self.news_abbr = {}  # full forms the articles themselves spell out
         self._cache, self._lock = {}, threading.Lock()
 
     def _memo(self, key, fn, *args):
@@ -140,7 +148,7 @@ class Writer:
         inserts = []
         if lay["inline_full_forms"]:
             for ab in self.find_abbrs(text):
-                if ab in used:
+                if ab in used or ab in COMMON_ABBR:
                     continue
                 g = self.glossary[ab]
                 m = re.search(r"(?<![A-Za-z0-9])" + re.escape(ab) + r"(?![A-Za-z0-9])(?!\s*\()", text)
@@ -151,7 +159,7 @@ class Writer:
                 if is_term:
                     inserts.append((m.end(), f" ({g['does']})"))
                 else:
-                    inserts.append((m.end(), f" ({g['full']} - {g['does']})"))
+                    inserts.append((m.end(), f" ({g['full']})"))
                 used.add(ab)
         if lay["inline_meanings"]:
             n = 0
@@ -174,12 +182,59 @@ class Writer:
         out.append(text[last:])
         return "".join(out)
 
+    @staticmethod
+    def initials_match(abbr, full):
+        """'SIR' fits 'Special Intensive Revision': the letters are the words' first letters, in order."""
+        firsts = [w[0].upper() for w in re.findall(r"[A-Za-z]+", full)
+                  if w.lower() not in ("of", "and", "for", "the", "in", "on", "to")]
+        letters = [ch for ch in abbr.upper() if ch.isalpha()]
+        it = iter(firsts)
+        return len(firsts) >= 2 and bool(letters) and letters[0] == firsts[0] and all(ch in it for ch in letters)
+
+    def learn_full_forms(self, text):
+        """Pick up 'Special Intensive Revision (SIR)' and 'SIR (Special Intensive Revision)' from an article."""
+        cap = r"[A-Z][a-zA-Z-]+"
+        name = rf"{cap}(?:\s+(?:of|and|for|the|in|on|to|&)\s+{cap}|\s+{cap})+"
+        for full, ab in re.findall(rf"({name})\s*\(([A-Z][A-Za-z&]{{1,7}})\)", text or ""):
+            self._learn(ab, full)
+        for ab, full in re.findall(rf"\b([A-Z][A-Z&]{{1,7}})\s*\(({name})\)", text or ""):
+            self._learn(ab, full)
+
+    def _learn(self, ab, full):
+        # the phrase may start before the abbreviation does ("The Reserve Bank of India (RBI)")
+        words = full.split()
+        for i in range(len(words)):
+            tail = " ".join(words[i:])
+            if words[i].lower() not in ("of", "and", "for", "the", "in", "on", "to", "&") and self.initials_match(ab, tail):
+                self.news_abbr[ab] = tail
+                return
+
     def full_forms_for(self, text, extra=()):
+        """Only abbreviations this page really uses and a reader may not know: what the articles spell
+        out first, then the glossary. A word no source explains is left out rather than guessed."""
         res = []
-        for ab in list(extra) + self.find_abbrs(text):
-            if ab in self.glossary and ab not in [r["abbr"] for r in res]:
-                res.append({"abbr": ab, **self.glossary[ab]})
+        toks = list(extra) + re.findall(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9&]*[A-Z0-9](?![A-Za-z0-9])", text)
+        for ab in toks:
+            if ab in COMMON_ABBR or ab in IGNORE_CAPS or ab in [r["abbr"] for r in res]:
+                continue
+            full = self.news_abbr.get(ab) or self.glossary.get(ab, {}).get("full", "")
+            if full and not full.lower().startswith(ab.lower()):  # "Kremlin" is a term, not a full form
+                res.append({"abbr": ab, "full": full, "does": ""})
         return res
+
+    def ask_full_forms(self, abbrs, text):
+        """For abbreviations no article or glossary explains, ask the model; an answer whose initials
+        do not fit the letters is thrown away, so a guess cannot print as fact."""
+        if not self.llm_ok or not abbrs:
+            return
+        out = self.llm("Give the full form of each abbreviation as used in this Indian news text. Answer with "
+                       "lines of ABBR = Full Form only, and skip any you are not sure of.\nABBREVIATIONS: "
+                       + ", ".join(abbrs) + "\nTEXT: " + text[:3000], 300)
+        for line in out.splitlines():
+            ab, _, full = line.partition("=")
+            ab, full = ab.strip(" -*"), full.strip(" .")
+            if ab in abbrs and full and self.initials_match(ab, full):
+                self.news_abbr[ab] = full
 
     # ------------------------------------------------------------- page text
     @staticmethod
@@ -259,6 +314,37 @@ class Writer:
             if out:
                 return util.whole_sentences(out, 280)
         return util.whole_sentences(" ".join(sents[:2]), 260)
+
+    @staticmethod
+    def story_para(story):
+        """What one story says, from its own article: the PDF trims it to five lines."""
+        title = util.strip_source_suffix(story["title"])
+        summary = story.get("summary") or ""
+        if summary.endswith("verify)") and not story.get("text"):
+            return util.whole_sentences(summary, 800)
+        keep = [s for s in util.sentences((story.get("text") or "") + " " + summary)
+                if util.similarity(s, title) < 0.85]
+        return util.whole_sentences(" ".join(keep), 800)
+
+    def explain_headlines(self, clusters):
+        """A short note for stories whose article no site would give, written only from headlines we hold.
+        Each line is marked, and a figure the headlines do not contain is not kept."""
+        if not self.llm_ok:
+            return
+        for i in range(0, len(clusters), 10):
+            batch = clusters[i:i + 10]
+            facts = [" | ".join([c["title"]] + [it["title"] for it in c["items"][1:4]]) for c in batch]
+            out = self.llm("You explain news headlines for an Indian defence exam student. For each numbered story, write 2 short sentences in simple English saying what it is about and why it matters, using ONLY the headline and the related headlines given. Do not add any number, date, name or fact that is not in them. Be concrete: say who did what. If the headlines do not say enough for that, write SKIP for that number. Answer with lines like 1: text\n" + "\n".join(f"{n + 1}: {f}" for n, f in enumerate(facts)), 900)
+            for line in out.splitlines():
+                n, _, text = line.partition(":")
+                n, text = n.strip(" -*#"), self._clean_llm(text)
+                if n.isdigit() and 0 < int(n) <= len(batch) and len(text) > 30:
+                    own = set(util.tokens(facts[int(n) - 1]))
+                    # a sentence must say something these headlines say: two of their words, no filler
+                    kept = [s for s in util.sentences(text) if self._numbers_ok(s, facts[int(n) - 1])
+                            and not VAGUE.search(s) and len(own & set(util.tokens(s))) >= 2]
+                    if kept:
+                        batch[int(n) - 1]["summary"] = " ".join(kept) + " (AI summary from the headlines, verify)"
 
     def benefit(self, section, stories, headline):
         key = ("b", section, id(stories[0]) if stories else None, headline)

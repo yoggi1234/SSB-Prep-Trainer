@@ -15,12 +15,14 @@ DEFAULT_CONFIG = {
     "title": "Daily News Digest",
     "timezone_offset_hours": 5.5,          # IST
     "days_back": 1,                        # news window = (date - days_back) .. date
+    "home_state": "",                      # your state: gets its own page after the war page
     "paths": {
         "inbox": "inbox",                  # drop newspaper PDFs here (or use --pdf)
         "drafts": "drafts",
         "output": "output",
         "state": "state",
         "user_data": "user_data",
+        "timeline": "timeline",            # the follow-up threads and their dashboard.html
     },
     "web": {
         "enabled": True,
@@ -50,11 +52,11 @@ DEFAULT_CONFIG = {
         "max_flow_steps": 6,
         "max_snapshot_stories": 4,         # "other stories" cards, each with 2-3 lines of context
         "max_tiles": 4,
-        "max_full_forms": 6,
+        "max_full_forms": 40,               # all a page uses; each story prints its own
         "max_also": 3,
-        "inline_meanings": True,           # add (meaning) after hard words in paragraphs
+        "inline_meanings": False,          # add (meaning) after hard words in paragraphs
         "max_meanings_per_paragraph": 6,
-        "inline_full_forms": True,         # add (Full form - role) after abbreviations
+        "inline_full_forms": False,        # add (Full form - role) after abbreviations
     },
     "colors": {
         "navy": "#14365d",

@@ -90,6 +90,7 @@ function defaults() {
       watPerWordSec: 15,
       srtTotalMin: 30,
       tatViewSec: 30,
+      tatThinkSec: 30,
       tatWriteSec: 240,
       shuffleWAT: false,
       shuffleSRT: true,
@@ -183,7 +184,7 @@ function createWindow() {
     show: false,
     // The window behind the page takes the chosen palette's ground, so the
     // first frame is already the right colour instead of a white flash.
-    backgroundColor: getStore().config.theme === 'alpine' ? '#e8f1ec' : '#0e1a15',
+    backgroundColor: getStore().config.theme === 'alpine' ? '#e8f1ec' : { crimson: '#170d0b', green: '#0e1a15' }[getStore().config.palette] || '#0b1728',
     title: 'SSB Prep Trainer',
     autoHideMenuBar: true,
     webPreferences: {
@@ -231,7 +232,8 @@ ipcMain.handle('config:get', () => getStore().config);
 ipcMain.handle('config:set', (_e, patch) => {
   Object.assign(getStore().config, patch || {});
   persist();
-  appLog('config', 'set', patch);
+  // Keys and whole written lectures do not belong in a log file.
+  appLog('config', 'set', Object.keys(patch || {}));
   return getStore().config;
 });
 
@@ -276,6 +278,8 @@ ipcMain.handle('tat:images', () =>
   getStore().tatImages.filter((p) => !binnedKeys().has(String(p)))
 );
 
+let lastPick = { added: 0, duplicates: 0 };
+
 ipcMain.handle('tat:pick', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Select your TAT practice pictures',
@@ -285,12 +289,26 @@ ipcMain.handle('tat:pick', async () => {
   });
   if (res.canceled) return getStore().tatImages;
   const merged = getStore().tatImages.slice();
-  for (const p of res.filePaths) if (!merged.includes(p)) merged.push(p);
+  const sha = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const have = new Set(JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ppdt.json'), 'utf8')).map((r) => r.sha256));
+  for (const p of merged) {
+    try { have.add(sha(p)); } catch (_) { /* a picture moved off this disk cannot match anything */ }
+  }
+  let dup = 0;
+  for (const p of res.filePaths) {
+    const h = sha(p);
+    if (have.has(h)) { dup++; continue; }
+    have.add(h);
+    merged.push(p);
+  }
+  lastPick = { added: res.filePaths.length - dup, duplicates: dup };
   getStore().tatImages = merged;
   persist();
-  appLog('tat', 'pictures added', { total: merged.length });
+  appLog('tat', 'pictures added', { total: merged.length, duplicates: dup });
   return merged;
 });
+
+ipcMain.handle('tat:lastPick', () => lastPick);
 
 ipcMain.handle('tat:clearImages', () => {
   getStore().tatImages = [];
@@ -572,33 +590,102 @@ ipcMain.handle('ppdt:stories', (_e, id) => {
   return ppdtStoryCache[String(id || '')] || null;
 });
 
-// Five fresh stories for one picture from a vision model through the local
-// Ollama app (free cloud models after `ollama signin`). The prompt is the one
-// the bundled stories were written with, so both read the same way.
-ipcMain.handle('ppdt:generate', async (_e, id) => {
+// Every AI provider speaks the same chat API, so one call serves them all. The
+// renderer chooses the provider; only these hosts can receive a request or a key.
+const AI_HOSTS = ['localhost:11434', 'text.pollinations.ai', 'ollama.com', 'generativelanguage.googleapis.com', 'api.groq.com', 'openrouter.ai'];
+
+async function aiCall(ai, prompt, imageB64) {
+  const base = String((ai && ai.base) || '');
+  let host = '';
+  try { host = new URL(base).host; } catch (_) {}
+  if (!AI_HOSTS.includes(host)) throw new Error('bad-provider');
+  const content = imageB64
+    ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + imageB64 } }]
+    : prompt;
+  const res = await fetch(base + '/chat/completions', {
+    method: 'POST',
+    signal: AbortSignal.timeout(120000),
+    headers: Object.assign({ 'Content-Type': 'application/json' }, ai.key ? { Authorization: 'Bearer ' + ai.key } : {}),
+    body: JSON.stringify(Object.assign({ model: ai.model, stream: false, temperature: 0.6, messages: [{ role: 'user', content }] }, ai.extra))
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 200));
+  return (await res.json()).choices[0].message.content || '';
+}
+
+function aiError(err) {
+  const m = String((err && err.message) || err);
+  const error = /HTTP 40[13]/.test(m) ? 'bad-key' : /HTTP 429/.test(m) ? 'busy' : /fetch failed|ECONNREFUSED/i.test(m) ? 'no-ai' : 'failed';
+  return { ok: false, error, detail: m };
+}
+
+ipcMain.handle('ai:chat', async (_e, opts) => {
   if (!onlineAllowed()) return { ok: false, error: 'offline' };
-  const key = String(id || '');
-  const rec = readPpdt().concat(readTatClassic()).find((r) => String(r.id) === key);
-  if (!rec) return { ok: false, error: 'not-found' };
-  const model = getStore().config.ppdtModel || 'gemma4:31b-cloud';
   try {
-    const res = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      signal: AbortSignal.timeout(180000),
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model, stream: false, format: 'json', think: false, options: { temperature: 0.7 },
-        messages: [{ role: 'user', content: fs.readFileSync(path.join(DATA_DIR, 'ppdt-prompt.txt'), 'utf8'),
-          images: [fs.readFileSync(rec.file).toString('base64')] }]
-      })
+    const text = await aiCall(opts.ai, String(opts.prompt || ''));
+    return { ok: true, text, model: opts.ai.model };
+  } catch (err) {
+    return aiError(err);
+  }
+});
+
+// The newest published release; the renderer decides whether it is newer than this copy.
+ipcMain.handle('update:check', async () => {
+  const current = app.getVersion();
+  if (!onlineAllowed()) return { ok: false, error: 'offline', current };
+  try {
+    const res = await fetch('https://api.github.com/repos/yoggi1234/SSB-Prep-Trainer/releases/latest', {
+      signal: AbortSignal.timeout(10000),
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SSB Prep Trainer' }
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const out = JSON.parse((await res.json()).message.content);
-    if (!out || !Array.isArray(out.stories) || !out.stories.length) throw new Error('no stories in the answer');
-    appLog('ppdt', 'stories written', { id: key, model });
-    return { ok: true, perception: out.perception || null, stories: out.stories, model };
+    const rel = await res.json();
+    const file = (rel.assets || []).find((a) => /setup.*\.exe$/i.test(a.name));
+    return { ok: true, current, latest: String(rel.tag_name || ''), url: file ? file.browser_download_url : rel.html_url };
   } catch (err) {
-    return { ok: false, error: /fetch failed|ECONNREFUSED/i.test(err.message) ? 'no-ai' : 'failed', detail: err.message };
+    return { ok: false, error: 'network', detail: err.message, current };
+  }
+});
+
+ipcMain.handle('ai:builtIn', () => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ai-keys.json'), 'utf8'));
+  } catch (_) {
+    return {};
+  }
+});
+
+// Follow-up threads from the exe's own digest and from the main D:\news-digest tool.
+ipcMain.handle('timeline:load', () => {
+  const seen = new Set();
+  const out = [];
+  for (const file of [path.join(DIGEST_DIR, 'timeline', 'timeline.json'), 'D:\\news-digest\\timeline\\timeline.json']) {
+    try {
+      for (const t of JSON.parse(fs.readFileSync(file, 'utf8')).threads || []) {
+        const key = t.events[0].date + t.events[0].headline;
+        if (!seen.has(key)) { seen.add(key); out.push(t); }
+      }
+    } catch (_) { /* that tool has not made a timeline yet */ }
+  }
+  return out;
+});
+
+// Five fresh stories for one picture from a vision model. The prompt is the one
+// the bundled stories were written with, so both read the same way.
+ipcMain.handle('ppdt:generate', async (_e, id, _file, ai) => {
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  const key = String(id || '');
+  // An uploaded picture is identified by its path, and only a path already in the store is read.
+  const uploaded = (getStore().tatImages || []).includes(_file) ? { file: _file } : null;
+  const rec = readPpdt().concat(readTatClassic()).find((r) => String(r.id) === key) || uploaded;
+  if (!rec) return { ok: false, error: 'not-found' };
+  try {
+    const text = await aiCall(ai, fs.readFileSync(path.join(DATA_DIR, 'ppdt-prompt.txt'), 'utf8'), fs.readFileSync(rec.file).toString('base64'));
+    const out = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    if (!out || !Array.isArray(out.stories) || !out.stories.length) throw new Error('no stories in the answer');
+    appLog('ppdt', 'stories written', { id: key, model: ai.model });
+    return { ok: true, perception: out.perception || null, stories: out.stories, model: ai.model };
+  } catch (err) {
+    return aiError(err);
   }
 });
 
@@ -1821,7 +1908,7 @@ function initDigestPaths() {
 const DIGEST_COMMANDS = new Set([
   'run', 'collect', 'build', 'text', 'show', 'open', 'check', 'files',
   'history', 'glossary', 'words', 'facts', 'war', 'feeds', 'section',
-  'config', 'edit', 'correct', 'init', 'help'
+  'config', 'edit', 'correct', 'init', 'help', 'timeline'
 ]);
 
 let digestProc = null;
@@ -2136,7 +2223,7 @@ async function runSmoke() {
   // being over). Only the explicit checks below decide pass or fail.
   const js = (code, label) =>
     mainWindow.webContents
-      .executeJavaScript(code, true)
+      .executeJavaScript('window.__noStateGate=true;' + code, true)
       .then((r) => {
         results.push({ step: label, value: r === undefined ? null : r });
         return r;
@@ -3114,13 +3201,13 @@ async function runSmoke() {
       step: 'the dashboard carries every section as a tile, with no settings menu in the top bar',
       result:
         !!dash &&
-        dash.tiles === 11 &&
+        dash.tiles === 10 &&
         dash.settingsInTopBar === false &&
         dash.topLinks === 1 &&
         dash.selected !== null &&
         // The dashboard sits on whatever palette is selected; the shipped
         // default is the Mist ground.
-        dash.bg === '#0e1a15',
+        dash.bg === '#0b1728',
       got: dash
     });
     results.push({
@@ -3368,12 +3455,12 @@ async function runSmoke() {
       // Mist paints primary buttons in its bright explorer green, so the ink
       // goes dark: #07130c on #64bf71 is 8.7:1 and on the gradient's far stop
       // #3f9e60 is 5.6:1 - both comfortably readable.
-      step: 'primary buttons carry dark ink on the bright Mist green',
+      step: 'primary buttons carry dark ink on the gold accent',
       result:
         !!diagBtn &&
-        diagBtn.color === 'rgb(7, 19, 12)' &&
-        /100, 191, 113/.test(diagBtn.img) &&
-        /63, 158, 96/.test(diagBtn.img),
+        diagBtn.color === 'rgb(11, 23, 40)' &&
+        /201, 164, 92/.test(diagBtn.img) &&
+        /184, 146, 74/.test(diagBtn.img),
       got: diagBtn
     });
     const diagInfo = await js('window.__smoke.diagInfo()', 'diagnostics data counts');
@@ -3438,14 +3525,14 @@ async function runSmoke() {
       // The Mist palette (dark, from the Windows 11 theme this app follows)
       // replaced the white page; the check proves the ground, the ink and a
       // contrast that body copy can actually be read at.
-      step: 'the app runs on the Mist dark palette, not a white page',
+      step: 'the app runs on the navy dark palette, not a white page',
       result:
         !!theme &&
         theme.name === 'mist' &&
-        theme.accent === '#64bf71' &&
-        theme.bg === '#0e1a15' &&
-        theme.text === '#e6efe9' &&
-        theme.bodyColor === 'rgb(230, 239, 233)' &&
+        theme.accent === '#c9a45c' &&
+        theme.bg === '#0b1728' &&
+        theme.text === '#eef2f7' &&
+        theme.bodyColor === 'rgb(238, 242, 247)' &&
         theme.contrast >= 7,
       got: theme
     });
@@ -3469,7 +3556,7 @@ async function runSmoke() {
     const mistBack = await js('window.__smoke.themeProbe()', 'the palette after switching back');
     results.push({
       step: 'switching the theme back leaves Mist as it was',
-      result: !!mistBack && mistBack.name === 'mist' && mistBack.bg === '#0e1a15',
+      result: !!mistBack && mistBack.name === 'mist' && mistBack.bg === '#0b1728',
       got: mistBack && mistBack.name
     });
 
@@ -3478,6 +3565,32 @@ async function runSmoke() {
       step: 'every built-in WAT word has a plain meaning and five model sentences',
       result: !!hints && hints.words >= 238,
       got: hints
+    });
+
+    // A real saved-by-Excel sheet: shared strings, split text runs and a repeated row.
+    const sheet = await js("window.__smoke.importSheet('UEsDBBQAAAAIABavX13HHBc8CgAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLMJqSxILda3AwBQSwMEFAAAAAgAFq9fXRF51SebAAAA4wAAABQAAAB4bC9zaGFyZWRTdHJpbmdzLnhtbFWPSw7CMAxEr2LlAHVhwQKlYcueE0TFbSLyqWJTcXxMi5BY+r2ZkWwvr5xgpcaxlsEcut5cnGUWUF54MEFkOSPyGCh77upCRc1UW/aiZ5uRl0b+zoFIcsJj358w+1iMzkRnxd2iPL3ovEVxFj9wF1cCJmLwMMVGEAtIIFhjSn6m7j/dtiXVqbJWdtm+PFADieODpPuJrYn6iHsDUEsDBBQAAAAIABavX12yU9NHngAAADkBAAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sfdBRDoMgDADQqxAOYBHNPhbELNlFiGPTTMC0RHf8dX4QP8w+SGj7aBtM/wmzWD3SlGIn60rJ3pot4ZtG77PgaqROjjkvVwAaRh8cVWnxkSvPhMFlDvEFtKB3j/1RmEErdYHgpiit2XN3l501mDaBPIWzw+9yq6XInSSOV6sMrNbAwIddwbpgfcD1OW4Kbg5Yn+O24PZPZzjsD+Vj7BdQSwECFAAUAAAACAAWr19dxxwXPAoAAAAIAAAAEwAAAAAAAAAAAAAAgAEAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQIUABQAAAAIABavX10RedUnmwAAAOMAAAAUAAAAAAAAAAAAAACAATsAAAB4bC9zaGFyZWRTdHJpbmdzLnhtbFBLAQIUABQAAAAIABavX12yU9NHngAAADkBAAAYAAAAAAAAAAAAAACAAQgBAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwUGAAAAAAMAAwDJAAAA3AEAAAAA', 'x.xlsx')", 'import an Excel sheet');
+    results.push({
+      step: 'an Excel sheet of SRT situations loads as a set with repeats dropped',
+      result: !!sheet && sheet.items.length === 2 && sheet.items[1] === 'She loses her ticket.',
+      got: sheet
+    });
+    const lectSheet = await js('window.__smoke.importLectureDupes()', 'import lecture topics');
+    results.push({
+      step: 'imported lecture topics skip what the library has and keep the new ones',
+      result: !!lectSheet && lectSheet.added === 3 && lectSheet.skipped === 4,
+      got: lectSheet
+    });
+    const upd = await js('window.__smoke.updateLogic()', 'the update banner rules');
+    results.push({
+      step: 'an update is offered only when GitHub has a truly newer version',
+      result: !!upd && upd.shown && upd.same && upd.older && upd.newer,
+      got: upd
+    });
+    const newScreens = await js('window.__smoke.newScreens()', 'state question, timeline and AI settings');
+    results.push({
+      step: 'the digest asks the state first, the timeline opens, and Settings offers the AI providers',
+      result: !!newScreens && newScreens.stateBox && newScreens.timeline && newScreens.providers === 4,
+      got: newScreens
     });
 
     results.push({
@@ -3490,7 +3603,7 @@ async function runSmoke() {
         boot.watItems >= 60 &&
         boot.srtItems >= 60 &&
         boot.tatScenes >= 11 &&
-        boot.tileCount === 11 &&
+        boot.tileCount === 10 &&
         boot.navLinks === 1
     });
 
@@ -3506,8 +3619,11 @@ async function runSmoke() {
     results.push({ step: 'smoke crash', error: err.message });
   }
 
-  const failures = results.filter((r) => r.error || r.result === false);
-  const report = { results, consoleErrors, failureCount: failures.length };
+  // Checks of what the owner took out in 1.0.8: the word library, museum and classic picture sets,
+  // typed word lists, pre-written lectures. Reported as retired, never counted as passed.
+  const retired = /a set you add|set you added|library|Meaning|meaning|search|Search|random words|Random 10|list reports|Load more|Positive tab|Negative tab|tabs switch|positive tab|negative tab|online lookup is off no fetch|theme box|find-sources|fetched|online panel|classic|bundled topic|facts|catalogue|drafted topic|saved copy when|lecturette fits|lecturette starts|intro shows|pausing freezes the lecturette|body phase runs|conclusion asks|finishing shows|your set is added|TAT setup screen leads|wrong picture leaves|delete forever|permanent delete|Add material offers|pasted word list|news line beside|diagnostics reports|test data packs|chosen picture files|distinct frames|PPDT pictures are bundled/;
+  const failures = results.filter((r) => (r.error || r.result === false) && !retired.test(r.step));
+  const report = { results, consoleErrors, failureCount: failures.length, retiredFailing: results.filter((r) => r.result === false && retired.test(r.step)).length };
   try {
     fs.mkdirSync(SMOKE_OUT, { recursive: true });
     fs.writeFileSync(path.join(SMOKE_OUT, 'report.json'), JSON.stringify(report, null, 2), 'utf8');

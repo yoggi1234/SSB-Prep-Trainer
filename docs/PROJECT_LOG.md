@@ -42,6 +42,142 @@ check for the PPDT pictures and stories. **Not verified:** writing stories on th
 
 ---
 
+## 2026-10-25 — 1.0.7: PPDT section, 418 more pictures, cleaner word library
+
+**PPDT.** 471 pictures were extracted from the owner's "PPDT 400+ practice images" PDF, shrunk to 720 px,
+de-duplicated by difference hash (42 repeats, and none already in the classic set) and cleaned (7 tiny
+images, a blank page, two logos and one screenshot with overlaid text removed; plain borders trimmed):
+418 pictures in `data/ppdt/` (user-supplied, git-ignored like the classic plates) with `data/ppdt.json`.
+A new **PPDT** tile (the eleventh) runs Look (30 s, picture blurred 40% — `blur(3.2px)`) → Think (30 s,
+picture hidden, note the characters) → Write (4 min), all three times and the blur in Settings, with a
+classic TAT plate now and then. The review shows the picture clearly, what it shows (characters with age,
+sex, mood, action) and five model stories — Leadership, Social responsibility, Courage in a crisis,
+Initiative and achievement, Teamwork — in the PPDT form taken from SSB coaching sources (Problem → Action
+→ Outcome, named hero, past tense, realistic end, officer-like qualities). Stories were written ahead for
+55 pictures by `tools/build-ppdt-stories.py` with the owner's Ollama `gemma4:31b-cloud` (vision); every
+other picture has **Write 5 stories**: on the PC through the local Ollama app, on the phone through
+Ollama's cloud API with the owner's key (Settings). The prompt is shared (`data/ppdt-prompt.txt`).
+TAT's default picture source is now **Classic + PPDT** (461 pictures).
+
+**Word library.** `tools/clean-dictionary.js` removed 24,505 entries no use for practice: fragments
+("'hood"), single letters, "a/an/the" phrases, names of three or more words, people (life years), plant
+and animal groups, foreign towns and rivers (countries and anything in India's neighbourhood kept), and
+words with no meaning. Every word the WAT sets, hints and action verbs use is kept. 122,912 remain.
+
+**Digest check against the original engine.** Run at the same moment as `digest run today` (AI off):
+the same lead story on 12 of 12 pages, the same war, the same counts of tiles, key points and full forms
+on almost every page, many key points word for word. The phone now reads schema.org `articleBody` first;
+three pages still get shorter paragraphs than trafilatura gives.
+
+**Verified.** One PPDT round driven on the served bundle (11 tiles, blur style, phases advance by
+deadline, picture hidden while thinking and writing, review clear, stories for ppdt-010: 5 × 116–121
+words); `ppdtGenerate` in the PC app returned 5 stories in 7 s. `npm run smoke`: 0 failures, with a new
+check for the PPDT pictures and stories. **Not verified:** writing stories on the phone (needs an Ollama key).
+
+---
+
+## 2026-10-25 — 1.0.7: PPDT section, 418 more pictures, cleaner word library
+
+**PPDT.** 471 pictures were extracted from the owner's "PPDT 400+ practice images" PDF, shrunk to 720 px,
+de-duplicated by difference hash (42 repeats, and none already in the classic set) and cleaned (7 tiny
+images, a blank page, two logos and one screenshot with overlaid text removed; plain borders trimmed):
+418 pictures in `data/ppdt/` (user-supplied, git-ignored like the classic plates) with `data/ppdt.json`.
+A new **PPDT** tile (the eleventh) runs Look (30 s, picture blurred 40% — `blur(3.2px)`) → Think (30 s,
+picture hidden, note the characters) → Write (4 min), all three times and the blur in Settings, with a
+classic TAT plate now and then. The review shows the picture clearly, what it shows (characters with age,
+sex, mood, action) and five model stories — Leadership, Social responsibility, Courage in a crisis,
+Initiative and achievement, Teamwork — in the PPDT form taken from SSB coaching sources (Problem → Action
+→ Outcome, named hero, past tense, realistic end, officer-like qualities). Stories were written ahead for
+55 pictures by `tools/build-ppdt-stories.py` with the owner's Ollama `gemma4:31b-cloud` (vision); every
+other picture has **Write 5 stories**: on the PC through the local Ollama app, on the phone through
+Ollama's cloud API with the owner's key (Settings). The prompt is shared (`data/ppdt-prompt.txt`).
+TAT's default picture source is now **Classic + PPDT** (461 pictures).
+
+**Word library.** `tools/clean-dictionary.js` removed 24,505 entries no use for practice: fragments
+("'hood"), single letters, "a/an/the" phrases, names of three or more words, people (life years), plant
+and animal groups, foreign towns and rivers (countries and anything in India's neighbourhood kept), and
+words with no meaning. Every word the WAT sets, hints and action verbs use is kept. 122,912 remain.
+
+**Digest check against the original engine.** Run at the same moment as `digest run today` (AI off):
+the same lead story on 12 of 12 pages, the same war, the same counts of tiles, key points and full forms
+on almost every page, many key points word for word. The phone now reads schema.org `articleBody` first;
+three pages still get shorter paragraphs than trafilatura gives.
+
+**Verified.** One PPDT round driven on the served bundle (11 tiles, blur style, phases advance by
+deadline, picture hidden while thinking and writing, review clear, stories for ppdt-010: 5 × 116–121
+words); `ppdtGenerate` in the PC app returned 5 stories in 7 s. `npm run smoke`: 0 failures, with a new
+check for the PPDT pictures and stories. **Not verified:** writing stories on the phone (needs an Ollama key).
+
+---
+
+## 2026-10-25 — 1.0.6: the 12-page colour digest PDF on the phone
+
+**Why.** The owner wanted the phone to make the same colour PDF the desktop's news-digest engine makes
+(reference: `Daily_News_Digest_12_Oct_2026_Colour.pdf`), "the way D:\news-digest does it". A WebView
+cannot run that Python engine, so it was ported.
+
+**Changed.**
+
+- `mobile/edition.js` — a port of `digest-tool/newsdigest` sources.py, util.py, writer.py and draft.py
+  (rule-based path, no AI model): the same 14 publisher feeds and Google News searches for the last day,
+  junk and repeat filtering against the last three editions (kept in localStorage), merging the same story
+  across outlets, war of the day, section scoring, full text of the lead articles, and every page field —
+  paragraph from the article's own sentences, figure tiles, story cards, key points, glossary full forms,
+  benefit, advanced point, also in the news, sources and confidence. The engine's data files
+  (glossary, hardwords, facts, wars) ship in the APK under `data/digest/`. Article text replaces
+  trafilatura with a simpler `<p>`-paragraph extractor.
+- `mobile/pdf.js` — a port of render.py with a small built-in PDF writer (Helvetica metrics taken from
+  reportlab): the same page geometry, colours, shrink-to-fit text and drop-whole-bullets fallback.
+- `digestPdf()` in `mobile/digest.js` and a **Make 12-page PDF** button on the phone digest: the PDF is
+  saved to Documents and offered to the share sheet.
+- **New dependencies** `@capacitor/filesystem` and `@capacitor/share` (official, devDependencies like the
+  other Capacitor packages): a WebView cannot download or share a file without them.
+
+**Verified.** The JS renderer drawn from the desktop engine's own 24 Oct draft matches the PDF the Python
+engine drew from it, page for page (page 1 and the war page with its flowchart compared as images); the
+only differences are font-level: "₹" prints "Rs" and the bullet dot is smaller, as reportlab does without
+Arial. The engine run in Node on the live feeds: 42 feeds/searches, 1,521 headlines, 1,188 stories, 101
+full articles, 12 pages in 18 s, every page with tiles, key points, cards and full forms; war page Iran
+(111 headlines). Bundle boots with the new modules; `npm run smoke` 0 failures.
+
+**Not verified yet.** Saving and sharing on the phone (needs the device connected).
+
+---
+
+## 2026-10-25 — 1.0.6: the 12-page colour digest PDF on the phone
+
+**Why.** The owner wanted the phone to make the same colour PDF the desktop's news-digest engine makes
+(reference: `Daily_News_Digest_12_Oct_2026_Colour.pdf`), "the way D:\news-digest does it". A WebView
+cannot run that Python engine, so it was ported.
+
+**Changed.**
+
+- `mobile/edition.js` — a port of `digest-tool/newsdigest` sources.py, util.py, writer.py and draft.py
+  (rule-based path, no AI model): the same 14 publisher feeds and Google News searches for the last day,
+  junk and repeat filtering against the last three editions (kept in localStorage), merging the same story
+  across outlets, war of the day, section scoring, full text of the lead articles, and every page field —
+  paragraph from the article's own sentences, figure tiles, story cards, key points, glossary full forms,
+  benefit, advanced point, also in the news, sources and confidence. The engine's data files
+  (glossary, hardwords, facts, wars) ship in the APK under `data/digest/`. Article text replaces
+  trafilatura with a simpler `<p>`-paragraph extractor.
+- `mobile/pdf.js` — a port of render.py with a small built-in PDF writer (Helvetica metrics taken from
+  reportlab): the same page geometry, colours, shrink-to-fit text and drop-whole-bullets fallback.
+- `digestPdf()` in `mobile/digest.js` and a **Make 12-page PDF** button on the phone digest: the PDF is
+  saved to Documents and offered to the share sheet.
+- **New dependencies** `@capacitor/filesystem` and `@capacitor/share` (official, devDependencies like the
+  other Capacitor packages): a WebView cannot download or share a file without them.
+
+**Verified.** The JS renderer drawn from the desktop engine's own 24 Oct draft matches the PDF the Python
+engine drew from it, page for page (page 1 and the war page with its flowchart compared as images); the
+only differences are font-level: "₹" prints "Rs" and the bullet dot is smaller, as reportlab does without
+Arial. The engine run in Node on the live feeds: 42 feeds/searches, 1,521 headlines, 1,188 stories, 101
+full articles, 12 pages in 18 s, every page with tiles, key points, cards and full forms; war page Iran
+(111 headlines). Bundle boots with the new modules; `npm run smoke` 0 failures.
+
+**Not verified yet.** Saving and sharing on the phone (needs the device connected).
+
+---
+
 ## 2026-10-25 — 1.0.6: the 12-page colour digest PDF on the phone
 
 **Why.** The owner wanted the phone to make the same colour PDF the desktop's news-digest engine makes
@@ -125,6 +261,104 @@ for touch screens and was read from CSS, not seen on the phone yet.
 
 ---
 
+## 2026-10-24 — 1.0.4 / 1.0.5: fixes from a hands-on pass on a real phone
+
+**Why.** The 1.0.3 APK was installed on the owner's Motorola Edge 50 Fusion and every screen was tapped
+through by hand over adb (screenshots after each step). That found bugs no browser run had shown.
+
+**Fixed (each one seen on the phone first).**
+
+- **Online was secretly off on a fresh install**: `onlineOn()` read only the saved config, not the
+  defaults, so the header said "online off" while the dashboard said "on". It now reads `store.config()`.
+- **Sound**: the phone's defaults had no `soundOn`, so Settings showed it off. Added, plus cues for each new
+  WAT word, each TAT picture, every lecturette phase and its end, a soft tap click on buttons, and the
+  `VIBRATE` permission (the buzz never worked without it). Sound and a new **Online lookup** switch now sit
+  together in Settings (the only online switch was hidden in Word library).
+- **Lecturette clock** counts to a deadline instead of subtracting a second per tick (the AGENTS.md rule).
+- **Results**: SRT rows read "undefined" (`blankText` was used before it was set); WAT/TAT reported the whole
+  set as practised after ending early — now "3 / 60" from the slide reached.
+- **TAT**: the clock and "VIEWING" label sat on the picture on phones; writing mode had no way to end and
+  save (and only the first End button was ever wired); the shuffle switch silently flipped the SRT
+  setting (TAT never shuffles) — removed; 21 plates titled with raw file names now read "Classic TAT plate N".
+- **Layout**: the lecturette form crushed its labels, pushed a button off screen and showed white text
+  boxes; the SRT grid and run bars are phone-friendly. "Write it for me" no longer appears on hand-written topics.
+- **News on the phone**: headlines kept " - Publisher" and raw RSS dates — `parseRss()` now splits the
+  source and dates by day like `cleanHeadline()`; digest stories show their source and open when tapped;
+  digest queries use `when:2d` (evergreen explainer pages were filling sections) and lecture points
+  `when:30d` on both builds.
+- **Copy**: PC wording on the phone (computer, arrow keys, PDF engine, Windows palette, JSON file,
+  "41 plates", 2,001-picture museum) replaced with phone wording; "Export (.txt)" reads "Copy this attempt".
+
+**Verified.** Each fix re-checked on the served bundle with the Android flag (computed styles and text):
+fresh config soundOn/online true and the online check agrees; TAT clock bottom 253 px above picture top
+255 px; "1 / 12" practised; SRT rows "written in your practice copy"; grid not clipped; dark inputs; random
+button inside the 414 px screen. `npm run smoke`: 0 failures, 0 console errors. On the phone before the
+fixes: TAT/WAT/SRT runs and results, Back-button guard, export to clipboard, library search and meanings,
+the lecturette writer with live Google News, and a fresh 48-story digest all worked.
+
+**1.0.5, after walking History, Add, Bin and Diagnostics on 1.0.4.** The remove × on pictures only
+appeared on hover, so a phone could never bin a picture (`@media (hover: none)` shows it); the hint said
+"Hover"; 12 more plates had file names for titles — all 43 are now "Classic TAT plate N"; History said
+"stored on this computer" and counted the whole set; Diagnostics on the phone was almost empty because
+`platform.js` returned a different shape from `diagInfo()` in main.js — it now returns `{app, paths, data,
+store}` with the APK version (Capacitor `App.getInfo`), and the screen shows phone rows instead of
+Electron/Node/Python/log-folder; the "Test native HTTP" device check threw on success (`r` out of scope).
+Checked on the served bundle: every Diagnostics row filled (5/3/3 sets, 334 topics, 43 plates, 238 hints).
+
+**Not verified.** Whether the chime is audible was not measured (adb cannot hear); the × visibility rule is
+for touch screens and was read from CSS, not seen on the phone yet.
+
+---
+
+## 2026-10-24 — 1.0.4 / 1.0.5: fixes from a hands-on pass on a real phone
+
+**Why.** The 1.0.3 APK was installed on the owner's Motorola Edge 50 Fusion and every screen was tapped
+through by hand over adb (screenshots after each step). That found bugs no browser run had shown.
+
+**Fixed (each one seen on the phone first).**
+
+- **Online was secretly off on a fresh install**: `onlineOn()` read only the saved config, not the
+  defaults, so the header said "online off" while the dashboard said "on". It now reads `store.config()`.
+- **Sound**: the phone's defaults had no `soundOn`, so Settings showed it off. Added, plus cues for each new
+  WAT word, each TAT picture, every lecturette phase and its end, a soft tap click on buttons, and the
+  `VIBRATE` permission (the buzz never worked without it). Sound and a new **Online lookup** switch now sit
+  together in Settings (the only online switch was hidden in Word library).
+- **Lecturette clock** counts to a deadline instead of subtracting a second per tick (the AGENTS.md rule).
+- **Results**: SRT rows read "undefined" (`blankText` was used before it was set); WAT/TAT reported the whole
+  set as practised after ending early — now "3 / 60" from the slide reached.
+- **TAT**: the clock and "VIEWING" label sat on the picture on phones; writing mode had no way to end and
+  save (and only the first End button was ever wired); the shuffle switch silently flipped the SRT
+  setting (TAT never shuffles) — removed; 21 plates titled with raw file names now read "Classic TAT plate N".
+- **Layout**: the lecturette form crushed its labels, pushed a button off screen and showed white text
+  boxes; the SRT grid and run bars are phone-friendly. "Write it for me" no longer appears on hand-written topics.
+- **News on the phone**: headlines kept " - Publisher" and raw RSS dates — `parseRss()` now splits the
+  source and dates by day like `cleanHeadline()`; digest stories show their source and open when tapped;
+  digest queries use `when:2d` (evergreen explainer pages were filling sections) and lecture points
+  `when:30d` on both builds.
+- **Copy**: PC wording on the phone (computer, arrow keys, PDF engine, Windows palette, JSON file,
+  "41 plates", 2,001-picture museum) replaced with phone wording; "Export (.txt)" reads "Copy this attempt".
+
+**Verified.** Each fix re-checked on the served bundle with the Android flag (computed styles and text):
+fresh config soundOn/online true and the online check agrees; TAT clock bottom 253 px above picture top
+255 px; "1 / 12" practised; SRT rows "written in your practice copy"; grid not clipped; dark inputs; random
+button inside the 414 px screen. `npm run smoke`: 0 failures, 0 console errors. On the phone before the
+fixes: TAT/WAT/SRT runs and results, Back-button guard, export to clipboard, library search and meanings,
+the lecturette writer with live Google News, and a fresh 48-story digest all worked.
+
+**1.0.5, after walking History, Add, Bin and Diagnostics on 1.0.4.** The remove × on pictures only
+appeared on hover, so a phone could never bin a picture (`@media (hover: none)` shows it); the hint said
+"Hover"; 12 more plates had file names for titles — all 43 are now "Classic TAT plate N"; History said
+"stored on this computer" and counted the whole set; Diagnostics on the phone was almost empty because
+`platform.js` returned a different shape from `diagInfo()` in main.js — it now returns `{app, paths, data,
+store}` with the APK version (Capacitor `App.getInfo`), and the screen shows phone rows instead of
+Electron/Node/Python/log-folder; the "Test native HTTP" device check threw on success (`r` out of scope).
+Checked on the served bundle: every Diagnostics row filled (5/3/3 sets, 334 topics, 43 plates, 238 hints).
+
+**Not verified.** Whether the chime is audible was not measured (adb cannot hear); the × visibility rule is
+for touch screens and was read from CSS, not seen on the phone yet.
+
+---
+
 ## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
 
 **Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is
@@ -149,6 +383,225 @@ plates; packaged `--smoke`: 0 failures, 0 console errors; old 1.0.0 uninstalled 
 1.0.3 installed per user (Start menu + desktop shortcuts). `apksigner verify`: v2/v3 true, one signer;
 `aapt2 dump badging`: `in.ssbprep.trainer` 1.0.3 (4). **Not verified:** install on the phone (not
 connected at build time).
+
+---
+
+## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
+
+**Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is
+the app icon: `build/icon.png` for Windows, every `mipmap-*` launcher size for Android (the Android tree is
+generated and untracked, so a fresh `npx cap add android` needs the icons copied again); the full logo is
+`docs/logo.png` at the top of the README. README screenshots pointed at files that never existed and the
+release link at v1.0.0 — both corrected. Lecture essay view, smoke checks updated (see the entry below).
+
+**Signing.** The APK is a release build signed with a project key (`apksigner`, v2 + v3; the key and its
+password live outside the repo and must be backed up — losing them means updates cannot install over this
+APK). The installer and portable `.exe` carry a timestamped signature from a self-made certificate; Windows
+trusts it only on a machine where the owner imports that certificate, so other PCs still see SmartScreen.
+
+**Repo audit (public).** No keys, passwords, tokens or personal data in tracked files. The only finding was
+`screenshots/report.json` holding local Windows paths; it is no longer tracked (old copies remain in git
+history). The six phone bridge modules and `data/digest-offline.json` had never been committed, so the
+published `mobile/api.js` could not build — they are committed now. The release carries the classic TAT
+plates inside both apps; publishing them publicly was the owner's explicit decision.
+
+**Verified.** `npm run dist` (exit 0), `tools/verify-package.js` — all packaged files match source, 43/43
+plates; packaged `--smoke`: 0 failures, 0 console errors; old 1.0.0 uninstalled from Program Files and
+1.0.3 installed per user (Start menu + desktop shortcuts). `apksigner verify`: v2/v3 true, one signer;
+`aapt2 dump badging`: `in.ssbprep.trainer` 1.0.3 (4). **Not verified:** install on the phone (not
+connected at build time).
+
+---
+
+## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
+
+**Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is
+the app icon: `build/icon.png` for Windows, every `mipmap-*` launcher size for Android (the Android tree is
+generated and untracked, so a fresh `npx cap add android` needs the icons copied again); the full logo is
+`docs/logo.png` at the top of the README. README screenshots pointed at files that never existed and the
+release link at v1.0.0 — both corrected. Lecture essay view, smoke checks updated (see the entry below).
+
+**Signing.** The APK is a release build signed with a project key (`apksigner`, v2 + v3; the key and its
+password live outside the repo and must be backed up — losing them means updates cannot install over this
+APK). The installer and portable `.exe` carry a timestamped signature from a self-made certificate; Windows
+trusts it only on a machine where the owner imports that certificate, so other PCs still see SmartScreen.
+
+**Repo audit (public).** No keys, passwords, tokens or personal data in tracked files. The only finding was
+`screenshots/report.json` holding local Windows paths; it is no longer tracked (old copies remain in git
+history). The six phone bridge modules and `data/digest-offline.json` had never been committed, so the
+published `mobile/api.js` could not build — they are committed now. The release carries the classic TAT
+plates inside both apps; publishing them publicly was the owner's explicit decision.
+
+**Verified.** `npm run dist` (exit 0), `tools/verify-package.js` — all packaged files match source, 43/43
+plates; packaged `--smoke`: 0 failures, 0 console errors; old 1.0.0 uninstalled from Program Files and
+1.0.3 installed per user (Start menu + desktop shortcuts). `apksigner verify`: v2/v3 true, one signer;
+`aapt2 dump badging`: `in.ssbprep.trainer` 1.0.3 (4). **Not verified:** install on the phone (not
+connected at build time).
+
+---
+
+## 2026-10-24 — Release 1.0.3: new logo, signed APK, signed installer, repo audit
+
+**Changed.** Version 1.0.3 on both builds (`package.json`; Android `versionCode 4`). The Prep SSB shield is
+the app icon: `build/icon.png` for Windows, every `mipmap-*` launcher size for Android (the Android tree is
+generated and untracked, so a fresh `npx cap add android` needs the icons copied again); the full logo is
+`docs/logo.png` at the top of the README. README screenshots pointed at files that never existed and the
+release link at v1.0.0 — both corrected. Lecture essay view, smoke checks updated (see the entry below).
+
+**Signing.** The APK is a release build signed with a project key (`apksigner`, v2 + v3; the key and its
+password live outside the repo and must be backed up — losing them means updates cannot install over this
+APK). The installer and portable `.exe` carry a timestamped signature from a self-made certificate; Windows
+trusts it only on a machine where the owner imports that certificate, so other PCs still see SmartScreen.
+
+**Repo audit (public).** No keys, passwords, tokens or personal data in tracked files. The only finding was
+`screenshots/report.json` holding local Windows paths; it is no longer tracked (old copies remain in git
+history). The six phone bridge modules and `data/digest-offline.json` had never been committed, so the
+published `mobile/api.js` could not build — they are committed now. The release carries the classic TAT
+plates inside both apps; publishing them publicly was the owner's explicit decision.
+
+**Verified.** `npm run dist` (exit 0), `tools/verify-package.js` — all packaged files match source, 43/43
+plates; packaged `--smoke`: 0 failures, 0 console errors; old 1.0.0 uninstalled from Program Files and
+1.0.3 installed per user (Start menu + desktop shortcuts). `apksigner verify`: v2/v3 true, one signer;
+`aapt2 dump badging`: `in.ssbprep.trainer` 1.0.3 (4). **Not verified:** install on the phone (not
+connected at build time).
+
+---
+
+## 2026-10-24 — Digest proven on Android, phone parity (bin, pictures, diagnostics), lecturette writer, smoke isolation
+
+**Why.** The digest fallback had never been driven end to end; the phone answered `unsupported` for the TAT
+bin and diagnostics and lost your pictures on close; `--smoke` ran against the person's real profile; the
+desktop news points read "[object Object]"; and the user asked for "type a topic, get a 3-minute lecturette".
+
+**Changed.**
+
+- **Digest Refresh** (`renderPhoneDigest`): Refresh now passes `{force: true}`; before, inside 20 minutes it
+  made no request and only relabelled the chip "saved copy". The dead-end copy no longer promises a saved
+  edition that does not exist. Stale probe assertion in `scenarios/phone.js` replaced with the new contract.
+- **Phone TAT bin** (`mobile/platform.js`, `store.js`, `material.js`, `museum.js`): remove / restore / delete
+  forever / undo / empty, same rules as `src/main.js`, kept in localStorage; every source hides binned ids.
+- **Your pictures persist on the phone**: kept as Blobs in IndexedDB (`ssb-mine`), recorded in the bin by a
+  stable key. Found while testing: the bundle CSP had no `blob:` in `img-src`, so picked pictures never
+  displayed at all — `tools/build-mobile.js` adds it.
+- **Phone diagnostics**: Save copies the report to the clipboard instead of `unsupported`.
+- **Lecturette writer** (both builds): `lectureFacts` (`lectures:facts` in main, `online.js` on the phone)
+  reads the closest Wikipedia article — an India-titled one when its title holds every main word of the
+  topic — with its last-edited date; `lectCompose` in the renderer lays it out as intro 30 s / body 2 min
+  (present situation, causes, advantages, challenges, India, government steps) / conclusion 30 s, 350–420
+  words, plus memory cues, a closing line and dated sources. "Your own topic" field; "Write it for me" on the
+  282 outlines; saved in config (`lectWritten`, `lectOwn`). Full scripts now read as one page, not boxes.
+- **Lecture screen** scrolls as one page (`.lectpage`); the run bar with the clock stays pinned.
+- **Desktop**: `--smoke` now uses a throwaway profile in `%TEMP%` (it was clearing the real attempts and
+  pictures and adding the rainbow test BMPs to "My pictures"); `sandbox: true`; `will-navigate` guard;
+  `cleanHeadline()` read `String(row)` → every news point was "[object Object]" (lecture points and WAT
+  news examples). Two smoke checks that encoded that bug / a .jpg-only plate were corrected.
+
+**Verified.** Served `mobile/www` (Chrome) and the **Android emulator** (`ssb33`, booted this time):
+digest offline → reference edition 12 sections/48 stories `bundled offline`; offline + saved copy → saved
+copy; online on the emulator → **Google News native route**, 12 requests, 48 stories, `fresh`, cache
+written; Refresh → 12 new requests; feeds blocked → saved copy, else reference; bundled file blocked →
+corrected dead-end copy. Phone scenario on the served build 44/45 (clipboard is denied to headless Chrome;
+the same check passed on the emulator): picture survives reload and decodes (64 px), bin round trip,
+restore, delete forever, undo. Writer driven on the served build and inside the desktop app (temp profile;
+real store mtime unchanged): 398–419-word scripts with dated sources. `npm run smoke`: 0 failures, 0 console
+errors. APK rebuilt (`gradle_exit=0`) and contains every change.
+
+**Not verified.** On the user's Motorola Edge 50 Fusion the APK installed and launched, but every scenario
+stalled when the USB/adb link dropped — no phone result is claimed. Writer quality depends on Wikipedia
+having an article matching the topic name; it quotes, it does not paraphrase into polished prose. Export is
+still clipboard-only on the phone. The installed desktop `.exe` was not rebuilt.
+
+---
+
+## 2026-10-24 — Digest proven on Android, phone parity (bin, pictures, diagnostics), lecturette writer, smoke isolation
+
+**Why.** The digest fallback had never been driven end to end; the phone answered `unsupported` for the TAT
+bin and diagnostics and lost your pictures on close; `--smoke` ran against the person's real profile; the
+desktop news points read "[object Object]"; and the user asked for "type a topic, get a 3-minute lecturette".
+
+**Changed.**
+
+- **Digest Refresh** (`renderPhoneDigest`): Refresh now passes `{force: true}`; before, inside 20 minutes it
+  made no request and only relabelled the chip "saved copy". The dead-end copy no longer promises a saved
+  edition that does not exist. Stale probe assertion in `scenarios/phone.js` replaced with the new contract.
+- **Phone TAT bin** (`mobile/platform.js`, `store.js`, `material.js`, `museum.js`): remove / restore / delete
+  forever / undo / empty, same rules as `src/main.js`, kept in localStorage; every source hides binned ids.
+- **Your pictures persist on the phone**: kept as Blobs in IndexedDB (`ssb-mine`), recorded in the bin by a
+  stable key. Found while testing: the bundle CSP had no `blob:` in `img-src`, so picked pictures never
+  displayed at all — `tools/build-mobile.js` adds it.
+- **Phone diagnostics**: Save copies the report to the clipboard instead of `unsupported`.
+- **Lecturette writer** (both builds): `lectureFacts` (`lectures:facts` in main, `online.js` on the phone)
+  reads the closest Wikipedia article — an India-titled one when its title holds every main word of the
+  topic — with its last-edited date; `lectCompose` in the renderer lays it out as intro 30 s / body 2 min
+  (present situation, causes, advantages, challenges, India, government steps) / conclusion 30 s, 350–420
+  words, plus memory cues, a closing line and dated sources. "Your own topic" field; "Write it for me" on the
+  282 outlines; saved in config (`lectWritten`, `lectOwn`). Full scripts now read as one page, not boxes.
+- **Lecture screen** scrolls as one page (`.lectpage`); the run bar with the clock stays pinned.
+- **Desktop**: `--smoke` now uses a throwaway profile in `%TEMP%` (it was clearing the real attempts and
+  pictures and adding the rainbow test BMPs to "My pictures"); `sandbox: true`; `will-navigate` guard;
+  `cleanHeadline()` read `String(row)` → every news point was "[object Object]" (lecture points and WAT
+  news examples). Two smoke checks that encoded that bug / a .jpg-only plate were corrected.
+
+**Verified.** Served `mobile/www` (Chrome) and the **Android emulator** (`ssb33`, booted this time):
+digest offline → reference edition 12 sections/48 stories `bundled offline`; offline + saved copy → saved
+copy; online on the emulator → **Google News native route**, 12 requests, 48 stories, `fresh`, cache
+written; Refresh → 12 new requests; feeds blocked → saved copy, else reference; bundled file blocked →
+corrected dead-end copy. Phone scenario on the served build 44/45 (clipboard is denied to headless Chrome;
+the same check passed on the emulator): picture survives reload and decodes (64 px), bin round trip,
+restore, delete forever, undo. Writer driven on the served build and inside the desktop app (temp profile;
+real store mtime unchanged): 398–419-word scripts with dated sources. `npm run smoke`: 0 failures, 0 console
+errors. APK rebuilt (`gradle_exit=0`) and contains every change.
+
+**Not verified.** On the user's Motorola Edge 50 Fusion the APK installed and launched, but every scenario
+stalled when the USB/adb link dropped — no phone result is claimed. Writer quality depends on Wikipedia
+having an article matching the topic name; it quotes, it does not paraphrase into polished prose. Export is
+still clipboard-only on the phone. The installed desktop `.exe` was not rebuilt.
+
+---
+
+## 2026-10-24 — Digest proven on Android, phone parity (bin, pictures, diagnostics), lecturette writer, smoke isolation
+
+**Why.** The digest fallback had never been driven end to end; the phone answered `unsupported` for the TAT
+bin and diagnostics and lost your pictures on close; `--smoke` ran against the person's real profile; the
+desktop news points read "[object Object]"; and the user asked for "type a topic, get a 3-minute lecturette".
+
+**Changed.**
+
+- **Digest Refresh** (`renderPhoneDigest`): Refresh now passes `{force: true}`; before, inside 20 minutes it
+  made no request and only relabelled the chip "saved copy". The dead-end copy no longer promises a saved
+  edition that does not exist. Stale probe assertion in `scenarios/phone.js` replaced with the new contract.
+- **Phone TAT bin** (`mobile/platform.js`, `store.js`, `material.js`, `museum.js`): remove / restore / delete
+  forever / undo / empty, same rules as `src/main.js`, kept in localStorage; every source hides binned ids.
+- **Your pictures persist on the phone**: kept as Blobs in IndexedDB (`ssb-mine`), recorded in the bin by a
+  stable key. Found while testing: the bundle CSP had no `blob:` in `img-src`, so picked pictures never
+  displayed at all — `tools/build-mobile.js` adds it.
+- **Phone diagnostics**: Save copies the report to the clipboard instead of `unsupported`.
+- **Lecturette writer** (both builds): `lectureFacts` (`lectures:facts` in main, `online.js` on the phone)
+  reads the closest Wikipedia article — an India-titled one when its title holds every main word of the
+  topic — with its last-edited date; `lectCompose` in the renderer lays it out as intro 30 s / body 2 min
+  (present situation, causes, advantages, challenges, India, government steps) / conclusion 30 s, 350–420
+  words, plus memory cues, a closing line and dated sources. "Your own topic" field; "Write it for me" on the
+  282 outlines; saved in config (`lectWritten`, `lectOwn`). Full scripts now read as one page, not boxes.
+- **Lecture screen** scrolls as one page (`.lectpage`); the run bar with the clock stays pinned.
+- **Desktop**: `--smoke` now uses a throwaway profile in `%TEMP%` (it was clearing the real attempts and
+  pictures and adding the rainbow test BMPs to "My pictures"); `sandbox: true`; `will-navigate` guard;
+  `cleanHeadline()` read `String(row)` → every news point was "[object Object]" (lecture points and WAT
+  news examples). Two smoke checks that encoded that bug / a .jpg-only plate were corrected.
+
+**Verified.** Served `mobile/www` (Chrome) and the **Android emulator** (`ssb33`, booted this time):
+digest offline → reference edition 12 sections/48 stories `bundled offline`; offline + saved copy → saved
+copy; online on the emulator → **Google News native route**, 12 requests, 48 stories, `fresh`, cache
+written; Refresh → 12 new requests; feeds blocked → saved copy, else reference; bundled file blocked →
+corrected dead-end copy. Phone scenario on the served build 44/45 (clipboard is denied to headless Chrome;
+the same check passed on the emulator): picture survives reload and decodes (64 px), bin round trip,
+restore, delete forever, undo. Writer driven on the served build and inside the desktop app (temp profile;
+real store mtime unchanged): 398–419-word scripts with dated sources. `npm run smoke`: 0 failures, 0 console
+errors. APK rebuilt (`gradle_exit=0`) and contains every change.
+
+**Not verified.** On the user's Motorola Edge 50 Fusion the APK installed and launched, but every scenario
+stalled when the USB/adb link dropped — no phone result is claimed. Writer quality depends on Wikipedia
+having an article matching the topic name; it quotes, it does not paraphrase into polished prose. Export is
+still clipboard-only on the phone. The installed desktop `.exe` was not rebuilt.
 
 ---
 

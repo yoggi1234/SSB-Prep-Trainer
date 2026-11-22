@@ -131,6 +131,7 @@
   };
 
   function builtinSets(test) {
+    if (test === 'tat') return [{ id: 'tat-shuffled', name: 'Shuffled pictures', items: [] }];
     var pack = S.data[test];
     if (!pack || !Array.isArray(pack.sets)) return [];
     return pack.sets.map(function (s) {
@@ -166,9 +167,8 @@
     { id: 'srt', label: 'SRT', code: 'SRT', test: true },
     { id: 'ppdt', label: 'PPDT', code: 'PPDT' },
     { id: 'lecturette', label: 'Lecturette', code: 'LECT' },
-    { id: 'library', label: 'Word library', code: 'WORD' },
     { id: 'digest', label: 'News Digest', code: 'NEWS' },
-    { id: 'history', label: 'History', code: 'HIST' },
+    { id: 'timeline', label: 'News Timeline', code: 'LINE' },
     { id: 'add', label: 'Add material', code: 'ADD' },
     { id: 'bin', label: 'Bin', code: 'BIN' },
     { id: 'settings', label: 'Settings', code: 'SET' }
@@ -239,7 +239,7 @@
     // the way home from any screen.
     return (
       '<div class="topbar">' +
-      '<div class="brand"><span class="brand-badge">SSB</span> Prep Trainer' +
+      '<div class="brand"><img class="brand-logo" src="logo.png" alt="" /> SSB Prep Trainer' +
       netChip() + '</div>' +
       '<div class="topnav">' +
       '<button class="navlink' +
@@ -257,12 +257,7 @@
         goto(b.getAttribute('data-goto'));
       });
     });
-    Array.prototype.forEach.call(appEl.querySelectorAll('[data-external]'), function (a) {
-      a.addEventListener('click', function (e) {
-        e.preventDefault();
-        window.api.openExternal(a.getAttribute('data-external'));
-      });
-    });
+    wireExternal(appEl);
   }
 
   function body(content) {
@@ -308,6 +303,7 @@
     if (S.view === 'lecturette') return renderLecturette();
     if (S.view === 'ppdt') return renderPpdt();
     if (S.view === 'digest') return renderDigest();
+    if (S.view === 'timeline') return renderTimeline();
     if (S.view === 'add') return renderAdd();
     if (S.view === 'bin') return renderBin();
     if (S.view === 'diagnostics') return renderDiagnostics();
@@ -347,9 +343,9 @@
       } else {
         rows =
           '<li><span>Slides</span><b>11 + 1 blank</b></li>' +
-          '<li><span>View / write</span><b>' + S.config.tatViewSec + 's / ' + S.config.tatWriteSec / 60 + ' min</b></li>' +
+          '<li><span>View / think / write</span><b>' + S.config.tatViewSec + 's / ' + tatThinkSec() + 's / ' + S.config.tatWriteSec / 60 + ' min</b></li>' +
           '<li><span>Total</span><b>' +
-          Math.round((12 * (S.config.tatViewSec + S.config.tatWriteSec)) / 60) +
+          Math.round((12 * (S.config.tatViewSec + tatThinkSec() + S.config.tatWriteSec)) / 60) +
           ' min</b></li>';
       }
       return {
@@ -378,11 +374,11 @@
       return {
         code: t.code,
         chip: topics + ' topics',
-        blurb: 'The three-minute SSB pattern with a spoken script where one exists, plus current points from the news.',
+        blurb: 'Press Generate for a full three-minute speech, with the latest news on that topic below it.',
         rows:
           '<li><span>Pattern</span><b>30s · 2m · 30s</b></li>' +
-          '<li><span>With a script</span><b>' + scripts + '</b></li>' +
-          '<li><span>Outlines</span><b>' + (topics - scripts) + '</b></li>'
+          '<li><span>Lectures written</span><b>' + Object.keys((S.config && S.config.lectWritten) || {}).length + '</b></li>' +
+          '<li><span>Topics</span><b>' + topics + '</b></li>'
       };
     }
     if (t.id === 'library') {
@@ -424,11 +420,19 @@
       return {
         code: t.code,
         chip: 'your material',
-        blurb: 'Upload TAT pictures and WAT word lists, and see everything the tests will use.',
+        blurb: 'Upload PPDT and TAT pictures, and import WAT, SRT and lecture topics from Excel.',
         rows:
           '<li><span>TAT pictures</span><b>' + (S.tatImages || []).length + ' yours</b></li>' +
           '<li><span>WAT sets</span><b>' + customSets('wat').length + ' yours</b></li>' +
           '<li><span>Wrong picture?</span><b>move to bin</b></li>'
+      };
+    }
+    if (t.id === 'timeline') {
+      return {
+        code: t.code,
+        chip: 'follow-ups',
+        blurb: 'Every story from your digests by section, with later reports added under the first one.',
+        rows: '<li><span>Grouped by</span><b>section</b></li><li><span>Search</span><b>any topic</b></li><li><span>Grows with</span><b>each digest</b></li>'
       };
     }
     if (t.id === 'bin') {
@@ -525,12 +529,99 @@
 
   // The highlight walks the tiles until the person takes over: hovering,
   // focusing or pressing a key stops it. Movement is the point, not a lottery.
+  // Where each tile sits on the plate, `turn` being the selection plus any finger drag.
+  function wheelPlace(turn) {
+    var tiles = dashTiles();
+    var n = tiles.length;
+    var radius = Math.min(window.innerWidth * 0.62, 300);
+    tiles.forEach(function (b, i) {
+      var a = ((i - turn) / n) * 2 * Math.PI;
+      var depth = (Math.cos(a) + 1) / 2;
+      b.style.transform = 'translate3d(' + (Math.sin(a) * radius).toFixed(1) + 'px, 0, ' + ((Math.cos(a) - 1) * radius).toFixed(1) + 'px) rotateY(' + (a * 57.3 * 0.55).toFixed(1) + 'deg)';
+      b.style.opacity = (0.15 + depth * 0.85).toFixed(2);
+      b.style.zIndex = Math.round(depth * 100);
+      b.style.pointerEvents = depth > 0.45 ? 'auto' : 'none';
+    });
+  }
+
+  function wireWheel() {
+    var dash = document.getElementById('dash');
+    var n = dashTiles().length;
+    var startX = 0;
+    var moved = 0;
+    dash.classList.add('dash-wheel');
+    wheelPlace(S.dashSel || 0);
+    var perTile = window.innerWidth * 0.75; // a full swipe moves one tile, a long one two
+    var touched = null;
+    var tappedAt = 0;
+    var act = function (b) {
+      var i = dashTiles().indexOf(b);
+      if (i === S.dashSel) {
+        openTile(b.getAttribute('data-tile'));
+      } else {
+        selectTile(i);
+        wheelPlace(i);
+      }
+    };
+    dash.addEventListener('touchstart', function (e) {
+      startX = e.touches[0].clientX;
+      moved = 0;
+      touched = e.target.closest('.dash-tile');
+      dash.classList.add('dragging');
+    }, { passive: true });
+    dash.addEventListener('touchmove', function (e) {
+      moved = e.touches[0].clientX - startX;
+      wheelPlace((S.dashSel || 0) - moved / perTile);
+    }, { passive: true });
+    // The tap is decided here, not left to the click: right after a swipe the
+    // WebView can swallow the click, and the tile then seems not to respond.
+    dash.addEventListener('touchend', function (e) {
+      dash.classList.remove('dragging');
+      if (Math.abs(moved) < 24) {
+        wheelPlace(S.dashSel || 0);
+        if (touched) {
+          e.preventDefault();
+          tappedAt = Date.now();
+          act(touched);
+        }
+        return;
+      }
+      var steps = (moved < 0 ? 1 : -1) * Math.max(1, Math.round(Math.abs(moved) / perTile));
+      S.dashSel = (((S.dashSel || 0) + steps) % n + n) % n;
+      selectTile(S.dashSel);
+      wheelPlace(S.dashSel);
+    }, { passive: false });
+    dash.addEventListener('touchcancel', function () {
+      dash.classList.remove('dragging');
+      wheelPlace(S.dashSel || 0);
+    }, { passive: true });
+    // A screen reader or a keyboard still arrives as a click.
+    dash.addEventListener('click', function (e) {
+      var b = e.target.closest('.dash-tile');
+      if (!b) return;
+      e.stopPropagation();
+      e.preventDefault();
+      if (Date.now() - tappedAt > 700) act(b);
+    }, true);
+  }
+
+  function wireUpdate() {
+    var later = document.getElementById('updateLater');
+    if (later) later.addEventListener('click', function () { S.updateHidden = S.update.latest; render(); });
+    if (document.querySelector('.update-note')) wireExternal(document.querySelector('.update-note'));
+  }
+
   function wireDash() {
+    wireUpdate();
     var tiles = dashTiles();
     if (!tiles.length) return;
     stopDashTimer();
     S.dashSel = Math.min(S.dashSel || 0, tiles.length - 1);
     selectTile(S.dashSel);
+    if (onPhone()) {
+      wireWheel();
+      return;
+    }
     // The highlight only walks on its own when movement is welcome; a person
     // who asked for less motion keeps the first tile until they move it.
     S.dashAuto = !motionReduced();
@@ -586,15 +677,16 @@
           ', so a lost connection never stops a session. '
         : 'This copy runs offline: every test uses the material already saved here, so nothing waits on a connection. ') +
       (onPhone()
-        ? 'Tap a tile to open it.</p>'
+        ? 'Swipe the plate left or right, then tap the front tile.</p>'
         : 'Move with <b>← ↑ ↓ →</b> and open with <b>Enter</b>: the highlight walks the tiles until you take over.</p>') +
       '</div>' +
       '<div class="dashbadge"><b>' + TILES.length + '</b><span>sections</span></div>' +
       '</div>' +
+      updateBanner() +
       '<div class="dash" id="dash">' + TILES.map(dashTile).join('') + '</div>' +
       '<h2>At a glance</h2>' + stats +
       '<div class="note">Timings follow the format commonly reported for the SSB psychology battery: ' +
-      '<b>TAT</b> 12 slides, ' + S.config.tatViewSec + ' seconds to view and 4 minutes to write each story; ' +
+      '<b>TAT</b> 12 slides: ' + S.config.tatViewSec + ' seconds to view, ' + tatThinkSec() + ' seconds to form your idea with no picture, and ' + S.config.tatWriteSec / 60 + ' minutes to write each story; ' +
       '<b>WAT</b> 60 words, one every ' + S.config.watPerWordSec + ' seconds; ' +
       '<b>SRT</b> 60 situations in ' + S.config.srtTotalMin + ' minutes. Change any of these in <b>Settings</b>.</div>' +
       '<p class="small muted" style="margin-top:14px">Practice material is compiled from publicly published SSB preparation material and rewritten for this app. ' +
@@ -612,6 +704,18 @@
     var sets = allSets(test);
     var images = S.tatImages;
 
+    var anyPictures = test === 'tat' && picturePool().length >= 11;
+    if (test === 'tat' ? !anyPictures : !sets.length) {
+      body(
+        '<h1>' + esc(m.code || test.toUpperCase()) + '</h1>' +
+        '<div class="empty">Nothing is loaded for this test yet. Open <b>Add material</b> and import your Excel sheet.</div>' +
+        '<div class="row"><button class="btn primary" id="setupAdd">Add material</button><button class="btn ghost" id="setupHome">Dashboard</button></div>'
+      );
+      document.getElementById('setupAdd').addEventListener('click', function () { goto('add'); });
+      document.getElementById('setupHome').addEventListener('click', function () { goto('home'); });
+      return;
+    }
+
     var opts = sets
       .map(function (s, i) {
         return '<option value="' + i + '"' + (i === S.pending.setIndex ? ' selected' : '') + '>' + esc(s.name) + ' — ' + s.items.length + ' items</option>';
@@ -620,47 +724,9 @@
 
     var extra = '';
     if (test === 'tat') {
-      var libCount = (S.tatLibrary || []).length;
-      var classicCount = (S.tatClassic || []).length;
-      var mineCount = (S.tatImages || []).length;
-      var ppdtCount = (S.ppdt || []).length;
-      var source = S.config.tatSource || (classicCount >= 11 ? 'classic' : 'museum');
-      if (source === 'classic' && classicCount < 11) source = 'museum';
-      if ((source === 'both' || source === 'ppdt') && ppdtCount < 11) source = classicCount >= 11 ? 'classic' : 'museum';
-      if (source === 'mine' && mineCount < 11) source = classicCount >= 11 ? 'classic' : 'museum';
-
       extra =
-        '<h2>Picture source</h2>' +
-        '<div class="card">' +
-        '<div class="field"><label>Pictures for every set<br><span class="small muted">Eleven pictures plus the blank twelfth slide</span></label>' +
-        '<div class="ctl"><select id="tatSource">' +
-        (ppdtCount >= 11
-          ? '<option value="both"' + (source === 'both' ? ' selected' : '') + '>Classic + PPDT practice set — ' + (classicCount + ppdtCount) + ' pictures</option>' +
-            '<option value="ppdt"' + (source === 'ppdt' ? ' selected' : '') + '>PPDT practice set — ' + ppdtCount + ' pictures</option>'
-          : '') +
-        '<option value="classic"' + (source === 'classic' ? ' selected' : '') + (classicCount < 11 ? ' disabled' : '') + '>Classic TAT set — ' + classicCount + ' plates</option>' +
-        '<option value="museum"' + (source === 'museum' ? ' selected' : '') + '>Museum library — ' + libCount.toLocaleString() + ' pictures</option>' +
-        '<option value="mine"' + (source === 'mine' ? ' selected' : '') + (mineCount < 11 ? ' disabled' : '') + '>My own pictures — ' + mineCount + ' added</option>' +
-        '</select></div></div>' +
-        '<div class="field"><label><b>Add my own pictures</b><br><span class="small muted">' +
-        (mineCount ? mineCount + ' picture(s) added — usable once there are 11 or more' : 'None added') +
-        '</span></label><div class="ctl">' +
-        '<button class="btn sm" id="pickImgs">Add pictures…</button>' +
-        '<button class="btn sm ghost" id="manageImgs">Review / remove…</button>' +
-        '<button class="btn sm ghost" id="clearImgs">Clear</button></div></div>' +
-        '<div class="field"><label><b>More museum pictures</b><br><span class="small muted">Optional online top-up, needs online lookup on in Settings</span></label><div class="ctl">' +
-        '<button class="btn sm" id="fetchOnlineImgs">Fetch 20 more online</button>' +
-        '</div></div>' +
-        '</div>' +
-        '<div class="note" style="margin-top:12px">A picture that looks wrong can be taken out of the test from ' +
-        '<b>Review / remove…</b>; it waits in the bin and can be brought back. ' +
-        'A set never repeats a picture, and recent sets are held back so a scene does not come round again. ' +
-        (source === 'classic'
-          ? 'The classic set comes from the CarePatron TAT PDF and your own TAT folder, de-duplicated when it was built.'
-          : source === 'mine'
-            ? 'Your own pictures are used only on this ' + (onPhone() ? 'phone' : 'computer') + '; nothing is uploaded.'
-            : 'Museum pictures are public domain (CC0), from the Art Institute of Chicago and The Met.') +
-        '</div>';
+        '<div class="note" style="margin-top:12px">Every set draws eleven pictures at random from ' + picturePool().length +
+        ', the same pictures PPDT uses, and recent ones are held back. Upload more in <b>Add material</b>.</div>';
     }
 
     body(
@@ -771,7 +837,7 @@
                 render();
               });
             }
-            if (res && res.error === 'offline') toast('Turn on online lookup in Word library first.');
+            if (res && res.error === 'offline') toast('Turn on Online lookup in Settings first.');
             else if (res && res.error === 'blocked') toast('The museum refused the request just now — try again in a minute.');
             else toast('No new pictures were available just now.');
           })
@@ -795,7 +861,7 @@
   function timingSummary(test) {
     if (test === 'wat') return S.config.watPerWordSec + 's per word × 60';
     if (test === 'srt') return S.config.srtTotalMin + ' minutes total';
-    return S.config.tatViewSec + 's view + ' + (S.config.tatWriteSec / 60) + ' min write × 12 slides';
+    return S.config.tatViewSec + 's view + ' + tatThinkSec() + 's idea + ' + (S.config.tatWriteSec / 60) + ' min write × 12 slides';
   }
 
   /* ------------------------------------------------------------ run start */
@@ -851,20 +917,15 @@
   // not the paths, so nothing depends on where a file happens to sit.
   // The picture source picks the pool: the classic TAT set by default, the
   // big museum library, or your own folder once it holds at least eleven.
+  // TAT and PPDT draw on the same pictures: the bundled set plus any you upload.
+  function picturePool() {
+    return (S.ppdt || []).concat((S.tatImages || []).filter(Boolean).map(function (p, i) {
+      return { id: 'mine-' + i, file: p, title: 'My picture ' + (i + 1) };
+    }));
+  }
+
   function tatPool() {
-    var mine = (S.tatImages || []).filter(Boolean);
-    var source = S.config.tatSource || 'classic';
-    var ppdt = S.ppdt || [];
-    if (source === 'both' && ppdt.length >= 11) return (S.tatClassic || []).concat(ppdt);
-    if (source === 'ppdt' && ppdt.length >= 11) return ppdt.slice();
-    if (source === 'mine' && mine.length >= 11) {
-      return mine.map(function (p, i) {
-        return { id: 'mine-' + i, file: p, title: 'My picture ' + (i + 1) };
-      });
-    }
-    if (source === 'classic' && (S.tatClassic || []).length >= 11) return S.tatClassic.slice();
-    if (source !== 'museum' && (S.tatClassic || []).length >= 11) return S.tatClassic.slice();
-    return (S.tatLibrary || []).slice();
+    return picturePool();
   }
 
   function pickTatPictures(count) {
@@ -936,10 +997,14 @@
     TICK = null;
   }
 
+  function tatThinkSec() {
+    return (S.config && S.config.tatThinkSec) || 30;
+  }
+
   function durationFor(session) {
     if (session.test === 'wat') return S.config.watPerWordSec * 1000;
     if (session.test === 'srt') return S.config.srtTotalMin * 60 * 1000;
-    return session.phase === 'view' ? S.config.tatViewSec * 1000 : S.config.tatWriteSec * 1000;
+    return session.phase === 'view' ? S.config.tatViewSec * 1000 : session.phase === 'think' ? tatThinkSec() * 1000 : S.config.tatWriteSec * 1000;
   }
 
   function tick() {
@@ -970,7 +1035,8 @@
       else if (s.remaining <= 300000) S.refs.clock.classList.add('low');
     } else {
       if (s.remaining <= 0) {
-        if (s.phase === 'view') toWritePhase();
+        if (s.phase === 'view') toThinkPhase();
+        else if (s.phase === 'think') toWritePhase();
         else advanceTat();
         return;
       }
@@ -979,7 +1045,7 @@
       // The warning is a share of the phase, not a fixed minute: a 30-second
       // practice write would otherwise be "one minute left" from the start.
       var warn =
-        s.phase === 'view'
+        s.phase !== 'write'
           ? Math.min(10000, Math.max(3000, S.config.tatViewSec * 1000 * 0.34))
           : Math.min(60000, Math.max(5000, S.config.tatWriteSec * 1000 * 0.25));
       S.refs.clock.classList.toggle('urgent', s.remaining <= warn);
@@ -1164,9 +1230,9 @@
         '<div class="srt-main">' +
         // The real test gives you a booklet and a pen, not a text box: the run
         // screen points at the practice copy instead of collecting typing.
-        '<div class="srt-copy"><b>Write your reaction in your practice copy</b>' +
-        '<span>One line per situation, in the same order as the numbers. This screen keeps the situation and the clock only.</span></div>' +
         '<div class="situation" id="situation"></div>' +
+        '<div class="srt-copy"><b>Write your reaction in your practice copy</b>' +
+        '<span>One line per situation, in the same order as the numbers.</span></div>' +
         '<div class="footbar">' +
         '<button class="btn sm" id="prevBtn">← Previous</button>' +
         '<button class="btn sm" id="nextBtn">Next →</button>' +
@@ -1268,9 +1334,8 @@
         '<div class="clocknum" id="clock">30</div>' +
         '<div id="slideContent"></div>' +
         '</div>' +
-        '<div class="tat-copy"><b>Write the story in your practice copy.</b><span>Look at the picture for ' +
-        S.config.tatViewSec + ' seconds. It is taken away when the viewing time ends, then you get ' +
-        (S.config.tatWriteSec / 60) + ' minutes to write — in your copy, exactly as at the board.</span></div>' +
+        '<div class="tat-copy"><span>' + S.config.tatViewSec + ' seconds with the picture, ' + tatThinkSec() + ' seconds without it to form your idea, then ' +
+        (S.config.tatWriteSec / 60) + ' minutes to write in your practice copy.</span></div>' +
         '</div>' +
         '<div class="footbar">' +
         '<span class="hint" id="hint"></span>' +
@@ -1311,7 +1376,8 @@
 
     function nextSlide() {
       if (!S.session) return;
-      if (S.session.phase === 'view') toWritePhase();
+      if (S.session.phase === 'view') toThinkPhase();
+      else if (S.session.phase === 'think') toWritePhase();
       else advanceTat();
     }
     document.getElementById('nextBtn').addEventListener('click', nextSlide);
@@ -1357,10 +1423,12 @@
   function applyTatPhase() {
     var s = S.session;
     if (!s || !S.refs || s.test !== 'tat') return;
-    var viewing = s.phase === 'view';
+    var thinking = s.phase === 'think';
+    var viewing = s.phase === 'view' || thinking;
     var peeking = !viewing && !!s.peeking;
-    S.refs.phase.textContent = viewing ? 'Viewing' : 'Writing';
-    S.refs.clock.textContent = viewing ? S.config.tatViewSec : clock(S.config.tatWriteSec * 1000);
+    S.refs.phase.textContent = thinking ? 'Picture removed' : viewing ? 'Viewing' : 'Writing';
+    S.refs.clock.textContent = thinking ? tatThinkSec() : viewing ? S.config.tatViewSec : clock(S.config.tatWriteSec * 1000);
+    if (thinking) S.refs.slideContent.innerHTML = '<div class="tat-think"><b>Analyse and create your idea</b><span>Who is the hero, what led to this, what do they do, and how does it end?</span></div>';
     // The picture is never on screen while the story is being written: the
     // clock covers the whole window instead, which is what the board does.
     S.refs.slideContent.hidden = !viewing && !peeking;
@@ -1374,12 +1442,17 @@
     if (sub) sub.textContent = 'Write the story in your practice copy · ' + (S.config.tatWriteSec / 60) + ' minutes';
     var back = document.getElementById('peekBack');
     if (back) back.hidden = !peeking;
-    S.refs.hint.innerHTML = viewing
-      ? 'You have <b>' + S.config.tatViewSec + ' seconds</b> to look. Then the slide is taken away and you get <b>' +
-        S.config.tatWriteSec / 60 + ' minutes</b> to write.'
-      : 'Writing time. Aim for a clear beginning, a practical action and a settled ending.';
+    S.refs.hint.textContent = viewing ? '' : 'Aim for a clear beginning, a practical action and a settled ending.';
     document.getElementById('peekBtn').style.display = 'none';
     if (!s.paused) updateBar(S.refs.bar, 1);
+  }
+
+  function toThinkPhase() {
+    var s = S.session;
+    s.phase = 'think';
+    s.deadline = Date.now() + tatThinkSec() * 1000;
+    applyTatPhase();
+    cue('next');
   }
 
   function toWritePhase() {
@@ -1659,7 +1732,6 @@
         '<div class="row" style="margin:20px 0">' +
         '<button class="btn primary" id="again">Practise this set again</button>' +
         '<button class="btn" id="export">' + (onPhone() ? 'Copy this attempt' : 'Export this attempt (.txt)') + '</button>' +
-        '<button class="btn" id="toHistory">Open history</button>' +
         '<button class="btn ghost" id="home">Home</button>' +
         '</div>' +
         answerSection
@@ -1676,7 +1748,6 @@
           if (res && res.saved) toast(res.path === 'clipboard' ? 'Copied — paste it into any app' : 'Saved to ' + res.path);
         });
     });
-    document.getElementById('toHistory').addEventListener('click', function () { goto('history'); });
     document.getElementById('home').addEventListener('click', function () { goto('home'); });
     wireMySentences();
   }
@@ -1740,9 +1811,7 @@
   // A PPDT picture, and now and then a classic TAT plate (as boards do),
   // never one seen in the last 150 rounds while others remain.
   function ppdtPick() {
-    var ppdt = S.ppdt || [];
-    var classic = S.config.ppdtTatMix === false ? [] : (S.tatClassic || []);
-    var pool = classic.length && Math.random() < 0.25 ? classic : ppdt.length ? ppdt : classic;
+    var pool = picturePool();
     if (!pool.length) return null;
     var recent = S.config.ppdtRecent || [];
     var fresh = pool.filter(function (p) { return recent.indexOf(String(p.id)) < 0; });
@@ -1775,7 +1844,7 @@
         '<div class="ctl muted small">' + phases.map(function (p) { return p.label + ' ' + (p.secs >= 120 ? Math.round(p.secs / 60) + ' min' : p.secs + 's'); }).join(' · ') +
         ' · blur ' + ppdtCfg('ppdtBlur', 40) + '%</div></div>' +
         '<div class="field"><label>Pictures<br><span class="small muted">' + (S.ppdt || []).length + ' PPDT pictures' +
-        (S.config.ppdtTatMix === false ? '' : ', and now and then a classic TAT plate') + '</span></label>' +
+        '</span></label>' +
         '<div class="ctl"><button class="btn primary" id="ppdtGo">Start PPDT</button></div></div>' +
         '</div>' +
         '<div class="note" style="margin-top:12px"><b>A story that scores:</b> ' +
@@ -1789,7 +1858,7 @@
   function startPpdt() {
     var P = ppdtState();
     var pic = ppdtPick();
-    if (!pic) return toast('No pictures available');
+    if (!pic) return toast('No PPDT pictures are loaded in this copy of the app yet.');
     P.pic = pic;
     P.mode = 'run';
     P.model = null;
@@ -1900,10 +1969,7 @@
   function ppdtGenError(r) {
     if (!r) return 'Nothing came back.';
     if (r.error === 'offline') return 'Turn online lookup on in Settings to write stories.';
-    if (r.error === 'no-ai') return 'Open the Ollama app on this PC (signed in) — it writes the stories.';
-    if (r.error === 'no-key') return 'Add your Ollama key in Settings → Sound and internet to write stories on the phone.';
-    if (r.error === 'bad-key') return 'Ollama did not accept the key in Settings. Check it and try again.';
-    return 'Could not write the stories just now' + (r.detail ? ' (' + r.detail + ')' : '') + '.';
+    return aiErrorText(r);
   }
 
   function renderPpdtReview() {
@@ -1936,6 +2002,7 @@
         '<button class="btn primary" id="ppdtAgain">Next picture</button>' +
         '<button class="btn" id="ppdtGen"' + (P.gen && P.gen.busy ? ' disabled' : '') + '>' +
         (P.gen && P.gen.busy ? 'Writing stories…' : stories.length ? 'Write 5 new stories' : 'Write 5 stories') + '</button>' +
+        '<button class="btn danger" id="ppdtDrop">Take this picture out</button>' +
         '<button class="btn ghost" id="ppdtHome">Dashboard</button></div>' +
         (P.gen && P.gen.error ? '<div class="note">' + esc(P.gen.error) + '</div>' : '') +
         model +
@@ -1944,6 +2011,11 @@
     );
     document.getElementById('ppdtAgain').addEventListener('click', startPpdt);
     document.getElementById('ppdtHome').addEventListener('click', function () { P.mode = 'setup'; goto('home'); });
+    document.getElementById('ppdtDrop').addEventListener('click', function () {
+      var gone = P.pic;
+      P.mode = 'setup';
+      dropPicture({ id: gone.id, kind: 'library', file: gone.file, title: gone.title, source: gone.source });
+    });
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-pptab]'), function (b) {
       b.addEventListener('click', function () { P.tab = parseInt(b.getAttribute('data-pptab'), 10); render(); });
     });
@@ -1952,7 +2024,7 @@
       var pic = P.pic;
       P.gen = { busy: true };
       render();
-      window.api.ppdtGenerate(pic.id, pic.file).then(function (r) {
+      aiFirstWorking(aiChain(true), function (ai) { return window.api.ppdtGenerate(pic.id, pic.file, ai); }).then(function (r) {
         if (P.pic !== pic) return;
         P.gen = { busy: false, error: r && r.ok ? '' : ppdtGenError(r) };
         if (r && r.ok) {
@@ -1962,6 +2034,479 @@
         }
         if (S.view === 'ppdt') render();
       });
+    });
+  }
+
+  /* ------------------------------------------------------- free AI writing */
+
+  // All of these answer the same chat API, so a provider is only an address and
+  // a model name. They are tried in this order until one answers, so one being
+  // down or out of free quota never stops the writing.
+  var AI_PROVIDERS = {
+    local: { label: 'Ollama app on this PC', base: 'http://localhost:11434/v1', model: 'gemma4:31b-cloud', pc: true, vision: true },
+    // Needs no account and no key, so a shared copy can write lectures from its first run.
+    free: { label: 'Pollinations (no login)', base: 'https://text.pollinations.ai/openai', model: 'openai', noLogin: true,
+      // Left to itself this model spends its whole allowance thinking and returns nothing.
+      extra: { max_tokens: 4000, reasoning_effort: 'low' } },
+    gemini: { label: 'Google Gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-3.6-flash', url: 'https://aistudio.google.com/apikey', vision: true },
+    groq: { label: 'Groq', base: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-120b', url: 'https://console.groq.com/keys' },
+    openrouter: { label: 'OpenRouter', base: 'https://openrouter.ai/api/v1', model: 'openrouter/free', url: 'https://openrouter.ai/keys' },
+    ollama: { label: 'Ollama cloud', base: 'https://ollama.com/v1', model: 'gemma4:31b', url: 'https://ollama.com/settings/keys', vision: true }
+  };
+
+  // Keys built into this copy of the app (data/ai-keys.json), so a person it is
+  // shared with has working AI with no setup. A key they paste themselves goes first.
+  var AI_BUILT_IN = {};
+  Promise.resolve(window.api.aiBuiltIn && window.api.aiBuiltIn()).then(function (k) { AI_BUILT_IN = k || {}; }, function () {});
+
+  function aiSettings(id) {
+    var c = S.config || {};
+    var p = AI_PROVIDERS[id];
+    var mine = (c.aiKeys || {})[id] || (id === 'ollama' ? c.ollamaKey : '') || '';
+    return { id: id, label: p.label, base: p.base, extra: p.extra, model: (c.aiModels || {})[id] || p.model, key: mine || AI_BUILT_IN[id] || '' };
+  }
+
+  function aiChain(needPicture) {
+    return Object.keys(AI_PROVIDERS).filter(function (id) {
+      var p = AI_PROVIDERS[id];
+      if (needPicture && !p.vision) return false;
+      return p.pc ? !onPhone() : p.noLogin || !!aiSettings(id).key;
+    }).map(aiSettings);
+  }
+
+  function aiReady() {
+    return !!(S.config && S.config.onlineEnabled) && aiChain().length > 0;
+  }
+
+  // ask(settings) -> a result; moves down the chain until one succeeds.
+  function aiFirstWorking(chain, ask) {
+    var at = 0;
+    var last = { ok: false, error: 'no-key' };
+    var next = function () {
+      if (at >= chain.length) return Promise.resolve(last);
+      return Promise.resolve(ask(chain[at++])).then(function (r) {
+        if (r && r.ok) return r;
+        last = r || last;
+        if (last.error === 'offline') return last;
+        return next();
+      }, function (err) {
+        last = { ok: false, error: 'failed', detail: err && err.message };
+        return next();
+      });
+    };
+    return next();
+  }
+
+  function aiAsk(prompt) {
+    return aiFirstWorking(aiChain(), function (ai) { return window.api.aiChat({ ai: ai, prompt: prompt }); });
+  }
+
+  function aiErrorText(r) {
+    if (!r) return 'Nothing came back.';
+    if (r.error === 'offline') return 'Turn Online lookup on first.';
+    if (r.error === 'no-key') return 'This needs an AI that can read pictures. In Settings → AI writing, press Log in / Sign up next to Google Gemini and paste the free key.';
+    if (r.error === 'no-ai') return 'The Ollama app is not running on this PC, and no other provider has a key. Open it or add a key in Settings.';
+    if (r.error === 'bad-key') return 'The provider refused this key. Copy it again with no spaces (' + (r.detail || '') + ').';
+    if (r.error === 'busy') return 'Every free limit is used up for now. Wait a minute, or add another provider in Settings.';
+    return 'The AI did not answer (' + (r.detail || r.error || 'unknown') + ').';
+  }
+
+  var LECT_PROMPT =
+    'Act as an SSB (Services Selection Board) lecturette coach. Write a confident, well-structured 3-minute lecturette in simple English.\n' +
+    'TOPIC: {{topic}}\n\n' +
+    'Structure:\n' +
+    '1. Introduction, 30 seconds: a natural greeting, introduce the topic, its meaning and definition, a brief history or background.\n' +
+    '2. Body, 2 minutes: cover what fits the topic: present situation, major causes, advantages and disadvantages or both sides, comparison with a related issue, ' +
+    'impact on India, society, the economy, national security or the world. Include at least one fact, figure or recent news example from the FACTS below. ' +
+    'Discuss government initiatives, achievements, shortcomings or practical solutions where relevant.\n' +
+    '3. Conclusion, 30 seconds: summarise the message, future possibilities and key challenges, practical steps, a clear balanced personal opinion, a strong closing sentence ending with "Thank you."\n\n' +
+    'Rules:\n' +
+    '- Simple, natural, everyday English that an SSB candidate would speak aloud. Short sentences and smooth transitions. No difficult words.\n' +
+    '- At least 370 words and at most 420: an answer under 350 words is a failure. Use four to six body paragraphs. Full sentences only, never bullet points.\n' +
+    '- Sound like a real candidate speaking to assessors, not an academic essay.\n' +
+    '- Adapt the structure to the topic; do not force history or advantages where they do not fit. Focus on India where appropriate.\n' +
+    '- Every number, date, name of a report and quotation must come from the FACTS below. Never invent one. If the FACTS have no quote, use no quote.\n\n' +
+    'Answer with JSON only, in this shape:\n' +
+    '{"intro":["paragraph"],"body":[{"head":"short heading","text":"paragraph"}],"conclusion":["paragraph"],"keywords":["5 to 7 memory cues"],"line":"one strong line to remember"}\n\n' +
+    'FACTS:\n{{facts}}';
+
+  // A sentence with a figure the sources do not hold is taken out: a model's
+  // made-up statistic must never reach a candidate who will repeat it to a board.
+  function lectVerified(text, facts) {
+    var have = String(facts).replace(/,/g, '');
+    return String(text).replace(/([.!?])\s+(?=[A-Z"])/g, '$1\n').split('\n').filter(function (s) {
+      return (s.replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || []).every(function (n) {
+        return n.length < 2 || have.indexOf(n) >= 0;
+      });
+    }).join(' ');
+  }
+
+  // The model's answer -> the same shape lectCompose() gives, or null if it is not a lecture.
+  function lectFromAi(text, facts, sources, model) {
+    var out;
+    try {
+      out = JSON.parse(String(text).slice(String(text).indexOf('{'), String(text).lastIndexOf('}') + 1));
+    } catch (_) {
+      return null;
+    }
+    var clean = function (list) {
+      return (Array.isArray(list) ? list : [list]).map(function (p) { return lectVerified(p, facts); }).filter(Boolean);
+    };
+    var bodyParts = (Array.isArray(out.body) ? out.body : []).map(function (b) {
+      return typeof b === 'string' ? { head: '', text: b } : b;
+    }).filter(function (b) { return b && b.text; });
+    var speech = {
+      intro: clean(out.intro),
+      body: bodyParts.map(function (b) { return lectVerified(b.text, facts); }),
+      conclusion: clean(out.conclusion),
+      heads: bodyParts.map(function (b) { return b.head || ''; })
+    };
+    var countAll = function () { return lectWordCount(speech.intro.concat(speech.body, speech.conclusion)); };
+    // Three minutes is three minutes: a long answer loses the last sentence of its longest paragraph.
+    for (var guard = 0; countAll() > 420 && guard < 60; guard++) {
+      var at = 0;
+      speech.body.forEach(function (p, i) { if (p.length > speech.body[at].length) at = i; });
+      var parts = String(speech.body[at]).replace(/([.!?])\s+(?=[A-Z"])/g, '$1\n').split('\n');
+      if (parts.length < 2) {
+        if (speech.body.length < 3) break;
+        speech.body.pop();
+        speech.heads.pop();
+        continue;
+      }
+      parts.pop();
+      speech.body[at] = parts.join(' ');
+    }
+    var words = countAll();
+    if (words < 220 || !speech.intro.length || !speech.conclusion.length) return null;
+    return {
+      speech: speech, words: words, keywords: (out.keywords || []).slice(0, 7), line: out.line || '',
+      sources: sources, model: model, writtenAt: new Date().toISOString()
+    };
+  }
+
+  // Timeline threads that speak to this topic: most of its telling words in one headline.
+  function timelineFor(topic) {
+    var want = (String(topic).toLowerCase().match(/[a-z]{4,}/g) || []).filter(function (w) { return LECT_STOP.indexOf(w) < 0 && w !== 'india'; });
+    if (!want.length) return [];
+    return (S.timeline || []).map(function (t) {
+      var text = t.events.map(function (e) { return e.headline; }).join(' ').toLowerCase();
+      return { t: t, n: want.filter(function (w) { return text.indexOf(w) >= 0; }).length };
+    }).filter(function (x) { return x.n >= Math.ceil(want.length * 0.6); })
+      .sort(function (a, b) { return b.n - a.n || timelineLast(b.t).localeCompare(timelineLast(a.t)); })
+      .slice(0, 5).map(function (x) { return x.t; });
+  }
+
+  function timelineLast(t) {
+    return t.events[t.events.length - 1].date;
+  }
+
+  function timelineEventsHtml(t) {
+    return '<ol class="tl-events">' + t.events.map(function (e) {
+      return '<li><div class="small muted">' + esc(e.date) + (e.sources && e.sources.length ? ' · ' + esc(e.sources.slice(0, 3).join(', ')) : '') + '</div>' +
+        '<b>' + esc(e.headline) + '</b>' + (e.text ? '<p>' + esc(e.text) + '</p>' : '') +
+        (/^https?:\/\//.test(e.link || '') ? '<button class="btn sm ghost" data-external="' + esc(e.link) + '">Open the source</button>' : '') + '</li>';
+    }).join('') + '</ol>';
+  }
+
+  function timelineCard(t) {
+    var n = t.events.length - 1;
+    return '<details class="card tl-thread"><summary><b>' + esc(t.events[n].headline) + '</b>' +
+      (n ? ' <span class="chip ok">' + n + ' follow-up' + (n > 1 ? 's' : '') + '</span>' : '') +
+      '<div class="small muted">' + esc(t.section) + ' · ' + esc(t.events[0].date) + (n ? ' to ' + esc(timelineLast(t)) : '') + '</div></summary>' +
+      timelineEventsHtml(t) + '</details>';
+  }
+
+  function loadTimeline() {
+    return Promise.resolve(window.api.timelineLoad ? window.api.timelineLoad() : []).then(function (list) {
+      S.timeline = list || [];
+    }).catch(function () { S.timeline = []; });
+  }
+
+  function renderTimeline() {
+    if (!S.timeline) {
+      body('<h1>News Timeline</h1><div class="empty">Opening your timeline…</div>');
+      loadTimeline().then(function () { if (S.view === 'timeline') renderTimeline(); });
+      return;
+    }
+    var V = S.tlView || (S.tlView = { section: 'All', q: '', only: false });
+    var counts = { All: S.timeline.length };
+    S.timeline.forEach(function (t) { counts[t.section] = (counts[t.section] || 0) + 1; });
+    var q = V.q.toLowerCase();
+    var list = S.timeline.filter(function (t) {
+      return (V.section === 'All' || t.section === V.section) && (!V.only || t.events.length > 1) &&
+        (!q || JSON.stringify(t.events).toLowerCase().indexOf(q) >= 0);
+    }).sort(function (a, b) { return timelineLast(b).localeCompare(timelineLast(a)) || b.events.length - a.events.length; });
+    body(
+      '<h1>News Timeline</h1>' +
+      '<p class="lead">Every story from your digests, section by section. A later report on the same story is added under it as a follow-up.</p>' +
+      '<div class="tabs">' + Object.keys(counts).map(function (s) {
+        return '<button class="navlink' + (s === V.section ? ' active' : '') + '" data-tlsec="' + esc(s) + '">' + esc(s) + ' (' + counts[s] + ')</button>';
+      }).join('') + '</div>' +
+      '<div class="row" style="margin:12px 0"><input id="tlSearch" type="search" class="textinput" placeholder="Search a topic" value="' + esc(V.q) + '" />' +
+      '<label class="small"><input id="tlOnly" type="checkbox"' + (V.only ? ' checked' : '') + ' /> Only with follow-ups</label></div>' +
+      '<div class="small muted">' + list.length + ' stories' + (list.length > 200 ? ', newest 200 shown' : '') + '</div>' +
+      (list.length ? list.slice(0, 200).map(timelineCard).join('') : '<div class="empty">Nothing here yet. Each digest you make adds to this screen.</div>')
+    );
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tlsec]'), function (b) {
+      b.addEventListener('click', function () { V.section = b.getAttribute('data-tlsec'); renderTimeline(); });
+    });
+    var box = document.getElementById('tlSearch');
+    box.addEventListener('change', function () { V.q = box.value; renderTimeline(); });
+    document.getElementById('tlOnly').addEventListener('change', function (e) { V.only = e.target.checked; renderTimeline(); });
+    wireExternal(appEl);
+  }
+
+  function wireExternal(root) {
+    // Screens add links after the shell has wired its own; each link must open once, not twice.
+    Array.prototype.forEach.call(root.querySelectorAll('[data-external]:not([data-wired])'), function (b) {
+      b.setAttribute('data-wired', '1');
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.api.openExternal(b.getAttribute('data-external'));
+      });
+    });
+  }
+
+  /* ------------------------------------------- news saved under each topic */
+
+  var TOPIC_NEWS_EVERY = 6 * 3600 * 1000;
+  var TOPIC_NEWS_KEEP = 20;
+  var topicSweeping = false;
+
+  function mergeTopicNews(old, fresh) {
+    var seen = {};
+    return fresh.map(function (p) { return { text: p.text, source: p.source || '', date: p.date || '', link: p.link || '' }; }).concat(old || [])
+      .filter(function (p) {
+        var k = String(p.text).toLowerCase();
+        if (!p.text || seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      })
+      .sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })
+      .slice(0, TOPIC_NEWS_KEEP);
+  }
+
+  // One topic at a time with a pause, so the news service is never hammered. The
+  // clock is saved too, so a restart carries on where the last sweep stopped.
+  function sweepTopicNews() {
+    if (topicSweeping || !S.config || !S.config.onlineEnabled || window.__noStateGate) return;
+    var due = (S.lectures || []).filter(function (t) { return Date.now() - ((S.config.topicNewsAt || {})[t.id] || 0) > TOPIC_NEWS_EVERY; });
+    if (!due.length) return;
+    topicSweeping = true;
+    var i = 0;
+    var next = function () {
+      if (i >= due.length || !S.config.onlineEnabled) { topicSweeping = false; return; }
+      var t = due[i++];
+      window.api.lecturesLive({ id: t.id, query: t.query || t.topic, force: true }).then(function (r) {
+        var news = Object.assign({}, S.config.topicNews);
+        var at = Object.assign({}, S.config.topicNewsAt);
+        if (r && r.ok && !r.offline) {
+          news[t.id] = mergeTopicNews(news[t.id], r.points || []);
+          at[t.id] = Date.now();
+          S.config.topicNews = news;
+          S.config.topicNewsAt = at;
+          return window.api.setConfig({ topicNews: news, topicNewsAt: at });
+        }
+      }).catch(function () {}).then(function () { setTimeout(next, 2500); });
+    };
+    next();
+  }
+
+  /* --------------------------------------------------- import from Excel */
+
+  // An .xlsx file is a zip of XML. The browser engine already inflates zip data
+  // and parses XML, so reading column A needs no library on either platform.
+  function zipEntries(buf) {
+    var view = new DataView(buf);
+    var end = buf.byteLength - 22;
+    while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+    if (end < 0) throw new Error('This is not an Excel .xlsx file.');
+    var count = view.getUint16(end + 10, true);
+    var at = view.getUint32(end + 16, true);
+    var out = {};
+    for (var i = 0; i < count; i++) {
+      var nameLen = view.getUint16(at + 28, true);
+      var name = new TextDecoder().decode(new Uint8Array(buf, at + 46, nameLen));
+      out[name] = { method: view.getUint16(at + 10, true), size: view.getUint32(at + 20, true), local: view.getUint32(at + 42, true) };
+      at += 46 + nameLen + view.getUint16(at + 30, true) + view.getUint16(at + 32, true);
+    }
+    return out;
+  }
+
+  function zipText(buf, entry) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('This phone\'s Android System WebView is too old to read Excel. Update it from the Play Store.');
+    var start = entry.local + 30 + new DataView(buf).getUint16(entry.local + 26, true) + new DataView(buf).getUint16(entry.local + 28, true);
+    var raw = new Blob([new Uint8Array(buf, start, entry.size)]);
+    if (entry.method === 0) return raw.text();
+    return new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  }
+
+  function cellText(node) {
+    return Array.prototype.map.call(node.getElementsByTagName('t'), function (t) { return t.textContent; }).join('');
+  }
+
+  // Every row of the first sheet, as a list of cell texts by column.
+  function readXlsxRows(buf) {
+    var files = zipEntries(buf);
+    var sheet = Object.keys(files).filter(function (n) { return /^xl\/worksheets\/sheet\d*\.xml$/.test(n); }).sort(function (a, b) {
+      return parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10);
+    })[0];
+    if (!sheet) return Promise.reject(new Error('No sheet found in this file.'));
+    return Promise.all([zipText(buf, files[sheet]), files['xl/sharedStrings.xml'] ? zipText(buf, files['xl/sharedStrings.xml']) : '<a/>']).then(function (r) {
+      var parse = function (x) { return new DOMParser().parseFromString(x, 'application/xml'); };
+      var shared = Array.prototype.map.call(parse(r[1]).getElementsByTagName('si'), cellText);
+      return Array.prototype.map.call(parse(r[0]).getElementsByTagName('row'), function (row) {
+        var cols = [];
+        Array.prototype.forEach.call(row.getElementsByTagName('c'), function (c) {
+          var ref = /^([A-Z])\d/.exec(c.getAttribute('r') || '');
+          if (!ref) return;
+          var v = c.getElementsByTagName('v')[0];
+          cols[ref[1].charCodeAt(0) - 65] = String(c.getAttribute('t') === 's' ? shared[+v.textContent] || '' : c.getAttribute('t') === 'inlineStr' ? cellText(c) : v ? v.textContent : '').trim();
+        });
+        return cols;
+      }).filter(function (c) { return c.some(Boolean); });
+    });
+  }
+
+  var IMPORT_HEADS = { srt: /situation|\bsrt\b|question/i, lect: /\btopics?\b|lectur/i, wat: /\bwords?\b|\bwat\b/i };
+
+  // The headings say which column holds what. A section's own kind is tried first; a sheet
+  // that plainly holds another kind is refused rather than loaded into the wrong test.
+  function importKind(headings, fileName, want) {
+    var find = function (re) {
+      for (var i = 0; i < headings.length; i++) if (re.test(String(headings[i] || ''))) return i;
+      return -1;
+    };
+    var names = { srt: 'SRT', wat: 'WAT', lect: 'lecture topic' };
+    var order = want ? [want] : ['srt', 'lect', 'wat'];
+    for (var t = 0; t < order.length; t++) {
+      var col = find(IMPORT_HEADS[order[t]]);
+      if (col >= 0) return { kind: order[t], col: col, cat: find(/categor|theme/i), header: true };
+    }
+    if (want) {
+      Object.keys(IMPORT_HEADS).forEach(function (other) {
+        if (find(IMPORT_HEADS[other]) >= 0) throw new Error('This sheet holds ' + names[other] + ' data. Use the ' + names[other] + ' section instead.');
+      });
+      return { kind: want, col: 0, cat: 1 };
+    }
+    var n = String(fileName).toLowerCase();
+    var kind = /wat|word/.test(n) ? 'wat' : /srt|situation/.test(n) ? 'srt' : /lect|topic/.test(n) ? 'lect' : '';
+    return kind ? { kind: kind, col: 0, cat: 1 } : null;
+  }
+
+  // Same text whatever its capitals, spacing or punctuation.
+  function textKey(text) {
+    return (String(text).toLowerCase().match(/[a-z0-9]+/g) || []).join(' ');
+  }
+
+  function uniqueTexts(list) {
+    var seen = {};
+    return list.filter(function (x) {
+      var k = textKey(x);
+      if (!k || seen[k]) return false;
+      seen[k] = 1;
+      return true;
+    });
+  }
+
+  var FP_SPELLING = { defense: 'defence', programme: 'program', organisation: 'organization', indigenization: 'indigenisation', labour: 'labor', centre: 'center' };
+  var FP_SKIP = ['the', 'of', 'in', 'and', 'on', 'a', 'an', 'for', 'to', 'its', 'by', 'with', 'india', 'indian', 'role', 'impact'];
+
+  // A topic's fingerprint: "E-Commerce", "E commerce" and "Ecommerce in India" must meet.
+  // Brackets go ("Artificial Intelligence (AI)"), spelling and plurals are evened out,
+  // and the words are sorted so their order cannot hide a repeat.
+  function topicWords(text) {
+    var bare = String(text).replace(/\([^)]*\)/g, ' ').toLowerCase().replace(/\be[\s-]+(commerce|governance|learning|waste|vehicles?)\b/g, 'e$1');
+    var words = (bare.match(/[a-z0-9]+/g) || []).map(function (w) {
+      w = FP_SPELLING[w] || w;
+      return w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w;
+    }).filter(function (w) { return FP_SKIP.indexOf(w) < 0; });
+    return words.length ? words : [textKey(text)];
+  }
+
+  function lectKey(text) {
+    return topicWords(text).slice().sort().join(' ');
+  }
+
+  // Exact fingerprints are found in one step; this catches a word or so of difference.
+  function nearlySameTopic(a, b) {
+    if (a.length < 3 || b.length < 3) return false;
+    var shared = a.filter(function (w) { return b.indexOf(w) >= 0; }).length;
+    return shared / (a.length + b.length - shared) >= 0.75;
+  }
+
+  // Each row is new, or names the existing topic it repeats.
+  function checkTopics(rows, existing) {
+    var byKey = {};
+    var known = [];
+    var remember = function (topic) {
+      byKey[lectKey(topic)] = topic;
+      known.push({ topic: topic, words: topicWords(topic) });
+    };
+    existing.forEach(remember);
+    var fresh = [];
+    var repeats = [];
+    rows.forEach(function (r) {
+      var words = topicWords(r[0]);
+      var same = byKey[lectKey(r[0])] || (known.filter(function (k) { return nearlySameTopic(words, k.words); })[0] || {}).topic;
+      if (same) {
+        repeats.push({ topic: r[0], same: same });
+        return;
+      }
+      remember(r[0]);
+      fresh.push(r);
+    });
+    return { fresh: fresh, repeats: repeats };
+  }
+
+  // Replaces the lists an earlier sheet brought in; lists typed by hand stay.
+  function importRows(kind, rows) {
+    var cfg = S.config;
+    if (kind === 'lect') {
+      var check = checkTopics(rows, (S.lecturesBase || []).concat(cfg.lectOwn || []).map(function (t) { return t.topic; }));
+      var dup = check.repeats;
+      var added = check.fresh.map(function (r) {
+        return { id: lectSlug(r[0]), topic: r[0], category: r[1] || 'Your topics' };
+      });
+      var own = (cfg.lectOwn || []).concat(added).sort(function (a, b) {
+        return String(a.category || '').localeCompare(String(b.category || '')) || a.topic.localeCompare(b.topic);
+      });
+      cfg.lectOwn = own;
+      return window.api.setConfig({ lectOwn: own }).then(function () {
+        S.lectures = lectWithWritten(S.lecturesBase || []);
+        return rows.length + ' rows read.\n' + added.length + ' new topics added and sorted.\n' + dup.length + ' duplicates skipped' +
+          (dup.length ? ':\n' + dup.map(function (d) { return d.topic === d.same ? d.topic : d.topic + '  =  ' + d.same; }).join('\n') : '.');
+      });
+    }
+    var cleaned = uniqueTexts(rows.map(function (r) { return r[0]; }));
+    var builtIn = {};
+    builtinSets(kind).forEach(function (s) { s.items.forEach(function (x) { builtIn[textKey(x)] = 1; }); });
+    var items = cleaned.filter(function (x) { return !builtIn[textKey(x)]; });
+    var size = 60;
+    var sets = [];
+    for (var i = 0; i < items.length; i += size) {
+      sets.push({ id: 'excel-' + kind + '-' + (sets.length + 1), name: kind.toUpperCase() + ' sheet ' + (sets.length + 1), items: items.slice(i, i + size) });
+    }
+    cfg.custom = cfg.custom || { tat: [], wat: [], srt: [] };
+    cfg.custom[kind] = (cfg.custom[kind] || []).filter(function (s) { return String(s.id).indexOf('excel-') !== 0; }).concat(sets);
+    return window.api.setConfig({ custom: cfg.custom }).then(function () {
+      return rows.length + ' rows read.\n' + items.length + ' new ' + kind.toUpperCase() + ' items added in ' + sets.length + ' set' + (sets.length === 1 ? '' : 's') + '.\n' +
+        (rows.length - cleaned.length) + ' repeats inside the sheet and ' + (cleaned.length - items.length) + ' already in the app were skipped.';
+    });
+  }
+
+  function importFile(file, want) {
+    return file.arrayBuffer().then(function (buf) {
+      if (/\.txt$/i.test(file.name)) {
+        return new TextDecoder().decode(buf).split(/\r?\n/).map(function (l) { return [l.trim(), '']; }).filter(function (c) { return c[0]; });
+      }
+      return readXlsxRows(buf);
+    }).then(function (rows) {
+      if (!rows.length) throw new Error('This sheet is empty.');
+      var k = importKind(rows[0], file.name, want);
+      if (!k) throw new Error('Head a column Word, Situation or Topic, or use one of those words in the file name.');
+      var body = (k.header ? rows.slice(1) : rows).map(function (r) { return [r[k.col] || '', k.cat >= 0 ? r[k.cat] || '' : '']; }).filter(function (r) { return r[0]; });
+      return importRows(k.kind, body);
     });
   }
 
@@ -2121,7 +2666,7 @@
 
   function lectHotError(r) {
     if (!r) return 'Nothing came back.';
-    if (r.error === 'offline') return 'Online lookup is off — turn it on in Word library first.';
+    if (r.error === 'offline') return 'Online lookup is off — turn it on in Settings first.';
     if (r.error === 'network') return 'Could not reach the news feed.' + (r.detail ? ' (' + r.detail + ')' : '');
     if (r.error === 'empty') return 'The feed had no headlines just now.';
     return 'Fetch failed (' + (r.error || 'unknown') + ').';
@@ -2365,8 +2910,10 @@
   function lectWithWritten(base) {
     var cfg = S.config || {};
     var written = cfg.lectWritten || {};
-    var own = (cfg.lectOwn || []).map(function (o) {
-      return { id: o.id, topic: o.topic, query: o.topic, theme: 'Your topic', category: 'Your topics', boards: [], source: 'own' };
+    var inBase = {};
+    base.forEach(function (t) { inBase[lectKey(t.topic)] = 1; });
+    var own = (cfg.lectOwn || []).filter(function (o) { return !inBase[lectKey(o.topic)]; }).map(function (o) {
+      return { id: o.id, topic: o.topic, query: o.topic, theme: 'Your topic', category: o.category || 'Your topics', boards: [], source: 'own' };
     });
     return own.concat(base).map(function (t) {
       var w = written[t.id];
@@ -2400,6 +2947,10 @@
       window.api.lecturesLive({ id: id, query: topic.query || text, force: true }).catch(function () { return null; })
     ])
       .then(function (r) {
+        var saved = ((S.config.topicNews || {})[id] || []).slice(0, 8);
+        var usable = (r[1] && r[1].ok && r[1].points && r[1].points.length) || saved.length;
+        // A broad topic may have no one article; recent news is enough for the AI to work from.
+        if ((!r[0] || !r[0].ok) && aiReady() && usable) r[0] = { ok: true, title: text, text: '', url: '', updated: '' };
         if (!r[0] || !r[0].ok) {
           L.writing = null;
           toast(lectWriteError(r[0]));
@@ -2408,7 +2959,18 @@
         }
         var cfg = S.config || {};
         var written = Object.assign({}, cfg.lectWritten || {});
-        written[id] = lectCompose(Object.assign({}, topic, { topic: text }), r[0], r[1]);
+        var points = ((r[1] && r[1].ok && r[1].points) || []).slice(0, 6);
+        var factText = (topic.about ? 'What this topic covers: ' + topic.about + '\n' : '') +
+          points.concat(saved).map(function (p) { return (p.date || '') + ': ' + p.text + ' (' + (p.source || 'news') + ')'; }).join('\n') + '\n' + String(r[0].text).slice(0, 7000);
+        var sources = [{ label: 'Wikipedia — ' + r[0].title, date: String(r[0].updated || '').slice(0, 10), link: r[0].url || '' }]
+          .concat(points.slice(0, 3).map(function (p) { return { label: p.source || 'News', date: p.date || '', link: p.link || '' }; }));
+        var write = aiReady()
+          ? aiAsk(LECT_PROMPT.replace('{{topic}}', text).replace('{{facts}}', factText))
+          : Promise.resolve(null);
+        return write.then(function (ans) {
+        var fromAi = ans && ans.ok ? lectFromAi(ans.text, factText, sources, ans.model) : null;
+        if (ans && !fromAi) toast(ans.ok ? 'The AI answer was not a usable lecture, so this one is built from the sources.' : aiErrorText(ans));
+        written[id] = fromAi || lectCompose(Object.assign({}, topic, { topic: text }), r[0], r[1]);
         var patch = { lectWritten: written };
         if (!topic.id) {
           var own = (cfg.lectOwn || []).filter(function (o) { return o.id !== id; });
@@ -2421,8 +2983,10 @@
           L.writing = null;
           toast('Lecture written — ' + written[id].words + ' words');
           var done = S.lectures.filter(function (t) { return t.id === id; })[0];
-          if (done) startLecture(done, null);
+          // Only if the person is still waiting here; they may have moved on while it was written.
+          if (done && S.view === 'lecturette') startLecture(done, null);
           else render();
+        });
         });
       })
       .catch(function (err) {
@@ -2601,17 +3165,23 @@
   function paintLive() {
     var el = document.getElementById('lectLive');
     if (!el) return;
-    el.innerHTML = lectLiveHtml();
+    var runTopic = (lectState().run && lectState().run.topic) || {};
+    var mine = timelineFor(runTopic.topic || '');
+    var kept = ((S.config.topicNews || {})[runTopic.id] || (lectSaved()[runTopic.id] || {}).news || []).slice(0, 15);
+    el.innerHTML = (kept.length
+      ? '<div class="card"><h3>Latest news on this topic</h3><ul class="tl-events">' + kept.map(function (p) {
+          return '<li><div class="small muted">' + esc(p.date) + (p.source ? ' · ' + esc(p.source) : '') + '</div>' + esc(p.text) +
+            (/^https?:\/\//.test(p.link) ? ' <button class="btn sm ghost" data-external="' + esc(p.link) + '">Open</button>' : '') + '</li>';
+        }).join('') + '</ul></div>'
+      : '') + (mine.length
+      ? '<div class="card"><h3>Follow-ups from your digest timeline</h3>' + mine.map(timelineCard).join('') + '</div>'
+      : '') + (kept.length ? '' : lectLiveHtml());
+    if (!S.timeline) loadTimeline().then(function () { if (S.view === 'lecturette' && S.timeline.length) paintLive(); });
     var again = document.getElementById('lectLiveAgain');
     if (again) again.addEventListener('click', function () { loadLive(true); });
     var settings = document.getElementById('lectLiveSettings');
     if (settings) settings.addEventListener('click', function () { goto('settings'); });
-    Array.prototype.forEach.call(el.querySelectorAll('[data-external]'), function (b) {
-      b.addEventListener('click', function (e) {
-        e.preventDefault();
-        window.api.openExternal(b.getAttribute('data-external'));
-      });
-    });
+    wireExternal(el);
   }
 
   // Which topics already have points on disk. Read once at boot; only a changed
@@ -2636,188 +3206,63 @@
     return renderLectList();
   }
 
+  function lectSaved() {
+    return (S.config && S.config.lectSaved) || {};
+  }
+
+  function saveLectureOffline(t) {
+    var saved = Object.assign({}, lectSaved());
+    saved[t.id] = { at: new Date().toISOString(), news: ((S.config.topicNews || {})[t.id] || []).slice() };
+    S.config.lectSaved = saved;
+    return window.api.setConfig({ lectSaved: saved }).then(function () { toast('Saved offline. Find it under Saved offline in Lecturette.'); });
+  }
+
   function renderLectList() {
     var L = lectState();
     var topics = lectTopics();
-    var boards = lectBoards();
-
-    var boardOpts = ['<option value="all">All centres and boards</option>']
-      .concat(
-        boards.map(function (b) {
-          return '<option value="' + esc(b) + '"' + (L.board === b ? ' selected' : '') + '>' + esc(b) + '</option>';
-        })
-      )
-      .join('');
-
-    var cats = lectCats();
-    var catOpts = ['<option value="all">All themes</option>']
-      .concat(
-        cats.map(function (c) {
-          return '<option value="' + esc(c) + '"' + (L.cat === c ? ' selected' : '') + '>' + esc(c) + '</option>';
-        })
-      )
-      .join('');
-
-    var shown = lectFiltered();
-    var withScript = topics.filter(function (t) {
-      return t.source === 'curated' || t.source === 'draft' || t.written;
-    }).length;
-
-    var cards = shown
-      .map(function (t) {
-        var idx = topics.indexOf(t);
-        var open = !!L.open[t.id];
-        var live = (L.liveStatus || {})[t.id];
-        return (
-          '<div class="card lectcard">' +
-          '<div class="lechead">' +
-          '<div>' +
-          '<div class="lectitle">' + esc(t.topic) + '</div>' +
-          '<div class="small muted">' +
-          '<span class="chip' + (t.source === 'curated' ? ' ok' : '') + '">' + esc(lectSourceLabel(t)) + '</span> ' +
-          esc(t.category || t.theme || '') +
-          (asList(t.boards).length ? ' · asked at: ' + esc(asList(t.boards).join(', ')) : '') +
-          (live ? ' · points checked ' + esc(live.checkedOn) : '') +
-          '</div>' +
-          '</div>' +
-          '<div class="row" style="margin:0">' +
-          '<button class="btn sm ghost" data-lectfacts="' + idx + '">' + (open ? 'Hide facts' : 'Facts') + '</button>' +
-          // A hand-written or drafted script is never replaced by a generated one.
-          (t.source === 'curated' || (t.speech && !t.written)
-            ? ''
-            : '<button class="btn sm" data-lectwrite="' + idx + '"' + (L.writing ? ' disabled' : '') + '>' +
-              (L.writing === t.id ? 'Writing…' : t.written ? 'Rewrite with latest facts' : 'Write it for me') + '</button>') +
-          '<button class="btn primary sm" data-lectstart="' + idx + '">Practise</button>' +
-          '</div>' +
-          '</div>' +
-          (open ? '<div style="margin-top:12px">' + lectFactsHtml(t) + '</div>' : '') +
-          '</div>'
-        );
-      })
-      .join('');
-
+    var q = (L.q || '').trim().toLowerCase();
+    var news = (S.config && S.config.topicNews) || {};
+    var shown = topics.filter(function (t) {
+      if (L.cat === '__saved') return !!lectSaved()[t.id] && (!q || t.topic.toLowerCase().indexOf(q) >= 0);
+      return (L.cat === 'all' || !L.cat || t.category === L.cat) && (!q || (t.topic + ' ' + (t.category || '')).toLowerCase().indexOf(q) >= 0);
+    });
+    var rows = '';
+    var lastCat = null;
+    shown.forEach(function (t) {
+      if (t.category !== lastCat) {
+        lastCat = t.category;
+        rows += '<h2>' + esc(lastCat || 'Topics') + '</h2>';
+      }
+      var idx = topics.indexOf(t);
+      var saved = (news[t.id] || []).length;
+      rows += '<div class="card lectcard"><div class="lechead"><div><div class="lectitle">' + esc(t.topic) + '</div>' +
+        (saved ? '<div class="small muted">' + saved + ' news item' + (saved > 1 ? 's' : '') + ' saved</div>' : '') +
+        '</div><div class="row" style="margin:0">' +
+        (t.written ? '<button class="btn primary sm" data-lectstart="' + idx + '">Open lecture</button>' : '') +
+        (t.written && !lectSaved()[t.id] ? '<button class="btn sm" data-lectsave="' + idx + '">Save offline</button>' : '') +
+        (lectSaved()[t.id] ? '<span class="chip ok">Saved offline</span>' : '') +
+        '<button class="btn' + (t.written ? ' ghost' : ' primary') + ' sm" data-lectwrite="' + idx + '"' + (L.writing ? ' disabled' : '') + '>' +
+        (L.writing === t.id ? 'Writing…' : t.written ? 'Generate again' : 'Generate lecture') + '</button></div></div></div>';
+    });
     body(
-      '<h1>Lecturette — the three-minute SSB pattern</h1>' +
-      '<p class="lead">A lecturette is a three-minute talk on a topic handed to you on the spot. ' +
-      'The pattern that scores is <b>30 seconds intro, 2 minutes body, 30 seconds conclusion</b>. ' +
-      'The clock here changes phase by itself, exactly like the real thing. Nothing is typed — speak it aloud and write in your notebook.</p>' +
-      '<div class="card lectform">' +
-      '<div class="field"><label>Selection centre / board<br><span class="small muted">' +
-      topics.length + ' topics · <b>' + withScript + '</b> with a full script · <b>' + (topics.length - withScript) + '</b> as outlines</span></label>' +
-      '<div class="ctl"><select id="lectBoard">' + boardOpts + '</select>' +
-      '<select id="lectCat">' + catOpts + '</select>' +
-      '<button class="btn primary" id="lectRandom">Practise a random topic</button></div></div>' +
-      '<div class="field" style="margin-top:14px"><label for="lectSearch">Find a topic<br><span class="small muted">' +
-      'Type a topic, a theme or a cue word — the list narrows as you type</span></label>' +
-      '<div class="ctl"><input id="lectSearch" class="textinput" type="search" placeholder="e.g. inflation, navy, youth" value="' + esc(L.q || '') + '"></div></div>' +
-      '<div class="field" style="margin-top:14px"><label for="lectOwn">Your own topic<br><span class="small muted">' +
-      'Type any topic and the app writes a three-minute lecturette in simple words, from the latest facts, with every source dated</span></label>' +
-      '<div class="ctl"><input id="lectOwn" class="textinput" type="text" maxlength="120" placeholder="e.g. Operation Sindoor, Make in India, cyber security">' +
-      '<button class="btn primary" id="lectOwnWrite"' + (L.writing ? ' disabled' : '') + '>' +
-      (L.writing && L.writing.indexOf('own-') === 0 ? 'Writing…' : 'Write my lecture') + '</button></div></div>' +
-      '<div class="small muted">Pattern: <b>' + esc(LECT_PHASES[0].label) + ' ' + LECT_PHASES[0].secs + 's</b> → ' +
-      '<b>' + esc(LECT_PHASES[1].label) + ' ' + LECT_PHASES[1].secs / 60 + ' min</b> → ' +
-      '<b>' + esc(LECT_PHASES[2].label) + ' ' + LECT_PHASES[2].secs + 's</b>. ' +
-      'Every topic carries the sub-points the examiners expect, plus a facts panel to quote.</div>' +
-      '</div>' +
-      lectHotHtml() +
-      '<h2>Topics</h2>' +
-      (shown.length
-        ? cards
-        : '<div class="empty">No topic matches those filters. Clear the search or choose “All themes” and “All centres and boards”.</div>') +
-      '<p class="small muted" style="margin-top:16px">Topic material is compiled from publicly reported SSB guidance and rewritten for this app. ' +
-      'Figures are the ones most commonly quoted and are marked as reported.</p>'
+      '<h1>Lecturette</h1>' +
+      '<p class="lead">Press <b>Generate lecture</b> for a full three-minute speech. It stays saved here, with the latest news on that topic below it.</p>' +
+      '<div class="card lectform"><div class="field"><label for="lectCat">Category</label><div class="ctl"><select id="lectCat"><option value="all">All ' + topics.length + ' topics</option>' +
+      '<option value="__saved"' + (L.cat === '__saved' ? ' selected' : '') + '>Saved offline (' + Object.keys(lectSaved()).length + ')</option>' +
+      lectCats().map(function (c) { return '<option' + (L.cat === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></div></div>' +
+      '<div class="field"><label for="lectSearch">Find a topic</label><div class="ctl"><input id="lectSearch" class="textinput" type="search" value="' + esc(L.q || '') + '"></div></div></div>' +
+      (rows || '<div class="empty">No topic matches.</div>')
     );
-
-    var board = document.getElementById('lectBoard');
-    if (board) {
-      board.addEventListener('change', function () {
-        L.board = board.value;
-        render();
-      });
-    }
-
-    var cat = document.getElementById('lectCat');
-    if (cat) {
-      cat.addEventListener('change', function () {
-        L.cat = cat.value;
-        render();
-      });
-    }
-
-    // Searching re-renders the list, so the caret is put back where it was;
-    // otherwise the field would lose focus on the first keystroke.
-    var search = document.getElementById('lectSearch');
-    if (search) {
-      search.addEventListener('input', function () {
-        L.q = search.value;
-        var pos = search.selectionStart || 0;
-        render();
-        var again = document.getElementById('lectSearch');
-        if (!again) return;
-        again.focus();
-        try {
-          again.setSelectionRange(pos, pos);
-        } catch (_) {}
-      });
-    }
-
-    var rnd = document.getElementById('lectRandom');
-    if (rnd) {
-      rnd.addEventListener('click', function () {
-        var pick = randomLecture(shown);
-        if (pick) startLecture(pick, null);
-      });
-    }
-
+    document.getElementById('lectCat').addEventListener('change', function (e) { L.cat = e.target.value; render(); });
+    document.getElementById('lectSearch').addEventListener('change', function (e) { L.q = e.target.value; render(); });
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectstart]'), function (b) {
-      b.addEventListener('click', function () {
-        var t = topics[parseInt(b.getAttribute('data-lectstart'), 10)];
-        if (t) startLecture(t, null);
-      });
+      b.addEventListener('click', function () { startLecture(topics[+b.getAttribute('data-lectstart')], null); });
     });
-
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectwrite]'), function (b) {
-      b.addEventListener('click', function () {
-        var t = topics[parseInt(b.getAttribute('data-lectwrite'), 10)];
-        if (t) writeLecture(t);
-      });
+      b.addEventListener('click', function () { writeLecture(topics[+b.getAttribute('data-lectwrite')]); });
     });
-
-    var ownBtn = document.getElementById('lectOwnWrite');
-    var ownIn = document.getElementById('lectOwn');
-    if (ownBtn && ownIn) {
-      var writeOwn = function () {
-        var text = ownIn.value.trim();
-        if (text.length < 3) return toast('Type a topic first');
-        writeLecture({ topic: text });
-      };
-      ownBtn.addEventListener('click', writeOwn);
-      ownIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') writeOwn(); });
-    }
-
-    Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectfacts]'), function (b) {
-      b.addEventListener('click', function () {
-        var t = topics[parseInt(b.getAttribute('data-lectfacts'), 10)];
-        if (!t) return;
-        L.open[t.id] = !L.open[t.id];
-        render();
-      });
-    });
-
-    var hotBtn = document.getElementById('lectHot');
-    if (hotBtn) hotBtn.addEventListener('click', function () { fetchHotTopics(); });
-    var hotAgain = document.getElementById('lectHotAgain');
-    if (hotAgain) hotAgain.addEventListener('click', function () { fetchHotTopics(); });
-    var toLib = document.getElementById('lectToLibrary');
-    if (toLib) toLib.addEventListener('click', function () { goto('library'); });
-
-    Array.prototype.forEach.call(appEl.querySelectorAll('[data-hot]'), function (b) {
-      b.addEventListener('click', function () {
-        var h = L.hot && L.hot.items[parseInt(b.getAttribute('data-hot'), 10)];
-        if (!h) return;
-        startLecture({ topic: h.title }, { hot: true, link: h.link });
-      });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectsave]'), function (b) {
+      b.addEventListener('click', function () { saveLectureOffline(topics[+b.getAttribute('data-lectsave')]).then(render); });
     });
   }
 
@@ -2842,6 +3287,8 @@
 
   function startLecture(topic, extra) {
     var L = lectState();
+    // Topics carry no script of their own; there is nothing to show until one is generated.
+    if (!extra && !(topic.speech && topic.speech.intro && topic.speech.intro.length)) return writeLecture(topic);
     L.summary = null;
     L.run = {
       topic: lectRunTopic(topic, extra),
@@ -2890,7 +3337,7 @@
           '<div id="lectLive" class="lectlivedock"></div>' +
           '<div class="footbar">' +
           '<span class="hint">The phase changes by itself. Look up from the screen, speak in points, and keep your notebook open.</span>' +
-          '<span class="right"><button class="btn ghost sm" id="lectList">All topics</button></span>' +
+          '<span class="right"><button class="btn primary sm" id="lectSaveNow">Save offline</button> <button class="btn ghost sm" id="lectList">All topics</button></span>' +
           '</div>' +
           '</div>' +
           '</div>'
@@ -2900,6 +3347,10 @@
       document.getElementById('lectNext').addEventListener('click', function () { lectureNextPhase(); });
       document.getElementById('lectFinish').addEventListener('click', function () { finishLecture('manual'); });
       document.getElementById('lectList').addEventListener('click', function () { leaveLecture(); });
+      document.getElementById('lectSaveNow').addEventListener('click', function () {
+        var tp = lectState().run && lectState().run.topic;
+        if (tp) saveLectureOffline(tp);
+      });
     }
 
     paintLecture(true);
@@ -3171,11 +3622,11 @@
           ? '<div class="row" style="margin-bottom:14px">' +
             '<span class="chip">' + bin.length + ' picture' + (bin.length === 1 ? '' : 's') + '</span>' +
             '<button class="btn sm danger" id="emptyBin">Empty the bin</button>' +
-            '<button class="btn sm ghost" id="binAdd">Add or review pictures</button>' +
+            '<button class="btn sm ghost" id="binAdd">Open PPDT</button>' +
             '</div>' +
             '<div class="bin-grid">' + items + '</div>'
-          : '<div class="empty">The bin is empty. Remove a wrong picture from <b>Add material</b> and it will wait here.</div>' +
-            '<div class="row" style="margin-top:14px"><button class="btn primary" id="binAdd">Open Add material</button></div>') +
+          : '<div class="empty">The bin is empty. A wrong picture can be taken out from the PPDT review screen, and it will wait here.</div>' +
+            '<div class="row" style="margin-top:14px"><button class="btn primary" id="binAdd">Open PPDT</button></div>') +
         (S.tatGone
           ? '<h3 style="margin-top:24px">Deleted for good — ' + S.tatGone + '</h3>' +
             '<div class="card"><div class="small muted" style="margin-bottom:10px">Out of every TAT test, and still out after a restart. ' +
@@ -3218,7 +3669,7 @@
       });
     }
     var add = document.getElementById('binAdd');
-    if (add) add.addEventListener('click', function () { goto('add'); });
+    if (add) add.addEventListener('click', function () { goto('ppdt'); });
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-resurrect]'), function (b) {
       b.addEventListener('click', function () {
         resurrectPicture(b.getAttribute('data-resurrect'));
@@ -3310,188 +3761,63 @@
     );
   }
 
-  function renderAdd() {
-    var classic = S.tatClassic || [];
-    var mine = S.tatImages || [];
-    var lib = S.tatLibrary || [];
-    var shownLib = lib.slice(0, 24);
-    var watSets = customSets('wat');
-
-    var classicCards = classic
-      .map(function (c) {
-        return pickCard(c.file, c.title || 'Classic plate', {
-          id: c.id,
-          kind: 'classic',
-          file: c.file,
-          title: c.title,
-          source: c.source
-        }, 'classic set');
-      })
-      .join('');
-
-    var mineCards = mine
-      .map(function (p, i) {
-        var parts = String(p).split(/[\\/]/);
-        return pickCard(p, parts[parts.length - 1] || 'Picture ' + (i + 1), {
-          id: String(p),
-          kind: 'mine',
-          file: String(p),
-          title: parts[parts.length - 1] || 'Your picture'
-        }, 'your picture');
-      })
-      .join('');
-
-    var libCards = shownLib
-      .map(function (c) {
-        return pickCard(c.file, c.title || 'Untitled', {
-          id: c.id,
-          kind: 'library',
-          file: c.file,
-          title: c.title,
-          source: c.source
-        }, c.creator || 'museum library');
-      })
-      .join('');
-
-    var setList = watSets.length
-      ? watSets
-          .map(function (s) {
-            return (
-              '<li class="diag-row"><span>' + esc(s.name.replace(' (mine)', '')) + ' · ' + s.items.length + ' words</span>' +
-              '<button class="btn sm danger" data-delwat="' + esc(s.id) + '">Remove</button></li>'
-            );
-          })
-          .join('')
-      : '<div class="small muted">No word lists of your own yet.</div>';
-
-    body(
-      '<h1>Add material</h1>' +
-        '<p class="lead">Bring your own TAT pictures and WAT words. A picture that looks wrong for the test can be ' +
-        'moved to the <b>Bin</b> here and restored later — it is never destroyed by accident.</p>' +
-
-        '<h2>TAT pictures</h2>' +
-        '<div class="card">' +
-        '<div class="row">' +
-        '<button class="btn primary" id="addTatPics">Add pictures…</button>' +
-        '<span class="chip">' + classic.length + ' classic</span>' +
-        '<span class="chip">' + mine.length + ' yours</span>' +
-        '<span class="chip">' + lib.length + ' in the museum library</span>' +
-        '<button class="btn sm ghost" id="goBin">Open bin (' + (S.tatBin || []).length + ')</button>' +
-        '</div>' +
-        '<p class="small muted" style="margin:12px 0 0">' + (onPhone() ? 'Tap the <b>×</b> on a picture' : 'Hover a picture and press <b>×</b>') +
-        ' to take it out of the test. ' +
-        'The test never sees it again until you restore it.</p>' +
-        '</div>' +
-
-        (classic.length
-          ? '<h3>Classic set — ' + classic.length + ' plates</h3><div class="pick-grid">' + classicCards + '</div>'
-          : '') +
-
-        '<h3>Your pictures' + (mine.length ? ' — ' + mine.length : '') + '</h3>' +
-        (mine.length
-          ? '<div class="pick-grid">' + mineCards + '</div>'
-          : '<div class="empty">No pictures of your own yet. <b>Add pictures…</b> takes a folder of scenes.</div>') +
-
-        (lib.length
-          ? '<h3>Museum library — first 24 of ' + lib.length + '</h3><div class="pick-grid">' + libCards + '</div>'
-          : '') +
-
-        '<h2>WAT words</h2>' +
-        '<div class="card">' +
-        '<div class="field"><label>Set name<br><span class="small muted">Shown in the set picker as “name (mine)”</span></label>' +
-        '<div class="ctl"><input id="addWatName" type="text" placeholder="e.g. My defence words" maxlength="60"></div></div>' +
-        '<div class="field" style="display:block;margin-top:12px"><label>Words — one per line<br>' +
-        '<span class="small muted">Letters only, single words. Up to 60 per set; duplicates are dropped.</span></label>' +
-        '<textarea id="addWatWords" class="answer" style="height:140px;margin-top:8px" spellcheck="false" placeholder="courage&#10;duty&#10;teamwork"></textarea></div>' +
-        '<div class="row" style="margin-top:12px"><button class="btn primary" id="addWatSet">Add this list</button>' +
-        '<span class="small muted" id="addWatCount"></span></div>' +
-        '</div>' +
-        '<h3>Your WAT sets</h3><div class="card">' +
-        '<ul style="list-style:none;margin:0;padding:0">' + setList + '</ul>' +
-        '</div>' +
-
-        '<p class="small muted" style="margin-top:16px">' +
-        (window.api && window.api.android
-          ? 'Pictures you add are kept on this phone, even after the app is closed. '
-          : 'Pictures you add are used only on this computer. ') +
-        'The classic set is user-supplied practice material and is not redistributed with the app.</p>'
-    );
-
-    var addPics = document.getElementById('addTatPics');
-    if (addPics) {
-      addPics.addEventListener('click', function () {
-        window.api.pickTatImages().then(function (list) {
-          S.tatImages = list || [];
-          toast(S.tatImages.length + ' pictures ready');
-          render();
-        });
-      });
-    }
-    var goBin = document.getElementById('goBin');
-    if (goBin) goBin.addEventListener('click', function () { goto('bin'); });
-
-    Array.prototype.forEach.call(appEl.querySelectorAll('[data-drop]'), function (b) {
-      b.addEventListener('click', function () {
-        var payload = null;
-        try {
-          payload = JSON.parse(b.getAttribute('data-drop'));
-        } catch (_) {
-          return;
-        }
-        dropPicture(payload);
-      });
-    });
-
-    var words = document.getElementById('addWatWords');
-    var count = document.getElementById('addWatCount');
-    var tally = function () {
-      if (!words || !count) return;
-      var n = validWords(words.value).length;
-      count.textContent = n ? n + ' words ready' : 'nothing to add yet';
-    };
-    if (words) {
-      words.addEventListener('input', tally);
-      tally();
-    }
-
-    var addSet = document.getElementById('addWatSet');
-    if (addSet) {
-      addSet.addEventListener('click', function () {
-        var nameEl = document.getElementById('addWatName');
-        var name = (nameEl && nameEl.value ? nameEl.value : '').trim() || 'My WAT set';
-        var list = validWords(words ? words.value : '');
-        if (!list.length) {
-          toast('Add at least one word, one per line');
-          return;
-        }
-        S.config.custom = S.config.custom || { tat: [], wat: [], srt: [] };
-        S.config.custom.wat = S.config.custom.wat || [];
-        S.config.custom.wat.push({
-          id: 'custom-wat-' + Date.now(),
-          name: name,
-          items: list.slice(0, 60)
-        });
-        window.api.setConfig({ custom: S.config.custom });
-        toast('Added “' + name + '” with ' + Math.min(list.length, 60) + ' words');
-        render();
-      });
-    }
-
-    Array.prototype.forEach.call(appEl.querySelectorAll('[data-delwat]'), function (b) {
-      b.addEventListener('click', function () {
-        var id = b.getAttribute('data-delwat');
-        S.config.custom = S.config.custom || { tat: [], wat: [], srt: [] };
-        S.config.custom.wat = (S.config.custom.wat || []).filter(function (s) {
-          return s.id !== id;
-        });
-        window.api.setConfig({ custom: S.config.custom });
-        toast('Word list removed');
-        render();
-      });
-    });
+  function importCard(kind, title, help, count) {
+    return '<h2>' + esc(title) + '</h2><div class="card"><p class="small muted" style="margin-top:0">' + help + '</p>' +
+      '<div class="row"><input data-import="' + kind + '" type="file"' + (onPhone() ? '' : ' accept=".xlsx"') + ' aria-label="' + esc(title) + ' Excel file" />' +
+      '<span class="chip">' + esc(count) + '</span></div><div class="note import-out" id="importOut-' + kind + '" hidden></div></div>';
   }
 
-  // A word list is only accepted if every line looks like a single word.
+  function renderAdd() {
+    var mine = (S.tatImages || []).length;
+    var sets = function (k) { return customSets(k).reduce(function (n, x) { return n + x.items.length; }, 0); };
+    body(
+      '<h1>Add material</h1>' +
+      '<h2>PPDT and TAT pictures</h2>' +
+      '<div class="card"><p class="small muted" style="margin-top:0">Pictures you upload join both tests, alongside the ' + (S.ppdt || []).length + ' built in. A wrong picture can be taken out from the PPDT review screen, and brought back from the Bin.</p>' +
+      '<div class="row"><button class="btn primary" id="addTatPics">Upload pictures…</button>' +
+      '<span class="chip">' + mine + ' uploaded</span>' +
+      (mine ? '<button class="btn sm ghost" id="clearPics">Remove uploaded</button>' : '') + '</div><div class="note import-out" id="importOut-pics" hidden></div></div>' +
+      importCard('wat', 'WAT words', 'A column headed <b>Word</b> or <b>WAT</b>. Other columns are ignored.', sets('wat') + ' added') +
+      importCard('srt', 'SRT situations', 'A column headed <b>Situation</b>, <b>SRT</b> or <b>Question</b>.', sets('srt') + ' added') +
+      importCard('lect', 'Lecture topics', 'A column headed <b>Topic</b>, and <b>Category</b> if you have one. Repeats are found even when worded a little differently.', (S.config.lectOwn || []).length + ' added')
+    );
+    document.getElementById('addTatPics').addEventListener('click', function () {
+      window.api.pickTatImages().then(function (list) {
+        S.tatImages = list || [];
+        return window.api.tatLastPick();
+      }).then(function (r) {
+        S.importMsg = { kind: 'pics', text: r.added + ' new pictures added. ' + r.duplicates + ' duplicates skipped: the same picture is already in the app.' };
+        renderAdd();
+      });
+    });
+    var clearPics = document.getElementById('clearPics');
+    if (clearPics) {
+      clearPics.addEventListener('click', function () {
+        window.api.clearTatImages().then(function () { S.tatImages = []; renderAdd(); });
+      });
+    }
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-import]'), function (input) {
+      var kind = input.getAttribute('data-import');
+      input.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var done = function (msg) {
+          S.importMsg = { kind: kind, text: msg };
+          renderAdd();
+        };
+        importFile(file, kind).then(done, function (err) {
+          done('Could not load that file: ' + ((err && err.message) || 'unknown error'));
+        });
+      });
+    });
+    if (S.importMsg) {
+      var impOut = document.getElementById('importOut-' + S.importMsg.kind);
+      impOut.textContent = S.importMsg.text;
+      impOut.hidden = false;
+      S.importMsg = null;
+    }
+  }
+
   function validWords(text) {
     var seen = {};
     var out = [];
@@ -4114,16 +4440,18 @@
       .join('');
 
     body(        '<h1>Settings</h1>' +
-        '<p class="lead">Adjust the timings to match your board or coaching guidance, and add your own practice lists.</p>' +
+        '<p class="lead">Adjust the timings to match your board or coaching guidance, choose a theme and set up AI writing.</p>' +
 
         '<h2>Appearance</h2>' +
         '<div class="card">' +
         '<div class="field"><label>Theme<br><span class="small muted">' +
-        'Mist is the dark palette this app ships with; Alpine light is the sage paper one. ' +
+        'Navy and gold match the logo. ' +
         'Same layout, same type, same motion — only the colours change.</span></label>' +
         '<div class="ctl">' +
-        '<button class="btn sm' + (S.config.theme === 'alpine' ? '' : ' primary') + '" id="themeMist">Mist dark</button>' +
-        '<button class="btn sm' + (S.config.theme === 'alpine' ? ' primary' : '') + '" id="themeAlpine">Alpine light</button>' +
+        '<button class="btn sm' + (S.config.theme !== 'alpine' && (S.config.palette || 'navy') === 'navy' ? ' primary' : '') + '" id="themeMist">Navy and gold</button>' +
+        '<button class="btn sm' + (S.config.theme !== 'alpine' && S.config.palette === 'crimson' ? ' primary' : '') + '" id="themeCrimson">Crimson</button>' +
+        '<button class="btn sm' + (S.config.theme !== 'alpine' && S.config.palette === 'green' ? ' primary' : '') + '" id="themeGreen">Green</button>' +
+        '<button class="btn sm' + (S.config.theme === 'alpine' ? ' primary' : '') + '" id="themeAlpine">Light</button>' +
         '</div></div>' +
         toggleField('Reduce motion', 'Skip the tile orbit, lecturette slides and paging transitions. ' +
           (onPhone() ? 'Your phone\'s own "remove animations" setting' : 'Windows\' own "Animation effects" setting') +
@@ -4134,17 +4462,25 @@
         '<div class="card">' +
         toggleField('Sound cues', 'A short chime when a test starts, when each word, picture or lecturette phase changes, ' +
           'and at the end' + (onPhone() ? '; the phone also buzzes' : '') + '. Taps on buttons click softly.', 'soundOn') +
-        toggleField('Online lookup', 'Live news, the lecturette writer, word meanings and extra museum pictures. ' +
+        toggleField('Online lookup', 'Live news and the lecture writer. ' +
           'Everything else works with no connection.', 'onlineEnabled') +
-        // The PC writes PPDT stories through the local Ollama app; a phone needs the owner's Ollama key.
-        (onPhone()
-          ? '<div class="field"><label>Ollama key<br><span class="small muted">For <b>Write 5 stories</b> in PPDT: an API key from ollama.com ' +
-            '(Settings → Keys). It stays on this phone.</span></label>' +
-            '<div class="ctl"><input id="ollamaKey" type="password" class="textinput" autocomplete="off" placeholder="paste your key" value="' +
-            esc(S.config.ollamaKey || '') + '" /></div></div>'
-          : '') +
         '</div>' +
 
+        '<h2>Updates</h2>' +
+        '<div class="card"><div class="row"><button class="btn" id="updateNow">Check for updates</button><span class="small muted" id="updateOut"></span></div></div>' +
+
+        '<h2>AI writing</h2>' +
+        '<div class="card">' +
+        '<p class="small muted" style="margin-top:0">Lectures work straight away with no login. PPDT stories read a picture, so they need a provider marked for pictures. To add one, press Log in / Sign up, create a key on its page and paste it here. The first that answers does the writing, so one running out never stops you. Keys stay on this device.</p>' +
+        Object.keys(AI_PROVIDERS).filter(function (id) { return !AI_PROVIDERS[id].pc && !AI_PROVIDERS[id].noLogin; }).map(function (id) {
+          var a = aiSettings(id);
+          return '<div class="field"><label>' + esc(a.label) + (AI_PROVIDERS[id].vision ? '' : ' <span class="small muted">(text only)</span>') +
+            '<br><button class="btn sm ghost" data-external="' + esc(AI_PROVIDERS[id].url) + '">Log in / Sign up (free)</button></label>' +
+            '<div class="ctl"><input data-aikey="' + id + '" type="password" class="textinput" autocomplete="off" placeholder="' + (AI_BUILT_IN[id] ? 'built in' : 'paste your key') + '" value="' + esc(((S.config.aiKeys || {})[id]) || (id === 'ollama' ? S.config.ollamaKey || '' : '')) + '" />' +
+            '<input data-aimodel="' + id + '" class="textinput" autocomplete="off" aria-label="' + esc(a.label) + ' model" value="' + esc(a.model) + '" /></div></div>';
+        }).join('') +
+        '<div class="row"><button class="btn" id="aiTest">Test them all</button></div><div class="small muted" id="aiTestOut"></div>' +
+        '</div>' +
 
         '<h2>WAT timings</h2>' +
         '<div class="card">' +
@@ -4161,6 +4497,7 @@
         '<h2>TAT timings</h2>' +
         '<div class="card">' +
         numField('Seconds to view each slide', 'Standard is 30 seconds.', 'tatViewSec', 5, 120, 'sec') +
+        numField('Seconds to form your idea', 'No picture on screen. Standard is 30 seconds.', 'tatThinkSec', 5, 120, 'sec') +
         numField('Seconds to write each story', 'Standard is 4 minutes (240 seconds).', 'tatWriteSec', 30, 900, 'sec') +
         '</div>' +
 
@@ -4170,7 +4507,6 @@
         numField('Seconds to think', 'Note the characters before writing.', 'ppdtThinkSec', 0, 120, 'sec') +
         numField('Seconds to write', 'Standard is 4 minutes (240 seconds).', 'ppdtWriteSec', 30, 600, 'sec') +
         numField('Blur', 'How hazy the picture looks; 0 is a clear picture.', 'ppdtBlur', 0, 80, '%') +
-        toggleField('Mix in TAT pictures', 'Now and then a classic TAT plate instead of a PPDT picture.', 'ppdtTatMix') +
         '</div>' +
 
         '<h2>Add your own practice set</h2>' +
@@ -4232,18 +4568,51 @@
     );
 
     var tMist = document.getElementById('themeMist');
-    if (tMist) tMist.addEventListener('click', function () { setTheme('mist'); });
+    if (tMist) tMist.addEventListener('click', function () { setTheme('mist', 'navy'); });
+    document.getElementById('themeCrimson').addEventListener('click', function () { setTheme('mist', 'crimson'); });
+    document.getElementById('themeGreen').addEventListener('click', function () { setTheme('mist', 'green'); });
     var tAlpine = document.getElementById('themeAlpine');
     if (tAlpine) tAlpine.addEventListener('click', function () { setTheme('alpine'); });
 
-    var keyIn = document.getElementById('ollamaKey');
-    if (keyIn) {
-      keyIn.addEventListener('change', function () {
-        S.config.ollamaKey = keyIn.value.trim();
-        window.api.setConfig({ ollamaKey: S.config.ollamaKey });
-        toast(S.config.ollamaKey ? 'Ollama key saved on this phone' : 'Ollama key removed');
+    // Saved as typed: a key pasted on a phone was lost when the box never lost focus.
+    var saveAi = function () {
+      var keys = {};
+      var models = {};
+      Array.prototype.forEach.call(appEl.querySelectorAll('[data-aikey]'), function (el) { keys[el.getAttribute('data-aikey')] = el.value.trim(); });
+      Array.prototype.forEach.call(appEl.querySelectorAll('[data-aimodel]'), function (el) { models[el.getAttribute('data-aimodel')] = el.value.trim(); });
+      S.config.aiKeys = keys;
+      S.config.aiModels = Object.assign({}, S.config.aiModels, models);
+      return window.api.setConfig({ aiKeys: keys, aiModels: S.config.aiModels });
+    };
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-aikey],[data-aimodel]'), function (el) { el.addEventListener('input', saveAi); });
+    document.getElementById('updateNow').addEventListener('click', function () {
+      var out = document.getElementById('updateOut');
+      out.textContent = 'Checking…';
+      checkUpdate().then(function (u) {
+        if (!u) out.textContent = 'Could not check just now.';
+        else if (!u.ok) out.textContent = 'You have ' + u.current + '. ' + (u.error === 'offline' ? 'Turn Online lookup on to check.' : 'Could not reach GitHub just now.');
+        else if (versionIsNewer(u.latest, u.current)) {
+          S.updateHidden = '';
+          out.innerHTML = 'Version ' + esc(u.latest) + ' is ready. <button class="btn primary sm" data-external="' + esc(u.url) + '">Download</button>';
+          wireExternal(out);
+        } else out.textContent = 'You have ' + u.current + ', the latest.';
       });
-    }
+    });
+    document.getElementById('aiTest').addEventListener('click', function () {
+      var out = document.getElementById('aiTestOut');
+      out.textContent = 'Asking…';
+      saveAi().then(function () {
+        var chain = aiChain();
+        return Promise.all(chain.map(function (ai) {
+          return window.api.aiChat({ ai: ai, prompt: 'Reply with the single word OK.' }).then(function (r) {
+            return ai.label + ': ' + (r && r.ok ? 'working' : aiErrorText(r));
+          });
+        })).then(function (lines) {
+          out.textContent = lines.join('  |  ') || aiErrorText({ error: 'no-key' });
+        });
+      });
+    });
+    wireExternal(appEl);
 
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-num]'), function (inp) {
       inp.addEventListener('change', function () {
@@ -4542,6 +4911,11 @@
   // with the SSB trainer. The old terminal spinner, monitor and rocket are
   // redrawn here as real animation while the engine streams its log.
 
+  var DIGEST_STATES = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
+    'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+    'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
+    'Uttarakhand', 'West Bengal'];
+
   var DG = {
     loaded: false,
     status: null,
@@ -4612,6 +4986,7 @@
   function digestArgs() {
     var args = ['run', DG.date || 'today'];
     if (DG.noWeb) args.push('--no-web');
+    if (DG.stateAsked) args.push('--state', DG.state || '');
     if (DG.war) args.push('--war', DG.war);
     if (DG.pdfs.length) args.push('--pdf', DG.pdfs.slice());
     if (DG.llm && DG.llm !== 'auto') args.push('--llm', DG.llm);
@@ -4638,13 +5013,69 @@
   // The phone has no Python, so this builds the same twelve sections from the
   // free Google News feeds through the native HTTP layer, and keeps the last
   // edition. A Generate button that can never succeed is not offered again.
+  function renderPdfShelf() {
+    if (DG.viewing) {
+      body('<div class="row"><button class="btn sm" id="pdfBack">← My news PDFs</button><button class="btn sm ghost" id="pdfShare">Share</button>' +
+        '<button class="btn sm ghost" id="pdfOpen">Open in PDF app</button><button class="btn sm ghost" id="pdfSave">Save to phone</button>' +
+        '<button class="btn sm" id="pdfOut" aria-label="Zoom out">−</button><button class="btn sm" id="pdfIn" aria-label="Zoom in">+</button></div>' +
+        '<h1>' + esc(DG.viewing.replace(/_/g, ' ').replace('.pdf', '')) + '</h1><div class="small muted" id="pdfWait">Opening…</div><div class="pdf-scroll" id="pdfScroll"><div class="pdf-holder" id="pdfHolder"></div></div>');
+      var zoom = 1;
+      var zoomBox = document.getElementById('pdfHolder');
+      var setZoom = function (z) {
+        zoom = Math.max(1, Math.min(4, z));
+        zoomBox.style.zoom = zoom;
+      };
+      document.getElementById('pdfIn').addEventListener('click', function () { setZoom(zoom + 0.5); });
+      document.getElementById('pdfOut').addEventListener('click', function () { setZoom(zoom - 0.5); });
+      var pinch = 0;
+      var spread = function (e) { return Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); };
+      var scroller = document.getElementById('pdfScroll');
+      scroller.addEventListener('touchstart', function (e) { if (e.touches.length === 2) pinch = spread(e) / zoom; }, { passive: true });
+      scroller.addEventListener('touchmove', function (e) {
+        if (e.touches.length !== 2 || !pinch) return;
+        e.preventDefault();
+        setZoom(spread(e) / pinch);
+      }, { passive: false });
+      scroller.addEventListener('touchend', function () { pinch = 0; }, { passive: true });
+      document.getElementById('pdfBack').addEventListener('click', function () { DG.viewing = null; renderDigest(); });
+      var said = function (r, good) { toast(r && r.ok ? good + (r.where ? r.where : '') : 'Could not do that (' + ((r && r.detail) || 'unknown') + ').'); };
+      document.getElementById('pdfShare').addEventListener('click', function () {
+        window.api.digestShareSaved(DG.viewing).then(function (r) { if (!r.ok) said(r); });
+      });
+      document.getElementById('pdfOpen').addEventListener('click', function () {
+        window.api.digestOpenSaved(DG.viewing).then(function (r) { if (!r.ok) said(r); });
+      });
+      document.getElementById('pdfSave').addEventListener('click', function () {
+        window.api.digestSaveToPhone(DG.viewing).then(function (r) { said(r, 'Saved to the phone, in '); });
+      });
+      window.api.digestShowPdf(DG.viewing, document.getElementById('pdfHolder')).then(function (r) {
+        var w = document.getElementById('pdfWait');
+        if (w) w.textContent = r.ok ? '' : 'Could not open it (' + (r.detail || 'unknown') + ').';
+      });
+      return;
+    }
+    window.api.digestLibrary().then(function (list) {
+      if (S.view !== 'digest' || !DG.shelf) return;
+      body('<div class="row"><button class="btn sm" id="pdfBack">← News Digest</button></div><h1>My news PDFs</h1>' +
+        (list.length ? list.map(function (x, i) {
+          return '<div class="card lectcard"><div class="lechead"><div><div class="lectitle">' + esc(x.name.replace(/^Daily_News_Digest_|\.pdf$/g, '')) + '</div>' +
+            '<div class="small muted">' + esc(String(x.pages)) + ' pages</div></div><button class="btn primary sm" data-openpdf="' + i + '">Open</button></div></div>';
+        }).join('') : '<div class="empty">No PDFs yet. Make one on the News Digest screen and it is kept here.</div>'));
+      document.getElementById('pdfBack').addEventListener('click', function () { DG.shelf = false; renderDigest(); });
+      Array.prototype.forEach.call(appEl.querySelectorAll('[data-openpdf]'), function (b) {
+        b.addEventListener('click', function () { DG.viewing = list[+b.getAttribute('data-openpdf')].name; renderDigest(); });
+      });
+    });
+  }
+
   function renderPhoneDigest() {
+    if (DG.viewing || DG.shelf) return renderPdfShelf();
     if (!DG.phoneBusy && !DG.phone) {
       DG.phoneBusy = true;
       // Refresh must skip the 20-minute cache, or it hands back the same saved copy.
       var force = !!DG.phoneForce;
       DG.phoneForce = false;
-      Promise.resolve(window.api.digestOnPhone && window.api.digestOnPhone({ force: force }))
+      Promise.resolve(window.api.digestOnPhone && window.api.digestOnPhone({ force: force, state: DG.state || '' }))
         .then(function (res) {
           DG.phoneBusy = false;
           DG.phone = res || { ok: false, error: 'network' };
@@ -4723,7 +5154,10 @@
         '<span class="chip">' + (d.reference ? 'bundled offline' : d.cached ? 'saved copy' : 'fresh') + '</span>' +
         '<span class="spacer"></span>' +
         '<button class="btn primary sm" id="digBuild">' + (DG.phoneBusy ? 'Building…' : 'Refresh') + '</button>' +
-        '<button class="btn sm" id="digPdf"' + (DG.pdfBusy ? ' disabled' : '') + '>' + (DG.pdfBusy ? 'Making PDF…' : 'Make 12-page PDF') + '</button>' +
+        '<button class="btn sm" id="digPdf"' + (DG.pdfBusy ? ' disabled' : '') + '>' + (DG.pdfBusy ? 'Making PDF…' : 'Make the PDF') + '</button>' +
+        '<button class="btn sm" id="digShelf">My news PDFs</button>' +
+        '<label class="btn sm ghost">Add newspaper PDF<input id="digPaper" type="file" multiple accept="application/pdf" hidden /></label>' +
+        ((DG.papers || []).length ? '<span class="chip">' + DG.papers.length + ' newspaper' + (DG.papers.length > 1 ? 's' : '') + '</span>' : '') +
         '<button class="btn ghost sm" id="digHome">Dashboard</button>' +
         '</div>' +
         '<div class="small muted" id="digPdfStatus" style="margin-top:8px">' + esc(DG.pdfStatus || '') + '</div>' +
@@ -4746,6 +5180,20 @@
       renderDigest();
     });
     document.getElementById('digHome').addEventListener('click', function () { goto('home'); });
+    document.getElementById('digShelf').addEventListener('click', function () { DG.shelf = true; renderDigest(); });
+    document.getElementById('digPaper').addEventListener('change', function (e) {
+      var files = Array.prototype.slice.call(e.target.files || []);
+      if (!files.length) return;
+      DG.pdfStatus = 'Reading ' + files.length + ' newspaper PDF(s)…';
+      renderDigest();
+      window.api.digestReadPapers(files, DG.papers || []).then(function (r) {
+        if (r.ok) DG.papers = (DG.papers || []).concat(r.papers);
+        DG.pdfStatus = r.ok
+          ? r.papers.length + ' newspaper(s) added. ' + r.duplicates.length + ' duplicate(s) skipped. They go into the next PDF.'
+          : 'Could not read that PDF (' + (r.detail || 'unknown') + ').';
+        renderDigest();
+      });
+    });
     // The colour PDF the desktop engine makes, built here from the same free feeds.
     document.getElementById('digPdf').addEventListener('click', function () {
       if (DG.pdfBusy || !window.api.digestPdf) return;
@@ -4756,20 +5204,47 @@
         DG.pdfStatus = text + (total ? ' (' + done + '/' + total + ')' : '');
         var el = document.getElementById('digPdfStatus');
         if (el) el.textContent = DG.pdfStatus;
+      }, { state: DG.state || '', pdfs: DG.papers || [],
+        ask: aiReady() ? function (prompt) { return aiAsk(prompt).then(function (r) { return r && r.ok ? r.text : ''; }); } : null
       }).then(function (res) {
         DG.pdfBusy = false;
         DG.pdfStatus = res && res.ok
-          ? res.name + ' — ' + res.pages + ' pages from ' + res.headlines + ' headlines, saved to ' + res.where + '.'
+          ? res.name + ' — ' + res.pages + ' pages from ' + res.headlines + ' headlines, saved to ' + res.where + '.' + (res.papers && res.papers.length ? ' ' + res.papers.join(' ') : '')
           : res && res.error === 'offline'
             ? 'Turn online lookup on in Settings to make the PDF — it reads today\'s news.'
             : 'Could not make the PDF' + (res && res.detail ? ' (' + res.detail + ')' : '') + '. Try again in a minute.';
-        if (res && res.ok) toast('PDF ready — choose where to open or save it');
+        if (res && res.ok) {
+          toast('PDF ready and kept in My news PDFs');
+          DG.viewing = res.name;
+        }
         if (S.view === 'digest') renderDigest();
       });
     });
   }
 
+  // Asked once each time the tab opens; the last answer is offered first.
+  function renderStateQuestion() {
+    var last = (S.config && S.config.digestState) || '';
+    body(
+      '<h1>News Digest</h1>' +
+      '<p class="lead">Which state\'s news do you want? It gets its own page after the war page, and a second page when there is more than one page can hold.</p>' +
+      '<div class="card"><div class="field"><label for="digState">Your state</label><div class="ctl"><select id="digState" class="textinput">' +
+      '<option value="">No state page</option>' + DIGEST_STATES.map(function (s) {
+        return '<option' + (s === last ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('') + '</select></div></div>' +
+      '<div class="row"><button class="btn primary" id="digStateGo">Continue</button></div></div>'
+    );
+    document.getElementById('digStateGo').addEventListener('click', function () {
+      DG.state = document.getElementById('digState').value;
+      DG.stateAsked = true;
+      S.config.digestState = DG.state;
+      window.api.setConfig({ digestState: DG.state });
+      renderDigest();
+    });
+  }
+
   function renderDigest() {
+    if (!DG.stateAsked && !window.__noStateGate) return renderStateQuestion();
     wireDigestEvents();
     var st = DG.status;
     if (!DG.loaded) {
@@ -5067,6 +5542,38 @@
       });
     }
   }
+
+  setTimeout(sweepTopicNews, 15000);
+  setInterval(sweepTopicNews, 3600 * 1000);
+
+  // 1.0.10 is newer than 1.0.9: numbers, compared part by part, not as text.
+  function versionIsNewer(latest, current) {
+    var a = String(latest).replace(/^v/i, '').split('.').map(Number);
+    var b = String(current).replace(/^v/i, '').split('.').map(Number);
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+      if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+    }
+    return false;
+  }
+
+  function updateBanner() {
+    var u = S.update;
+    if (!u || !u.ok || !u.url || !versionIsNewer(u.latest, u.current) || S.updateHidden === u.latest) return '';
+    return '<div class="note update-note"><b>Update available: ' + esc(u.latest) + '</b> You have ' + esc(u.current) + '. Your saved data stays. ' +
+      '<button class="btn primary sm" data-external="' + esc(u.url) + '">Download</button> ' +
+      '<button class="btn ghost sm" id="updateLater">Later</button></div>';
+  }
+
+  function checkUpdate() {
+    if (!window.api.updateCheck) return Promise.resolve(null);
+    return window.api.updateCheck().then(function (u) {
+      S.update = u;
+      if (S.view === 'home' && updateBanner() && !document.querySelector('.update-note')) render();
+      return u;
+    }, function () { return null; });
+  }
+
+  setTimeout(function () { if (!window.__noStateGate) checkUpdate(); }, 6000);
 
   /* ---------------------------------------------------------------- boot */
 
@@ -5607,6 +6114,52 @@
 
     /* --- coverage probes: the parts the run above never touches --- */
 
+    importSheet: function (b64, name) {
+      var bytes = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+      var keep = JSON.stringify(S.config.custom || {});
+      return importFile(new File([bytes], name)).then(function () {
+        var got = (S.config.custom.srt || []).filter(function (s) { return String(s.id).indexOf('excel-') === 0; })[0];
+        S.config.custom = JSON.parse(keep);
+        return window.api.setConfig({ custom: S.config.custom }).then(function () { return { items: got ? got.items : [] }; });
+      });
+    },
+    importLectureDupes: function () {
+      var keep = S.config.lectOwn || [];
+      var known = (S.lecturesBase || [])[0];
+      var rows = [[known ? known.topic : 'x', ''], ['Fresh Zebra-Crossing Rules', 'Testing'], ['fresh zebra crossing rule (ZCR)', ''], ['E-Commerce Quokka Laws', ''], ['Ecommerce quokka law in India', ''], ['Quokka Defense Budget Debate', ''], ['Quokka Defence Budget Debate Today', '']];
+      return importRows('lect', rows).then(function () {
+        var added = (S.config.lectOwn || []).length - keep.length;
+        S.config.lectOwn = keep;
+        return window.api.setConfig({ lectOwn: keep }).then(function () {
+          S.lectures = lectWithWritten(S.lecturesBase || []);
+          return { added: added, skipped: rows.length - added };
+        });
+      });
+    },
+    updateLogic: function () {
+      var was = S.update;
+      S.update = { ok: true, current: '1.0.9', latest: 'v1.0.10', url: 'https://example.com/x' };
+      var shown = /Update available: v1.0.10/.test(updateBanner());
+      S.update = { ok: true, current: '1.0.17', latest: 'v1.0.17', url: 'https://example.com/x' };
+      var same = updateBanner() === '';
+      S.update = was;
+      return { shown: shown, same: same, older: !versionIsNewer('1.0.9', '1.0.10'), newer: versionIsNewer('v1.1.0', '1.0.99') };
+    },
+    newScreens: function () {
+      window.__noStateGate = false;
+      DG.stateAsked = false;
+      goto('digest');
+      var stateBox = !!document.getElementById('digState');
+      window.__noStateGate = true;
+      S.timeline = [{ id: 'x', section: 'Economic', title: 'T', events: [{ date: '2026-10-29', headline: 'Container scheme <b>', sources: ['PIB'] }, { date: '2026-10-31', headline: 'Container follow-up' }] }];
+      goto('timeline');
+      var timeline = !!appEl.querySelector('.tl-thread') && appEl.textContent.indexOf('1 follow-up') >= 0 && !appEl.querySelector('.tl-thread b b');
+      S.timeline = null;
+      goto('settings');
+      var providers = document.querySelectorAll('[data-aikey]').length;
+      goto('home');
+      return { stateBox: stateBox, timeline: timeline, providers: providers };
+    },
     bootCheck: function () {
       var w = builtinSets('wat');
       var s = builtinSets('srt');
@@ -6282,16 +6835,18 @@
   function applyTheme() {
     var name = S.config && S.config.theme === 'alpine' ? 'alpine' : 'mist';
     document.documentElement.setAttribute('data-theme', name);
+    document.documentElement.setAttribute('data-palette', (S.config && S.config.palette) || 'navy');
     applyMotion();
     return name;
   }
 
-  function setTheme(name) {
+  function setTheme(name, palette) {
     S.config.theme = name;
+    S.config.palette = palette || 'navy';
     applyTheme();
-    window.api.setConfig({ theme: name }).then(function () {
+    window.api.setConfig({ theme: name, palette: S.config.palette }).then(function () {
       render();
-      toast(name === 'mist' ? 'Mist dark applied' : 'Alpine light applied');
+      toast(name === 'alpine' ? 'Light theme applied' : (palette === 'crimson' ? 'Crimson' : palette === 'green' ? 'Green' : 'Navy and gold') + ' theme applied');
     });
   }
 
@@ -6309,13 +6864,19 @@
     if (tail && foot) tail.textContent = foot;
   }
 
+  var BOOT_AT = Date.now();
+
   function bootDone() {
     var el = document.getElementById('bootScreen');
     bootProgress(100, 'Ready', 'Opening the dashboard');
     if (!el) return;
-    el.classList.add('done');
-    el.setAttribute('aria-hidden', 'true');
-    setTimeout(function () { el.hidden = true; }, 420);
+    // On the phone the opening sheet stays at least 3 seconds from launch, so its credit line can be read.
+    var wait = onPhone() && !window.__noStateGate ? Math.max(0, 3000 - (Date.now() - BOOT_AT)) : 0;
+    setTimeout(function () {
+      el.classList.add('done');
+      el.setAttribute('aria-hidden', 'true');
+      setTimeout(function () { el.hidden = true; }, 420);
+    }, wait);
   }
 
   function boot() {

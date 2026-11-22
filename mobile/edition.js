@@ -27,8 +27,8 @@
     tzHours: 5.5,
     daysBack: 1,
     articlesPerSection: 3,
-    layout: { max_key_points: 5, max_flow_steps: 6, max_snapshot_stories: 4, max_tiles: 4, max_full_forms: 6,
-      max_also: 3, inline_meanings: true, max_meanings_per_paragraph: 6, inline_full_forms: true },
+    layout: { max_key_points: 5, max_flow_steps: 6, max_snapshot_stories: 4, max_tiles: 4, max_full_forms: 40,
+      max_also: 3, inline_meanings: false, max_meanings_per_paragraph: 6, inline_full_forms: false },
     feeds: [
       ['The Hindu', 'https://www.thehindu.com/news/national/feeder/default.rss', 'National'],
       ['The Hindu', 'https://www.thehindu.com/news/international/feeder/default.rss', 'International'],
@@ -411,7 +411,11 @@
         headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }
       });
     }).then(function (txt) {
-      return JSON.parse(JSON.parse(txt.split('\n\n').slice(1).join('\n\n'))[0][2])[1];
+      // The phone's HTTP layer hands this reply back with its quotes escaped once more than the PC
+      // sees, so the link is taken by its marker rather than by parsing the JSON.
+      var m = /garturlres\\*"\s*,\s*\\*"(https?:(?:[^"\\]|\\+u[0-9a-fA-F]{4}|\\+\/)+)/.exec(txt);
+      if (!m) throw new Error('no-link');
+      return m[1].replace(/\\+u([0-9a-fA-F]{4})/g, function (x, h) { return String.fromCharCode(parseInt(h, 16)); }).replace(/\\+\//g, '/');
     });
   }
 
@@ -468,12 +472,51 @@
     this.glossary = data.glossary;
     this.hardwords = data.hardwords;
     this.unknown = {};
+    this.newsAbbr = {};
     this.abbrRe = {};
     var self = this;
     Object.keys(this.glossary).forEach(function (ab) {
       self.abbrRe[ab] = new RegExp('(?<![A-Za-z0-9])' + escapeRe(ab) + '(?![A-Za-z0-9])');
     });
   }
+
+  // As writer.py: common ones are left out, and an article's own spelling-out comes first.
+  var COMMON_ABBR = {};
+  ('PM CM US USA UK UN EU UAE G20 G7 GDP IMF AI IT TV MP MLA MLC BJP RBI ISRO NASA WHO NATO FIR IPL ICC FIFA CEO VIP LPG CNG GST ' +
+    'IAS IPS IIT IIM AIIMS CBI ED NDA ATM SMS PDF').split(' ').forEach(function (w) { COMMON_ABBR[w] = 1; });
+  var ABBR_SKIP = { of: 1, and: 1, for: 1, the: 1, in: 1, on: 1, to: 1, '&': 1 };
+
+  function initialsMatch(abbr, full) {
+    var firsts = (full.match(/[A-Za-z]+/g) || []).filter(function (w) { return !ABBR_SKIP[w.toLowerCase()]; })
+      .map(function (w) { return w[0].toUpperCase(); });
+    var letters = abbr.toUpperCase().replace(/[^A-Z]/g, '').split('');
+    if (firsts.length < 2 || !letters.length || letters[0] !== firsts[0]) return false;
+    var at = 0;
+    return letters.every(function (ch) {
+      while (at < firsts.length && firsts[at] !== ch) at++;
+      return at++ < firsts.length;
+    });
+  }
+
+  Writer.prototype.learn = function (ab, full) {
+    var w = full.split(' ');
+    for (var i = 0; i < w.length; i++) {
+      var tail = w.slice(i).join(' ');
+      if (!ABBR_SKIP[w[i].toLowerCase()] && initialsMatch(ab, tail)) {
+        this.newsAbbr[ab] = tail;
+        return;
+      }
+    }
+  };
+
+  Writer.prototype.learnFullForms = function (text) {
+    var name = "[A-Z][a-zA-Z-]+(?:\\s+(?:of|and|for|the|in|on|to|&)\\s+[A-Z][a-zA-Z-]+|\\s+[A-Z][a-zA-Z-]+)+";
+    var m;
+    var a = new RegExp('(' + name + ')\\s*\\(([A-Z][A-Za-z&]{1,7})\\)', 'g');
+    while ((m = a.exec(text))) this.learn(m[2], m[1]);
+    var b = new RegExp('\\b([A-Z][A-Z&]{1,7})\\s*\\((' + name + ')\\)', 'g');
+    while ((m = b.exec(text))) this.learn(m[1], m[2]);
+  };
 
   Writer.prototype.findAbbrs = function (text) {
     var self = this;
@@ -492,7 +535,7 @@
     var self = this;
     if (lay.inline_full_forms) {
       this.findAbbrs(text).forEach(function (ab) {
-        if (used.has(ab)) return;
+        if (used.has(ab) || COMMON_ABBR[ab]) return;
         var g = self.glossary[ab];
         var m = new RegExp('(?<![A-Za-z0-9])' + escapeRe(ab) + '(?![A-Za-z0-9])(?!\\s*\\()').exec(text);
         var isTerm = g.full.toLowerCase().indexOf(ab.toLowerCase()) === 0;
@@ -500,7 +543,7 @@
           used.add(ab);
           return;
         }
-        inserts.push([m.index + m[0].length, isTerm ? ' (' + g.does + ')' : ' (' + g.full + ' - ' + g.does + ')']);
+        inserts.push([m.index + m[0].length, isTerm ? ' (' + g.does + ')' : ' (' + g.full + ')']);
         used.add(ab);
       });
     }
@@ -532,10 +575,10 @@
   Writer.prototype.fullFormsFor = function (text, extra) {
     var res = [];
     var self = this;
-    (extra || []).concat(this.findAbbrs(text)).forEach(function (ab) {
-      if (self.glossary[ab] && !res.some(function (r) { return r.abbr === ab; })) {
-        res.push({ abbr: ab, full: self.glossary[ab].full, does: self.glossary[ab].does });
-      }
+    (extra || []).concat(text.match(/(?<![A-Za-z0-9])[A-Z][A-Za-z0-9&]*[A-Z0-9](?![A-Za-z0-9])/g) || []).forEach(function (ab) {
+      if (COMMON_ABBR[ab] || IGNORE_CAPS[ab] || res.some(function (r) { return r.abbr === ab; })) return;
+      var full = self.newsAbbr[ab] || (self.glossary[ab] && self.glossary[ab].full) || '';
+      if (full && full.toLowerCase().indexOf(ab.toLowerCase()) !== 0) res.push({ abbr: ab, full: full, does: '' });
     });
     return res;
   };
@@ -630,7 +673,6 @@
     'odisha', 'punjab', 'rajasthan', 'sikkim', 'tamil nadu', 'telangana', 'tripura', 'uttar pradesh', 'uttarakhand',
     'west bengal', 'delhi', 'jammu', 'kashmir', 'ladakh', 'puducherry', 'chandigarh', 'bengaluru', 'chennai', 'kolkata',
     'mumbai', 'hyderabad', 'lucknow', 'patna', 'thrissur', 'kochi', 'bhopal', 'jaipur', 'guwahati', 'imphal', 'andaman'];
-  var UPDATE_WORDS = /\b(update|latest|fresh|again|rises?|toll|now|second|another|final|verdict|result)\b/i;
   var JUNK = /(gold (rate|price)|silver (rate|price)|petrol.{0,10}price|price today|horoscope|live updates|\blive:|\bwatch:|photos:|in pics|quiz|wordle|how to |recipe|bigg boss|weather today|lottery|result live|box office|ott release|news and video|latest news, )/i;
   var SPORTS = /\b(ipl|cricket|fifa|football|hockey|tennis|badminton|chess|olympic|medal|tournament|t20|odi|test match|wicket|pacer|batter|squad|coach|league|grand prix|kabaddi)\b/i;
   var PLACES = ['Pakistan', 'China', 'Nepal', 'Bhutan', 'Bangladesh', 'Sri Lanka', 'Myanmar', 'Maldives', 'Afghanistan',
@@ -737,8 +779,213 @@
     return [top, 'auto: most in the news today (' + topN + ' headlines)'];
   }
 
+  /* ------------------- nothing printed twice, as Seen / drop_repeats in draft.py */
+
+  var REPEAT_DAYS = 14;
+
+  function noBrackets(s) {
+    return String(s).replace(/\s*\([^()]*\)/g, '').trim();
+  }
+
+  function pageLines(p) {
+    var out = sentences(p.paragraph || '').concat([p.headline || '']);
+    ['key_points', 'also', 'benefit', 'advanced'].forEach(function (f) { out = out.concat(p[f] || []); });
+    ((p.flow && p.flow.steps) || []).forEach(function (s) {
+      var parts = String(s).split('\n');
+      out = out.concat([parts[0]], sentences(parts.slice(1).join(' ')));
+    });
+    (p.stories || []).forEach(function (s) { out.push(s.title); out = out.concat(sentences(s.para || '')); });
+    return out.map(noBrackets).filter(Boolean);
+  }
+
+  function figuresIn(text) {
+    return String(text || '').replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || [];
+  }
+
+  function Seen(lines) {
+    this.sets = lines.map(function (x) { return { set: new Set(tokens(x)), line: x }; });
+    this.figs = new Set(figuresIn(lines.join(' ')));
+  }
+  Seen.prototype.best = function (text, need) {
+    var t = new Set(tokens(text));
+    var top = 0;
+    var line = '';
+    if (t.size) {
+      this.sets.forEach(function (o) {
+        var n = 0;
+        t.forEach(function (w) { if (o.set.has(w)) n++; });
+        if (!n) return;
+        var sc = (n / Math.min(t.size, o.set.size)) * 0.5 + (n / (t.size + o.set.size - n)) * 0.5;
+        if (sc > top) { top = sc; line = o.line; }
+      });
+    }
+    return top >= need ? line : '';
+  };
+  Seen.prototype.has = function (text) { return !!this.best(text, 0.8); };
+  Seen.prototype.storyState = function (title) {
+    var line = this.best(title, 0.7);
+    if (!line) return 'new';
+    var old = new Set(tokens(line));
+    var fresh = Array.from(new Set(tokens(title))).filter(function (w) { return !old.has(w); });
+    var figs = this.figs;
+    return figuresIn(title).some(function (n) { return !figs.has(n); }) || fresh.length >= 3 ? 'update' : 'same';
+  };
+
+  function dropRepeats(page, seen) {
+    var isFresh = function (x) { return !seen.has(noBrackets(x)); };
+    ['key_points', 'also', 'benefit', 'advanced'].forEach(function (f) {
+      page[f] = (Array.isArray(page[f]) ? page[f] : page[f] ? [page[f]] : []).filter(isFresh);
+    });
+    if (page.flow && page.flow.steps) {
+      page.flow.steps = page.flow.steps.filter(function (s) { return isFresh(String(s).split('\n')[0]); });
+    }
+    var kept = String(page.paragraph || '').split(/(?<=[.!?])\s+(?=[A-Z"'(])/).filter(isFresh);
+    page.paragraph = kept.join(' ') || page.headline || '';
+    (page.stories || []).forEach(function (s) {
+      s.para = String(s.para || '').split(/(?<=[.!?])\s+(?=[A-Z"'(])/).filter(isFresh).join(' ');
+    });
+    return page;
+  }
+
+  /* ---------------------------------- newspaper PDFs, as sources.py read_pdfs */
+
+  var MONTH_NUM = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+  function isoDate(y, m, d) {
+    return y + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
+  }
+
+  // The commonest date on the first pages, or one in the file name; '' when there is none.
+  function pdfDate(name, text) {
+    var t = text.slice(0, 6000).toLowerCase();
+    var found = [];
+    var m;
+    var a = /\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?,?\s+(20\d\d)\b/g;
+    while ((m = a.exec(t))) if (MONTH_NUM[m[2].slice(0, 3)]) found.push(isoDate(m[3], MONTH_NUM[m[2].slice(0, 3)], m[1]));
+    var b = /\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d\d)\b/g;
+    while ((m = b.exec(t))) if (MONTH_NUM[m[1].slice(0, 3)]) found.push(isoDate(m[3], MONTH_NUM[m[1].slice(0, 3)], m[2]));
+    var f = /(20\d\d)[-_.]?(\d\d)[-_.]?(\d\d)/.exec(name);
+    if (f) found.push(isoDate(f[1], +f[2], +f[3]));
+    var count = {};
+    found.forEach(function (d) { count[d] = (count[d] || 0) + 1; });
+    return Object.keys(count).sort(function (x, y) { return count[y] - count[x]; })[0] || '';
+  }
+
+  function guessPaper(name, text) {
+    var low = (name + ' ' + text.slice(0, 3000)).toLowerCase();
+    var names = [['hindu', 'The Hindu'], ['times of india', 'Times of India'], ['toi', 'Times of India'], ['acc', 'ACC Defence Academy'],
+      ['express', 'Indian Express'], ['mint', 'Mint'], ['hindustan times', 'Hindustan Times'], ['business standard', 'Business Standard']];
+    for (var i = 0; i < names.length; i++) if (low.indexOf(names[i][0]) >= 0) return names[i][1];
+    return name.replace(/\.[^.]*$/, '');
+  }
+
+  // A short headline line and the paragraph text after it; pages are separated by \f.
+  function pdfArticles(text, paper) {
+    var items = [];
+    text.split('\f').forEach(function (page, p) {
+      page.split(/\n\s*\n/).forEach(function (block) {
+        var lines = block.split('\n').map(function (l) { return l.replace(/\s{3,}/g, '  ').trim(); }).filter(Boolean);
+        if (!lines.length) return;
+        var body = lines.join(' ').replace(/-\s+(?=[a-z])/g, '');
+        if (body.length < 160) return;
+        var head = lines[0];
+        if (head.length > 110 || head.length < 15) head = shortText(sentences(body)[0] || body, 100);
+        items.push({ title: cleanHtml(head), summary: cleanHtml(body.slice(0, 1800)), source: paper, link: '', when: '', hint: '', kind: 'pdf',
+          text: body.slice(0, 6000), page: p + 1 });
+      });
+    });
+    return items;
+  }
+
+  // pdfs = [{ name, text }]. A paper of another date is left out rather than reported as today's news.
+  function readPapers(pdfs, date, report) {
+    var out = [];
+    (pdfs || []).forEach(function (f) {
+      var words = f.text.split(/\s+/).filter(Boolean).length;
+      if (words < 60) {
+        report.push(f.name + ': almost no text, it looks like a scanned PDF, so it was skipped.');
+        return;
+      }
+      var d = pdfDate(f.name, f.text);
+      if (d && d !== date) {
+        report.push(f.name + ': dated ' + d + ', not today, so it was skipped.');
+        return;
+      }
+      var items = pdfArticles(f.text, guessPaper(f.name, f.text));
+      report.push(f.name + ': ' + items.length + ' story blocks read.');
+      out = out.concat(items);
+    });
+    return out;
+  }
+
+  var VAGUE = /\b(significant|important|importance|crucial|key development|highlights?|underscores?|remains? to be seen|various|several aspects|in recent times|it is worth|plays? a (vital|key|major) role|stay tuned|more details|developing story|could have implications|far-reaching)\b/i;
+
+  /* ---------------------------------------------- state page, as draft.py */
+
+  var STATE_PAGE_STORIES = 13;
+  var STATE_NOISE = /\b(murder|rape|stabbed|robbery|accident|actor|actress|movie|film|trailer|ott|web series|school holiday|admit card|recruitment|vacancy|exam date|rashifal|panchang)\b/i;
+
+  function isStateStory(c, state) {
+    if (SPORTS.test(c.title) || STATE_NOISE.test(c.title)) return false;
+    return new RegExp('\\b' + escapeRe(state) + '\\b', 'i').test(c.title) ||
+      (c.hint === state + ' News' && (c.summary || '').toLowerCase().indexOf(state.toLowerCase()) >= 0);
+  }
+
+  /* ---------------------------------------------- timeline, as timeline.py */
+
+  var TL_GENERIC = new Set(('government minister ministers court supreme high state states centre chief prime president report reports news today ' +
+    'year years day days week month first second last big major people world country countries national global plan plans talks meeting meet set ' +
+    'make makes made move calls call seeks amid crore lakh billion million percent rise rises fall falls market markets stock stocks sensex nifty ends ' +
+    'election elections party congress bjp modi trump pakistan china russia ukraine bangladesh nepal delhi approves approved announces announced ' +
+    'launches launch launched scheme boost').split(' '));
+
+  function tlKeys(title) {
+    return new Set(tokens(title).filter(function (t) { return !TL_GENERIC.has(t) && !/^\d+$/.test(t); }));
+  }
+
+  function sameStory(a, b, common) {
+    var ka = tlKeys(a);
+    var kb = tlKeys(b);
+    var shared = Array.from(ka).filter(function (w) { return kb.has(w); });
+    var rare = shared.filter(function (w) { return !common.has(w); });
+    return ((rare.length >= 2 && shared.length >= 2) || shared.length >= 4) && shared.length / Math.max(1, Math.min(ka.size, kb.size)) >= 0.5;
+  }
+
+  function addToTimeline(threads, draft) {
+    var date = draft.date;
+    threads.forEach(function (t) { t.events = t.events.filter(function (e) { return e.date !== date; }); });
+    threads = threads.filter(function (t) { return t.events.length; });
+    var stories = [];
+    draft.pages.forEach(function (p) {
+      if (!(p.stories || []).length) return;
+      var section = p.section || p.name.split(':')[0].replace(' (continued)', '');
+      stories.push([section, p.headline, String(p.paragraph || '').slice(0, 500), p.stories[0].sources || [], p.stories[0].link || '']);
+      p.stories.slice(1).forEach(function (s) { stories.push([section, stripSourceSuffix(s.title), '', s.sources || [], s.link || '']); });
+    });
+    var count = {};
+    var all = [].concat.apply([], threads.map(function (t) { return t.events.map(function (e) { return e.headline; }); })).concat(stories.map(function (s) { return s[1]; }));
+    all.forEach(function (h) { tlKeys(h).forEach(function (w) { count[w] = (count[w] || 0) + 1; }); });
+    var common = new Set(Object.keys(count).filter(function (w) { return count[w] > Math.max(5, all.length * 0.005); }));
+    stories.forEach(function (s) {
+      var ev = { date: date, headline: s[1], text: s[2], sources: s[3], link: s[4] };
+      var hit = null;
+      for (var i = threads.length - 1; i >= 0 && !hit; i--) {
+        var t = threads[i];
+        var gap = Math.abs(Date.parse(t.events[t.events.length - 1].date) - Date.parse(date)) / 86400000;
+        if (gap <= 21 && t.events.slice(-3).some(function (e) { return sameStory(s[1], e.headline, common); })) hit = t;
+      }
+      if (!hit) threads.push({ id: date + '-' + threads.length, section: s[0], title: s[1], events: [ev] });
+      else if (!hit.events.some(function (e) { return e.date === date && sameStory(s[1], e.headline, common); })) hit.events.push(ev);
+    });
+    // Phone storage is small: a story silent for three months leaves the phone.
+    return threads.filter(function (t) { return (Date.parse(date) - Date.parse(t.events[t.events.length - 1].date)) / 86400000 <= 90; });
+  }
+
   function storyRef(c) {
-    return { title: c.title, sources: c.sources, link: c.link || '', verify: c.sources.length < 2, kind: c.kind };
+    var plain = stripSourceSuffix(c.title);
+    var noted = !c.text && /verify\)$/.test(c.summary || '');
+    var keep = sentences((c.text || '') + ' ' + (c.summary || '')).filter(function (s) { return similarity(s, plain) < 0.85; });
+    return { title: c.title, sources: c.sources, link: c.link || '', para: noted ? wholeSentences(c.summary, 800) : wholeSentences(keep.join(' '), 800), verify: c.sources.length < 2, kind: c.kind };
   }
 
   function confidence(lead) {
@@ -928,6 +1175,7 @@
     opts = opts || {};
     var progress = opts.progress || function () {};
     var date = opts.date || todayIst();
+    var state = opts.state || '';
     var wars = data.wars.wars || [];
     var writer = new Writer(data);
     var jobs = CFG.feeds.map(function (f) { return { url: f[1], name: f[0], hint: f[2] }; });
@@ -935,27 +1183,41 @@
       (sec.queries || []).forEach(function (q) { jobs.push({ gn: q, hint: sec.name }); });
     });
     wars.forEach(function (w) { jobs.push({ gn: w.query, hint: 'WAR SECTION' }); });
+    if (state) {
+      ['government OR "chief minister" OR cabinet', 'development OR scheme OR assembly OR "high court"'].forEach(function (q) {
+        jobs.push({ gn: '"' + state + '" ' + q, hint: state + ' News' });
+      });
+    }
 
+    if (opts.noWeb) jobs = [];
+    var paperReport = [];
+    var paperItems = readPapers(opts.pdfs, date, paperReport);
     progress('Fetching free news feeds', 0, jobs.length);
     return pool(jobs, 8, function (j) {
       return j.gn ? googleNews(io, j.gn, date, j.hint) : fetchFeed(io, j.url, j.name, j.hint, date);
     }, function (d, t) { progress('Fetching free news feeds', d, t); }).then(function (results) {
-      var webItems = [].concat.apply([], results.map(function (r) { return r || []; }));
+      var webItems = paperItems.concat([].concat.apply([], results.map(function (r) { return r || []; })));
       if (!webItems.length) throw new Error('no-news');
 
       var history = io.read('ssb-digest-history', {});
+      var oldLines = [];
+      var oldAdvanced = [];
       var oldTitles = [];
       Object.keys(history).forEach(function (k) {
-        if (k >= addDays(date, -3) && k < date) oldTitles = oldTitles.concat(history[k].titles || []);
+        if (k >= addDays(date, -REPEAT_DAYS) && k < date) {
+          oldLines = oldLines.concat(history[k].lines || history[k].titles || []);
+          oldAdvanced = oldAdvanced.concat(history[k].advanced || []);
+          oldTitles = oldTitles.concat(history[k].titles || []);
+        }
       });
+      var seen = new Seen(Array.from(new Set(oldLines)));
       var all = [];
       var repeats = 0;
       webItems.forEach(function (it) {
         if (JUNK.test(it.title)) return;
-        if (oldTitles.some(function (t) { return similarity(it.title, t) >= 0.7; })) {
-          if (UPDATE_WORDS.test(it.title)) it.title = 'UPDATE: ' + it.title;
-          else { repeats++; return; }
-        }
+        var st = seen.storyState(it.title);
+        if (st === 'same') { repeats++; return; }
+        if (st === 'update') it.title = 'UPDATE: ' + it.title;
         all.push(it);
       });
 
@@ -975,9 +1237,11 @@
 
       var sections = CFG.sections.filter(function (s) { return !s.war; });
       var buckets = {};
+      var stateStories = [];
       sections.forEach(function (s) { buckets[s.name] = []; });
       clusters.forEach(function (c) {
         if (warTop.has(c) || (c.hint === 'WAR SECTION' && warClusters.indexOf(c) >= 0)) return;
+        if (state && isStateStory(c, state)) { stateStories.push(c); return; }
         var b = best(sections, c);
         if (b[1] <= 0) return;
         c.score = b[1];
@@ -992,8 +1256,8 @@
       var kp = CFG.layout.max_key_points;
       var snapN = CFG.layout.max_snapshot_stories;
       var todo = [];
-      Object.keys(buckets).map(function (k) { return buckets[k]; }).concat([warClusters]).forEach(function (b) {
-        b.slice(0, CFG.articlesPerSection).concat(b.slice(1 + kp, 1 + kp + snapN + 3)).forEach(function (c) {
+      Object.keys(buckets).map(function (k) { return buckets[k]; }).concat([warClusters, stateStories]).forEach(function (b) {
+        b.slice(0, STATE_PAGE_STORIES).forEach(function (c) {
           if (!c.text && todo.indexOf(c) < 0) todo.push(c);
         });
       });
@@ -1006,14 +1270,110 @@
         };
         return tryNext(0).then(function (txt) { if (txt) c.text = txt.slice(0, 6000); return txt; });
       }, function (d, t) { progress('Downloading full articles', d, t); }).then(function () {
-        var usedFacts = new Set();
+        // As step 6a in draft.py: one event in several outlets' words is printed once.
+        var mergeEvents = function () {
+          var lists = Object.keys(buckets).map(function (k) { return buckets[k]; }).concat([warClusters, stateStories]);
+          // "common" depends on the corpus, as in draft.py: today's headlines within today, two weeks against the past
+          var commonOf = function (all) {
+            var count = {};
+            all.forEach(function (h) { tlKeys(h).forEach(function (w) { count[w] = (count[w] || 0) + 1; }); });
+            return new Set(Object.keys(count).filter(function (w) { return count[w] > Math.max(5, all.length * 0.005); }));
+          };
+          var today = [].concat.apply([], lists.map(function (b) { return b.map(function (c) { return c.title; }); }));
+          var commonToday = commonOf(today);
+          var commonPast = commonOf(today.concat(oldTitles));
+          var common = commonToday;
+          var sameEvent = function (a, b) {
+            if (!sameStory(a.title, b.title, common)) return false;
+            var ka = tlKeys(a.title);
+            var rare = Array.from(tlKeys(b.title)).filter(function (w) { return ka.has(w) && !common.has(w); });
+            if (rare.length >= 2) return true;
+            var ta = a.text || a.summary || '';
+            var tb = b.text || b.summary || '';
+            return !!(ta && tb) && similarity(a.title + ' ' + ta.slice(0, 400), b.title + ' ' + tb.slice(0, 400)) >= 0.4;
+          };
+          var told = oldTitles.map(function (t) { return { title: t, text: '' }; });
+          var toldFigs = new Set(figuresIn(oldLines.join(' ')));
+          var kept = [];
+          lists.forEach(function (b) {
+            b.slice().forEach(function (c) {
+              var war = warClusters.indexOf(c) >= 0;
+              var fresh = figuresIn(c.title).some(function (n) { return !toldFigs.has(n); });
+              common = commonPast;
+              var retold = !war && !fresh && told.some(function (o) { return sameEvent(c, o); });
+              common = commonToday;
+              if (retold) {
+                b.splice(b.indexOf(c), 1);
+                return;
+              }
+              var same = kept.filter(function (k) { return k !== c && k.group.some(function (g) { return sameEvent(c, g); }); })[0];
+              if (!same) { c.group = [c]; kept.push(c); return; }
+              if (war && b !== warClusters) return;
+              b.splice(b.indexOf(c), 1);
+              same.group.push(c);
+              c.sources.forEach(function (s) { if (same.sources.indexOf(s) < 0) same.sources.push(s); });
+              same.items = same.items.concat(c.items);
+              if (!same.text && c.text) same.text = c.text;
+            });
+          });
+        };
+        mergeEvents();
+
+        // As explain_headlines in writer.py: only stories with no word of their own, marked, no new figures.
+        var bare = [];
+        Object.keys(buckets).map(function (k) { return buckets[k]; }).concat([warClusters, stateStories]).forEach(function (b) {
+          b.slice(0, STATE_PAGE_STORIES).forEach(function (c) { if (!c.text && !c.summary && bare.indexOf(c) < 0) bare.push(c); });
+        });
+        if (!opts.ask || !bare.length) return null;
+        progress('Explaining ' + bare.length + ' headlines with AI');
+        var batches = [];
+        for (var i = 0; i < bare.length; i += 10) batches.push(bare.slice(i, i + 10));
+        return batches.reduce(function (chain, batch) {
+          return chain.then(function () {
+            var facts = batch.map(function (c) { return [c.title].concat(c.items.slice(1, 4).map(function (it) { return it.title; })).join(' | '); });
+            return opts.ask('You explain news headlines for an Indian defence exam student. For each numbered story, write 2 short sentences in simple English saying what it is about and why it matters, using ONLY the headline and the related headlines given. Do not add any number, date, name or fact that is not in them. Be concrete: say who did what. If the headlines do not say enough for that, write SKIP for that number. Answer with lines like 1: text' + '\n' + facts.map(function (f, n) { return (n + 1) + ': ' + f; }).join('\n')).then(function (out) {
+              String(out || '').split('\n').forEach(function (line) {
+                var m = /^\s*[-*#]*\s*(\d+)\s*:\s*(.+)$/.exec(line);
+                if (!m || +m[1] < 1 || +m[1] > batch.length) return;
+                var have = facts[+m[1] - 1].replace(/,/g, '');
+                var own = new Set(tokens(facts[+m[1] - 1]));
+                var kept = sentences(m[2]).filter(function (s) {
+                  // as explain_headlines: grounded in these headlines, no invented figure, no filler
+                  return (s.replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || []).every(function (n) { return have.indexOf(n) >= 0; }) &&
+                    !VAGUE.test(s) && tokens(s).filter(function (w) { return own.has(w); }).length >= 2;
+                });
+                if (kept.length) batch[+m[1] - 1].summary = kept.join(' ') + ' (AI summary from the headlines, verify)';
+              });
+            }, function () {});
+          });
+        }, Promise.resolve()).then(mergeEvents); // stories that only now have a note can be matched by it
+      }).then(function () {
+        clusters.forEach(function (c) { writer.learnFullForms([c.title, c.summary || '', c.text || ''].join(' ')); });
+        var usedFacts = new Set(oldAdvanced);
         var pages = CFG.sections.map(function (sec, i) {
           progress('Writing page ' + (i + 1) + ': ' + sec.name, i + 1, CFG.sections.length);
           return sec.war
             ? buildWarPage(i + 1, sec, w, why, warClusters, writer, data.facts, usedFacts, warLog)
             : buildPage(i + 1, sec, buckets[sec.name], writer, data.facts, usedFacts);
         });
+        if (state) {
+          stateStories.sort(function (a, b) { return b.sources.length - a.sources.length; });
+          [stateStories.slice(0, STATE_PAGE_STORIES), stateStories.slice(STATE_PAGE_STORIES, 2 * STATE_PAGE_STORIES)].forEach(function (part, k) {
+            if (!part.length && k) return;
+            var pg = buildPage(pages.length + 1, { name: state + ' News' + (k ? ' (continued)' : '') }, part, writer, data.facts, usedFacts);
+            pg.section = state + ' News';
+            pages.push(pg);
+          });
+        }
+        pages.forEach(function (p) {
+          if ((p.stories || []).length) {
+            var text = [p.headline, p.paragraph].concat(p.stories.slice(0, 13).map(function (s) { return s.title; })).join(' ');
+            p.full_forms = writer.fullFormsFor(text, (p.full_forms || []).map(function (f) { return f.abbr; })).slice(0, CFG.layout.max_full_forms);
+          }
+          dropRepeats(p, seen);
+        });
         return {
+          state: state, papers: paperReport,
           date: date, day: niceDate(date), title: CFG.title, war: { name: w.name, why: why },
           headlines: webItems.length, stories: clusters.length, repeats: repeats, articles: todo.filter(function (c) { return c.text; }).length,
           unknown_abbreviations: Object.keys(writer.unknown).sort().slice(0, 40), llm_used: false, pages: pages
@@ -1028,15 +1388,18 @@
     history[draft.date] = {
       titles: draft.pages.map(function (p) { return p.headline; })
         .concat([].concat.apply([], draft.pages.map(function (p) { return (p.stories || []).slice(0, 6).map(function (s) { return s.title; }); }))),
+      lines: [].concat.apply([], draft.pages.map(pageLines)),
+      advanced: [].concat.apply([], draft.pages.map(function (p) { return p.advanced || []; })),
       war: draft.war.name
     };
-    // Only the last week matters for repeats; older days are dropped so storage stays small.
-    Object.keys(history).forEach(function (k) { if (k < addDays(draft.date, -7)) delete history[k]; });
+    // Only the repeat window matters; older days are dropped so storage stays small.
+    Object.keys(history).forEach(function (k) { if (k < addDays(draft.date, -REPEAT_DAYS)) delete history[k]; });
     io.write('ssb-digest-history', history);
     var log = io.read('ssb-digest-warlog', {});
     log[draft.date] = draft.war.name;
     io.write('ssb-digest-warlog', log);
+    io.write('ssb-timeline', addToTimeline(io.read('ssb-timeline', []), draft));
   }
 
-  root.SSB.edition = { collect: collect, record: record, today: todayIst, sentences: sentences, keyFigures: keyFigures };
+  root.SSB.edition = { articleText: articleText, readPapers: readPapers, pdfDate: pdfDate, Seen: Seen, dropRepeats: dropRepeats, addToTimeline: addToTimeline, sameStory: sameStory, Writer: Writer, collect: collect, record: record, today: todayIst, sentences: sentences, keyFigures: keyFigures };
 })();

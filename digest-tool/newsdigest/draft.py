@@ -5,9 +5,9 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-from . import sources, util
-from .config import load_json, save_json, user_file
-from .writer import Writer, pick_fact
+from . import sources, timeline, util
+from .config import PKG_DATA, load_json, save_json, user_file
+from .writer import COMMON_ABBR, IGNORE_CAPS, Writer, pick_fact
 
 STATES = ["andhra pradesh", "arunachal", "assam", "bihar", "chhattisgarh", "goa", "gujarat", "haryana",
           "himachal", "jharkhand", "karnataka", "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya",
@@ -15,7 +15,6 @@ STATES = ["andhra pradesh", "arunachal", "assam", "bihar", "chhattisgarh", "goa"
           "uttar pradesh", "uttarakhand", "west bengal", "delhi", "jammu", "kashmir", "ladakh", "puducherry",
           "chandigarh", "bengaluru", "chennai", "kolkata", "mumbai", "hyderabad", "lucknow", "patna", "thrissur",
           "kochi", "bhopal", "jaipur", "guwahati", "imphal", "andaman"]
-UPDATE_WORDS = re.compile(r"\b(update|latest|fresh|again|rises?|toll|now|second|another|final|verdict|result)\b", re.I)
 JUNK = re.compile(r"(gold (rate|price)|silver (rate|price)|petrol.{0,10}price|price today|horoscope|"
                   r"live updates|\blive:|\bwatch:|photos:|in pics|quiz|wordle|how to |recipe|bigg boss|"
                   r"weather today|lottery|result live|box office|ott release|news and video|latest news, )", re.I)
@@ -109,6 +108,83 @@ def previous_titles(cfg, date, days=3):
     return out, hist
 
 
+REPEAT_DAYS = 14
+
+
+def page_lines(p):
+    """Everything an edition printed on one page, line by line, without bracketed full forms."""
+    out = util.sentences(p.get("paragraph", "")) + [p.get("headline", "")]
+    for f in ("key_points", "also", "benefit", "advanced"):
+        v = p.get(f) or []
+        out += v if isinstance(v, list) else [v]
+    for s in (p.get("flow") or {}).get("steps", []):
+        head, _, ctx = str(s).partition("\n")
+        out += [head] + util.sentences(ctx)
+    out += [s["title"] for s in p.get("stories", [])]
+    for s in p.get("stories", []):
+        out += util.sentences(s.get("para", ""))
+    return [re.sub(r"\s*\([^()]*\)", "", str(x)).strip() for x in out if str(x).strip()]
+
+
+def previous_pages(cfg, date, days=REPEAT_DAYS):
+    for i in range(1, days + 1):
+        yield from (load_json(draft_path(cfg, date - dt.timedelta(days=i))) or {}).get("pages", [])
+
+
+def figures(text):
+    return set(re.findall(r"\d+(?:\.\d+)?", (text or "").replace(",", "")))
+
+
+class Seen:
+    """What earlier editions already said. A line counts as seen at 80% word overlap or more."""
+
+    def __init__(self, lines):
+        self.lines = list(dict.fromkeys(lines))
+        self.sets = [(set(util.tokens(x)), x) for x in self.lines]
+        self.figs = figures(" ".join(self.lines))
+
+    def _best(self, text, need):
+        t = set(util.tokens(text))
+        best, line = 0.0, ""
+        for s, x in self.sets if t else ():
+            n = len(t & s)
+            if n:
+                sc = n / min(len(t), len(s)) * 0.5 + n / len(t | s) * 0.5
+                if sc > best:
+                    best, line = sc, x
+        return line if best >= need else ""
+
+    def has(self, text):
+        return bool(self._best(text, 0.8))
+
+    def story_state(self, title):
+        """new, update (same story with something not printed before) or same (print nothing)."""
+        line = self._best(title, 0.7)
+        if not line:
+            return "new"
+        # a new figure or three new telling words is a change; another outlet's rewording is not
+        old = set(util.tokens(line))
+        new_words = set(util.tokens(title)) - old
+        return "update" if figures(title) - self.figs or len(new_words) >= 3 else "same"
+
+
+def drop_repeats(page, seen):
+    """Take out any line an earlier edition already printed. Full forms stay: they explain today's page."""
+    def fresh(x):
+        return not seen.has(re.sub(r"\s*\([^()]*\)", "", str(x)))
+    for f in ("key_points", "also", "benefit", "advanced"):
+        v = page.get(f)
+        page[f] = [x for x in v if fresh(x)] if isinstance(v, list) else ([v] if v and fresh(v) else [])
+    fl = page.get("flow") or {}
+    if fl.get("steps"):
+        fl["steps"] = [s for s in fl["steps"] if fresh(str(s).partition("\n")[0])]
+    sents = re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", page.get("paragraph", ""))
+    page["paragraph"] = " ".join(s for s in sents if fresh(s)) or page.get("headline", "")
+    for s in page.get("stories", []):
+        s["para"] = " ".join(x for x in re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", s.get("para", "")) if fresh(x))
+    return page
+
+
 def choose_war(cfg, wars, date, items, forced, log):
     if forced:
         for w in wars["wars"]:
@@ -155,11 +231,30 @@ def _monitor_feed(cfg, headline):
     return send
 
 
-def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, progress=None, headline=None):
+STATE_NAMES = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat",
+               "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala", "Ladakh",
+               "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+               "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"]
+STATE_PAGE_STORIES = 13  # lead + 5 key points + 4 cards + 3 "also": more than this opens a second page
+# a state page is governance, economy and public life, not crime briefs, cinema or job notices
+STATE_NOISE = re.compile(r"\b(murder|rape|stabbed|robbery|accident|actor|actress|movie|film|trailer|ott|web series|"
+                         r"school holiday|admit card|recruitment|vacancy|exam date|rashifal|panchang)\b", re.I)
+
+
+def _is_state_story(c, state):
+    if SPORTS.search(c["title"]) or STATE_NOISE.search(c["title"]):
+        return False
+    return bool(re.search(r"\b" + re.escape(state) + r"\b", c["title"], re.I)) or (
+        c["hint"] == state + " News" and state.lower() in (c.get("summary") or "").lower())
+
+
+def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, progress=None, headline=None, state=None):
     progress = progress or (lambda *a: None)
+    state = state if state is not None else cfg.get("home_state", "")
     monitor = _monitor_feed(cfg, headline)
     tz = dt.timezone(dt.timedelta(hours=cfg["timezone_offset_hours"]))
-    glossary = load_json(user_file(cfg, "glossary.json"), {})
+    # the built-in list grows with the tool; the user's own edits win over it
+    glossary = {**load_json(os.path.join(PKG_DATA, "glossary.json"), {}), **load_json(user_file(cfg, "glossary.json"), {})}
     hardwords = load_json(user_file(cfg, "hardwords.json"), {})
     facts = load_json(user_file(cfg, "facts.json"), [])
     wars = load_json(user_file(cfg, "wars.json"), {"wars": [], "log": {}})
@@ -183,6 +278,9 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
                     jobs.append(("GN:" + q, "Google News", sec["name"]))
             for w in wars["wars"]:
                 jobs.append(("GN:" + w["query"], "Google News", "WAR SECTION"))
+            if state:
+                jobs += [(f'GN:"{state}" {q}', "Google News", state + " News")
+                         for q in ("government OR \"chief minister\" OR cabinet", "development OR scheme OR assembly OR \"high court\"")]
 
         def run(job):
             url, name, hint = job
@@ -200,20 +298,20 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
         raise SystemExit("No news found. Check your internet connection or pass newspaper PDFs with --pdf.")
 
     # 3. drop repeats from earlier editions (keep real updates)
-    old_titles, _ = previous_titles(cfg, date)
+    seen = Seen([x for p in previous_pages(cfg, date) for x in page_lines(p)] + previous_titles(cfg, date, REPEAT_DAYS)[0])
     all_items, repeats = [], 0
     for it in pdf_items + web_items:
         if JUNK.search(it["title"]):
             continue
-        if any(util.similarity(it["title"], t) >= 0.7 for t in old_titles):
-            if UPDATE_WORDS.search(it["title"]):
-                it["title"] = "UPDATE: " + it["title"]
-            else:
-                repeats += 1
-                continue
+        state_of_story = seen.story_state(it["title"])
+        if state_of_story == "same":
+            repeats += 1
+            continue
+        if state_of_story == "update":
+            it["title"] = "UPDATE: " + it["title"]
         all_items.append(it)
     if repeats:
-        log(f"  Skipped {repeats} headlines already covered in the last 3 editions")
+        log(f"  Skipped {repeats} headlines with nothing new since the last {REPEAT_DAYS} days of editions")
 
     progress(f"Merging {len(all_items)} headlines into stories")
     clusters = _cluster(all_items)
@@ -229,8 +327,12 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
     # 5. assign stories to sections
     sections = [s for s in cfg["sections"] if not s.get("war")]
     buckets = {s["name"]: [] for s in sections}
+    state_stories = []
     for c in clusters:
         if id(c) in war_top or (c["hint"] == "WAR SECTION" and c in war_clusters):
+            continue
+        if state and _is_state_story(c, state):
+            state_stories.append(c)
             continue
         best = max(sections, key=lambda s: _score(c, s))
         sc = _score(c, best)
@@ -241,12 +343,13 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
     for name, b in buckets.items():
         b.sort(key=lambda c: (c["score"] * 2 + min(len(c["sources"]), 6) * 2 + (4 if c["kind"] == "pdf" else 0)
                               + (1 if c.get("summary") else 0)), reverse=True)
+    state_stories.sort(key=lambda c: (len(c["sources"]), bool(c.get("summary"))), reverse=True)
 
     # 6. full text for lead stories (free; skipped if blocked)
     if cfg["web"]["enabled"] and cfg["web"]["fetch_articles"] and not no_web:
-        kp, snap = cfg["layout"]["max_key_points"], cfg["layout"]["max_snapshot_stories"]
-        todo = [c for b in list(buckets.values()) + [war_clusters]
-                for c in b[:cfg["web"]["articles_per_section"]] + b[1 + kp:1 + kp + snap + 3] if not c.get("text")]
+        # every story printed gets its own paragraph, so every one needs its article
+        todo = [c for b in list(buckets.values()) + [war_clusters, state_stories]
+                for c in b[:STATE_PAGE_STORIES] if not c.get("text")]
         todo = list({id(c): c for c in todo}.values())
 
         def grab(c):
@@ -264,10 +367,59 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
                 progress("Downloading full articles", i, len(todo))
         log(f"  Fetched full text for {sum(1 for c in todo if c.get('text'))}/{len(todo)} lead stories")
 
+    # 6a. one event reported by several outlets in different words is printed once; the first copy
+    # (the better ranked one) keeps its place and takes the others' sources and article text
+    def merge_events():
+        lists = list(buckets.values()) + [war_clusters, state_stories]
+        # what earlier editions already told, by event: a new wording of it is not news
+        told = [(s["title"], s.get("para", "")) for p in previous_pages(cfg, date) for s in p.get("stories", [])]
+        # "common" depends on the corpus: within today, today's headlines; against the past, the two weeks
+        common = timeline.common_words([], [c["title"] for b in lists for c in b])
+        common_past = timeline.common_words([], [c["title"] for b in lists for c in b] + [t for t, _ in told])
+        told_figs = figures(" ".join(t + " " + x for t, x in told))
+        kept, merged, stale = [], 0, 0
+        group = {}  # id(kept story) -> every (title, text) folded into it
+        for b in lists:
+            for c in list(b):
+                me = (c["title"], c.get("text") or c.get("summary") or "")
+                if c not in war_clusters and not figures(c["title"]) - told_figs and any(
+                        timeline.same_event(me, old, common_past) for old in told):
+                    b.remove(c)
+                    stale += 1
+                    continue
+                same = next((k for k in kept if k is not c and any(
+                    timeline.same_event(me, g, common) for g in group[id(k)])), None)
+                if same is None:
+                    kept.append(c)
+                    group[id(c)] = [me]
+                    continue
+                if c in war_clusters and b is not war_clusters:
+                    continue  # the war page keeps its own picture of a war story
+                b.remove(c)
+                group[id(same)].append(me)
+                merged += 1
+                same["sources"] += [s for s in c["sources"] if s not in same["sources"]]
+                same["items"] += c["items"]
+                if not same.get("text") and c.get("text"):
+                    same["text"] = c["text"]
+        if merged or stale:
+            log(f"  Merged {merged} more reports of events already on a page; left out {stale} retold from earlier editions")
+
+    merge_events()
+
+    # 6b. stories still without a word of their own get a marked note written from the headlines
+    writer.explain_headlines([c for b in list(buckets.values()) + [war_clusters, state_stories]
+                              for c in b[:STATE_PAGE_STORIES] if not c.get("text") and not c.get("summary")])
+    merge_events()  # stories that only now have a note can be matched by it
+
     # 7. build pages (AI text, when a model is available, is written first in parallel)
+    for c in clusters:
+        writer.learn_full_forms(" ".join([c["title"], c.get("summary") or "", c.get("text") or ""]))
     if writer.llm_ok:
         prewrite(cfg, writer, buckets, w, war_clusters, progress)
-    used_facts = set()
+    # an exam fact or word meaning printed in the last two weeks is not printed again
+    used_facts = {x for p in previous_pages(cfg, date)
+                  for x in (p.get("advanced") if isinstance(p.get("advanced"), list) else [p.get("advanced")])}
     pages = []
     for i, sec in enumerate(cfg["sections"], 1):
         progress(f"Writing page {i}: {sec['name']}", i, len(cfg["sections"]))
@@ -275,6 +427,21 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
             pages.append(build_war_page(i, sec, w, why, war_clusters, writer, facts, used_facts, cfg))
         else:
             pages.append(build_page(i, sec, buckets[sec["name"]], writer, facts, used_facts, cfg))
+    if state:  # page 13, and page 14 only when the state has more than one page can hold
+        for k, part in enumerate((state_stories[:STATE_PAGE_STORIES], state_stories[STATE_PAGE_STORIES:2 * STATE_PAGE_STORIES])):
+            if part or not k:
+                name = f"{state} News" + (" (continued)" if k else "")
+                pages.append(build_page(len(pages) + 1, {"name": name}, part, writer, facts, used_facts, cfg))
+                pages[-1]["section"] = f"{state} News"
+    unexplained = sorted({t for p in pages for t in re.findall(r"\b[A-Z]{2,7}\b", p["headline"] + " " + p["paragraph"])
+                          if t not in writer.news_abbr and t not in writer.glossary
+                          and t not in COMMON_ABBR and t not in IGNORE_CAPS})
+    writer.ask_full_forms(unexplained[:30], " ".join(p["paragraph"] for p in pages))
+    for p in pages:
+        if p.get("stories"):
+            text = " ".join([p["headline"], p["paragraph"]] + [s["title"] for s in p["stories"][:13]])
+            p["full_forms"] = writer.full_forms_for(text, [f["abbr"] for f in p.get("full_forms", [])])[:cfg["layout"]["max_full_forms"]]
+        drop_repeats(p, seen)
 
     # 8. corrections, expected items, background files
     corrections = [c for c in load_json(os.path.join(cfg["paths"]["state"], "corrections.json"), [])
@@ -294,6 +461,7 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
         misc["notes"].append("Some uploaded files were from another date and were used only as background.")
 
     draft = {
+        "state": state,
         "date": date.isoformat(), "day": util.nice_date(date), "title": cfg["title"],
         "war": {"name": w["name"], "why": why}, "files": files, "missing": missing,
         "corrections": [c["id"] for c in corrections],
@@ -312,6 +480,7 @@ def collect(cfg, date, pdfs=(), war=None, expect=(), no_web=False, log=print, pr
 
 def _story_ref(c):
     return {"title": c["title"], "sources": c["sources"], "link": c.get("link", ""),
+            "para": Writer.story_para(c),
             "verify": len(c["sources"]) < 2, "kind": c["kind"]}
 
 

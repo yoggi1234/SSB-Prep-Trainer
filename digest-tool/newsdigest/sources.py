@@ -1,4 +1,5 @@
 """Free news sources: publisher RSS feeds, Google News RSS search, full-text fetch, newspaper PDFs."""
+import hashlib
 import datetime as dt
 import os
 import re
@@ -182,8 +183,16 @@ def pdf_articles(text, paper, kind):
 def read_pdfs(paths, date, log):
     """Returns (items_for_today, background_items, file_report)."""
     today, background, report = [], [], []
+    seen = {}
     for p in paths:
         try:
+            with open(p, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()
+            if digest in seen:
+                report.append({"file": os.path.basename(p), "status": f"duplicate of {seen[digest]}, skipped"})
+                log(f"  PDF {os.path.basename(p)}: same file as {seen[digest]}, skipped")
+                continue
+            seen[digest] = os.path.basename(p)
             text = pdf_text(p)
         except Exception as e:
             report.append({"file": os.path.basename(p), "status": f"could not read: {e}"})

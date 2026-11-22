@@ -54,6 +54,23 @@
     );
   }
 
+  // The same chat call as aiCall() in src/main.js.
+  function aiCall(ai, prompt, imageB64) {
+    var content = imageB64
+      ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + imageB64 } }]
+      : prompt;
+    return net.getText(ai.base + '/chat/completions', 120000, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, ai.key ? { Authorization: 'Bearer ' + ai.key } : {}),
+      body: JSON.stringify(Object.assign({ model: ai.model, stream: false, temperature: 0.6, messages: [{ role: 'user', content: content }] }, ai.extra))
+    }).then(function (txt) { return JSON.parse(txt).choices[0].message.content || ''; });
+  }
+
+  function aiError(err) {
+    var m = String((err && err.message) || err);
+    return { ok: false, error: /HTTP 40[13]/.test(m) ? 'bad-key' : /HTTP 429/.test(m) ? 'busy' : 'failed', detail: m };
+  }
+
   var probe = null;
 
   SSB.online = {
@@ -173,13 +190,36 @@
           });
       },
 
-      // Five fresh PPDT stories for one picture, as ppdt:generate in src/main.js. A
-      // phone has no local Ollama app, so it asks Ollama's cloud API with the
-      // owner's own key (Settings -> Sound and internet).
-      ppdtGenerate: function (id, file) {
+      // As update:check in src/main.js; the phone offers the APK.
+      updateCheck: function () {
+        return fetch('data/version.json').then(function (r) { return r.json(); }).then(function (v) {
+          if (!onlineOn()) return { ok: false, error: 'offline', current: v.version };
+          return net.getJson('https://api.github.com/repos/yoggi1234/SSB-Prep-Trainer/releases/latest', 10000).then(function (rel) {
+            var file = (rel.assets || []).filter(function (a) { return /\.apk$/i.test(a.name); })[0];
+            return { ok: true, current: v.version, latest: String(rel.tag_name || ''), url: file ? file.browser_download_url : rel.html_url };
+          }, function (err) {
+            return { ok: false, error: 'network', detail: err.message, current: v.version };
+          });
+        });
+      },
+
+      aiBuiltIn: function () {
+        return fetch('data/ai-keys.json').then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+      },
+
+      aiChat: function (opts) {
         if (!onlineOn()) return Promise.resolve({ ok: false, error: 'offline' });
-        var key = String(store.config().ollamaKey || '').trim();
-        if (!key) return Promise.resolve({ ok: false, error: 'no-key' });
+        return aiCall(opts.ai, String(opts.prompt || '')).then(
+          function (text) { return { ok: true, text: text, model: opts.ai.model }; },
+          aiError
+        );
+      },
+
+      // Five fresh PPDT stories for one picture, as ppdt:generate in src/main.js,
+      // through the provider and key chosen in Settings -> AI writing.
+      ppdtGenerate: function (id, file, ai) {
+        if (!onlineOn()) return Promise.resolve({ ok: false, error: 'offline' });
+        if (!ai || !ai.key) return Promise.resolve({ ok: false, error: 'no-key' });
         var image = fetch(file).then(function (r) { return r.blob(); }).then(function (blob) {
           return new Promise(function (resolve, reject) {
             var fr = new FileReader();
@@ -190,22 +230,13 @@
         });
         var prompt = fetch('data/ppdt-prompt.txt').then(function (r) { return r.text(); });
         return Promise.all([prompt, image])
-          .then(function (r) {
-            return net.getText('https://ollama.com/api/chat', 180000, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-              body: JSON.stringify({ model: 'gemma4:31b', stream: false, format: 'json', think: false,
-                options: { temperature: 0.7 }, messages: [{ role: 'user', content: r[0], images: [r[1]] }] })
-            });
-          })
+          .then(function (r) { return aiCall(ai, r[0], r[1]); })
           .then(function (txt) {
-            var out = JSON.parse(JSON.parse(txt).message.content);
+            var out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
             if (!out || !Array.isArray(out.stories) || !out.stories.length) throw new Error('no stories in the answer');
-            return { ok: true, perception: out.perception || null, stories: out.stories, model: 'gemma4:31b (Ollama cloud)' };
+            return { ok: true, perception: out.perception || null, stories: out.stories, model: ai.model };
           })
-          .catch(function (err) {
-            return { ok: false, error: /401|403/.test(err.message) ? 'bad-key' : 'failed', detail: err.message, id: id };
-          });
+          .catch(aiError);
       },
 
       newsIndex: function (opts) {

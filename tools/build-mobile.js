@@ -58,7 +58,18 @@ function main() {
   fs.writeFileSync(path.join(OUT, 'index.html'), html);
   copy(path.join(SRC, 'styles.css'), path.join(OUT, 'styles.css'));
   copy(path.join(SRC, 'app.js'), path.join(OUT, 'app.js'));
+  if (fs.existsSync(path.join(SRC, 'logo.png'))) copy(path.join(SRC, 'logo.png'), path.join(OUT, 'logo.png'));
   for (const f of BRIDGE) copy(path.join(ROOT, 'mobile', f), path.join(OUT, f));
+
+  // Mozilla pdf.js (Apache-2.0): lets the phone read newspaper PDFs offline.
+  if (fs.existsSync(path.join(ROOT, 'mobile', 'lib'))) copyDir(path.join(ROOT, 'mobile', 'lib'), path.join(OUT, 'lib'));
+
+  // Phone-only data: the News Timeline's starting events, and the app version
+  // that the update check compares with the latest GitHub release.
+  if (fs.existsSync(path.join(ROOT, 'mobile', 'data'))) copyDir(path.join(ROOT, 'mobile', 'data'), path.join(OUT, 'data'));
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  fs.mkdirSync(path.join(OUT, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(OUT, 'data', 'version.json'), JSON.stringify({ version: pkg.version }));
 
   // Practice data. The 19 MB dictionary is included so the Word library is
   // whole on the phone; it is fetched on first use, not at boot.
