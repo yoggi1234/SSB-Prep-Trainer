@@ -1,0 +1,4 @@
+{
+  "versionCode": 24,
+  "permissions": ["android.permission.VIBRATE"]
+}

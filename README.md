@@ -68,7 +68,9 @@ into `window.api`, serving the bundled data and keeping settings and history in 
 
 ```bash
 node tools/build-mobile.js      # copy the renderer and the data into mobile/www
+npx cap add android             # first time only (android/ is generated, not tracked)
 npx cap sync android
+node tools/prepare-android.js   # version, permissions, icons and splash from the repo
 cd android && ./gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
