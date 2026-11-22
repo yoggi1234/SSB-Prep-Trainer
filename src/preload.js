@@ -48,6 +48,13 @@ contextBridge.exposeInMainWorld('api', {
   aiChat: (opts) => ipcRenderer.invoke('ai:chat', opts),
   aiBuiltIn: () => ipcRenderer.invoke('ai:builtIn'),
   timelineLoad: () => ipcRenderer.invoke('timeline:load'),
+
+  // Important Topics Database: study PDFs downloaded from GitHub on demand.
+  topicsIndex: (opts) => ipcRenderer.invoke('topics:index', opts),
+  topicsDownload: (file) => ipcRenderer.invoke('topics:download', file),
+  topicsOpen: (file) => ipcRenderer.invoke('topics:open', file),
+  topicsRemove: (file) => ipcRenderer.invoke('topics:remove', file),
+  topicsFolder: () => ipcRenderer.invoke('topics:folder'),
   // A cached batch of headlines, so a WAT word can show one real news example.
   newsIndex: (opts) => ipcRenderer.invoke('news:index', opts),
 

@@ -2111,6 +2111,121 @@ ipcMain.handle('digest:config:set', (_e, patch) => {
   return cfg;
 });
 
+/* ---------------------------------------------- Important Topics Database */
+// Lecturette + GD study PDFs kept on the repo's `topics-db` branch. The list
+// (index.json) and each PDF are fetched here, only when the person asks and
+// only with the online switch on. Every PDF is checked against the SHA-256 in
+// the list before it is kept, then opened in the system PDF viewer.
+const TOPICS_URL = 'https://raw.githubusercontent.com/yoggi1234/SSB-Prep-Trainer/topics-db/';
+
+function topicsDir() {
+  const dir = path.join(app.getPath('userData'), 'topics-db');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function readJsonFile(file, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (_) {
+    return fallback;
+  }
+}
+
+// What is on this machine: { file: sha256 } for every downloaded PDF.
+function topicsLocal() {
+  const dir = topicsDir();
+  const manifest = readJsonFile(path.join(dir, 'local.json'), {});
+  for (const f of Object.keys(manifest)) {
+    if (!fs.existsSync(path.join(dir, f))) delete manifest[f];
+  }
+  return manifest;
+}
+
+function validTopicsIndex(ix) {
+  return ix && Array.isArray(ix.topics) && ix.topics.every((t) => t && t.id && t.file && /^[\w.\-]+\.pdf$/.test(t.file) && /^[0-9a-f]{64}$/.test(t.sha256 || ''));
+}
+
+ipcMain.handle('topics:index', async (_e, opts) => {
+  const dir = topicsDir();
+  const cachePath = path.join(dir, 'index.json');
+  const cached = readJsonFile(cachePath, null);
+  const enabled = onlineAllowed();
+  let index = validTopicsIndex(cached) ? cached : null;
+  let source = index ? 'cached' : 'none';
+  let error = '';
+  const stale = !index || !index.fetchedAt || Date.now() - index.fetchedAt > 6 * 3600 * 1000;
+  if (enabled && (stale || (opts && opts.force))) {
+    try {
+      const res = await fetch(TOPICS_URL + 'index.json?t=' + Date.now(), { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const fresh = await res.json();
+      if (!validTopicsIndex(fresh)) throw new Error('the topic list looks damaged');
+      fresh.fetchedAt = Date.now();
+      fs.writeFileSync(cachePath, JSON.stringify(fresh));
+      index = fresh;
+      source = 'live';
+    } catch (err) {
+      error = err.message;
+      appLog('topics', 'index fetch failed', { error: err.message });
+    }
+  }
+  return { ok: !!index, index, local: topicsLocal(), source, enabled, error };
+});
+
+ipcMain.handle('topics:download', async (_e, file) => {
+  const name = path.basename(String(file || ''));
+  const index = readJsonFile(path.join(topicsDir(), 'index.json'), null);
+  const entry = validTopicsIndex(index) && index.topics.find((t) => t.file === name);
+  if (!entry) return { ok: false, error: 'not-in-list' };
+  if (!onlineAllowed()) return { ok: false, error: 'online-off' };
+  try {
+    const res = await fetch(TOPICS_URL + (index.base || 'topics/') + encodeURIComponent(name), { signal: AbortSignal.timeout(90000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const sha = crypto.createHash('sha256').update(buf).digest('hex');
+    if (sha !== entry.sha256) throw new Error('the download was incomplete, please try again');
+    const dir = topicsDir();
+    const tmp = path.join(dir, name + '.part');
+    fs.writeFileSync(tmp, buf);
+    fs.renameSync(tmp, path.join(dir, name));
+    const manifest = topicsLocal();
+    manifest[name] = sha;
+    fs.writeFileSync(path.join(dir, 'local.json'), JSON.stringify(manifest));
+    appLog('topics', 'downloaded', { file: name, bytes: buf.length });
+    return { ok: true, sha };
+  } catch (err) {
+    appLog('topics', 'download failed', { file: name, error: err.message });
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('topics:open', async (_e, file) => {
+  const full = path.join(topicsDir(), path.basename(String(file || '')));
+  if (!/\.pdf$/i.test(full) || !fs.existsSync(full)) return { ok: false, error: 'not-downloaded' };
+  if (SMOKE) return { ok: true, smoke: true };
+  const err = await shell.openPath(full);
+  return err ? { ok: false, error: err } : { ok: true };
+});
+
+ipcMain.handle('topics:remove', (_e, file) => {
+  const name = path.basename(String(file || ''));
+  const dir = topicsDir();
+  try {
+    fs.rmSync(path.join(dir, name), { force: true });
+  } catch (_) {}
+  const manifest = topicsLocal();
+  delete manifest[name];
+  fs.writeFileSync(path.join(dir, 'local.json'), JSON.stringify(manifest));
+  return { ok: true };
+});
+
+ipcMain.handle('topics:folder', async () => {
+  if (SMOKE) return { ok: true };
+  const err = await shell.openPath(topicsDir());
+  return err ? { ok: false, error: err } : { ok: true };
+});
+
 /* ------------------------------------------------------------- WAT hints */
 // data/wat-hints/*.json -> { word: { simple, natural, positive, leadership,
 // factual, general } }. Split per set so one file stays readable; merged here
@@ -3201,7 +3316,7 @@ async function runSmoke() {
       step: 'the dashboard carries every section as a tile, with no settings menu in the top bar',
       result:
         !!dash &&
-        dash.tiles === 10 &&
+        dash.tiles === 11 &&
         dash.settingsInTopBar === false &&
         dash.topLinks === 1 &&
         dash.selected !== null &&
@@ -3591,6 +3706,15 @@ async function runSmoke() {
       step: 'the digest asks the state first, the timeline opens, and Settings offers the AI providers',
       result: !!newScreens && newScreens.stateBox && newScreens.timeline && newScreens.providers === 4,
       got: newScreens
+    });
+    const topicsRun = await js('window.__smoke.topicsFlow()', 'Important Topics flow');
+    await takeShot('40-topics');
+    // With no network the list cannot load; that is reported, not counted as a pass of the download path.
+    results.push({
+      step: 'Important Topics lists the study PDFs, downloads one with a matching checksum, opens it and removes it',
+      result: !!topicsRun && topicsRun.tile && !topicsRun.offline && topicsRun.listed > 100 && topicsRun.download &&
+        topicsRun.shaOk && topicsRun.local && topicsRun.rows > 100 && topicsRun.openBtn && topicsRun.open && topicsRun.removed,
+      got: topicsRun
     });
 
     results.push({

@@ -167,6 +167,7 @@
     { id: 'srt', label: 'SRT', code: 'SRT', test: true },
     { id: 'ppdt', label: 'PPDT', code: 'PPDT' },
     { id: 'lecturette', label: 'Lecturette', code: 'LECT' },
+    { id: 'topics', label: 'Important Topics', code: 'NOTES' },
     { id: 'digest', label: 'News Digest', code: 'NEWS' },
     { id: 'timeline', label: 'News Timeline', code: 'LINE' },
     { id: 'add', label: 'Add material', code: 'ADD' },
@@ -304,6 +305,7 @@
     if (S.view === 'ppdt') return renderPpdt();
     if (S.view === 'digest') return renderDigest();
     if (S.view === 'timeline') return renderTimeline();
+    if (S.view === 'topics') return renderTopics();
     if (S.view === 'add') return renderAdd();
     if (S.view === 'bin') return renderBin();
     if (S.view === 'diagnostics') return renderDiagnostics();
@@ -425,6 +427,19 @@
           '<li><span>TAT pictures</span><b>' + (S.tatImages || []).length + ' yours</b></li>' +
           '<li><span>WAT sets</span><b>' + customSets('wat').length + ' yours</b></li>' +
           '<li><span>Wrong picture?</span><b>move to bin</b></li>'
+      };
+    }
+    if (t.id === 'topics') {
+      var tdb = S.topicsDb && S.topicsDb.data && S.topicsDb.data.index;
+      var tHave = tdb ? Object.keys(S.topicsDb.data.local || {}).length : 0;
+      return {
+        code: t.code,
+        chip: tdb ? tdb.topics.length + ' topics' : 'study notes',
+        blurb: 'Lecturette and GD notes, one PDF per topic. Download once, then read it offline.',
+        rows:
+          '<li><span>Source</span><b>GitHub</b></li>' +
+          '<li><span>On this ' + (onPhone() ? 'phone' : 'PC') + '</span><b>' + (tdb ? tHave + ' PDFs' : 'none yet') + '</b></li>' +
+          '<li><span>Updates</span><b>auto-checked</b></li>'
       };
     }
     if (t.id === 'timeline') {
@@ -2254,6 +2269,175 @@
     box.addEventListener('change', function () { V.q = box.value; renderTimeline(); });
     document.getElementById('tlOnly').addEventListener('change', function (e) { V.only = e.target.checked; renderTimeline(); });
     wireExternal(appEl);
+  }
+
+  /* ------------------------------------------- Important Topics Database */
+  // The list and the PDFs live on the repo's `topics-db` branch; window.api
+  // fetches them (main process on Windows, mobile/topics.js on the phone).
+
+  var TOPIC_CATS = ['All', 'INDL PSN', 'Additional', 'Know Your Armed Forces', 'GD Guide', 'Coaching'];
+
+  function topicsState() {
+    return S.topicsDb || (S.topicsDb = { data: null, loading: false, q: '', cat: 'All', mine: false, busy: {} });
+  }
+
+  function loadTopics(force) {
+    var T = topicsState();
+    T.loading = true;
+    return Promise.resolve(window.api.topicsIndex({ force: !!force }))
+      .then(function (r) { T.data = r || { ok: false }; })
+      .catch(function (e) { T.data = { ok: false, error: (e && e.message) || 'unknown' }; })
+      .then(function () {
+        T.loading = false;
+        if (S.view === 'topics') renderTopics();
+      });
+  }
+
+  function topicSize(n) {
+    return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round((n || 0) / 1024)) + ' KB';
+  }
+
+  function topicError(e) {
+    if (e === 'online-off') return 'Turn on Online in Settings to download topics.';
+    if (e === 'not-in-list') return 'That topic is no longer in the list. Tap "Check for new topics".';
+    if (e === 'not-downloaded') return 'Download the topic first.';
+    return 'Could not do that (' + (e || 'unknown') + ').';
+  }
+
+  function topicRow(t) {
+    var T = topicsState();
+    var mine = (T.data.local || {})[t.file];
+    var st = T.busy[t.file] ? 'busy' : !mine ? 'none' : mine === t.sha256 ? 'have' : 'old';
+    var f = esc(t.file);
+    var btns =
+      st === 'busy'
+        ? '<button class="btn sm" disabled>Downloading…</button>'
+        : st === 'none'
+          ? '<button class="btn primary sm" data-tpget="' + f + '">Download</button>'
+          : (st === 'old' ? '<button class="btn primary sm" data-tpget="' + f + '">Update</button>' : '') +
+            '<button class="btn' + (st === 'have' ? ' primary' : '') + ' sm" data-tpopen="' + f + '">Open</button>' +
+            '<button class="btn ghost sm" data-tpdel="' + f + '" title="Remove the copy on this device">×</button>';
+    return (
+      '<div class="card lectcard"><div class="lechead"><div>' +
+      '<div class="lectitle"><span class="chip">' + esc(t.id) + '</span> ' + esc(t.title) + '</div>' +
+      '<div class="small muted">' + esc(t.category) +
+      (t.remarks ? ' · Remarks ' + esc(t.remarks) : '') +
+      (t.see ? ' · same notes as topic ' + esc(t.see) : '') +
+      ' · ' + esc(String(t.pages)) + ' pages · ' + topicSize(t.size) +
+      (st === 'have' ? ' · <b>on this device</b>' : '') +
+      (st === 'old' ? ' · <b>new version available</b>' : '') +
+      '</div></div><div class="row">' + btns + '</div></div></div>'
+    );
+  }
+
+  function renderTopics() {
+    var T = topicsState();
+    var head =
+      '<h1>Important Topics</h1>' +
+      '<p class="lead">Lecturette and GD notes, one PDF per topic. Download a topic once; after that it opens even without internet.</p>';
+    if (!T.data) {
+      body(head + '<div class="empty">Opening the topic list…</div>');
+      if (!T.loading) loadTopics(false);
+      return;
+    }
+    var d = T.data;
+    var ix = d.index;
+    if (!ix) {
+      body(
+        head +
+          '<div class="empty">' +
+          (d.enabled
+            ? 'Could not fetch the topic list' + (d.error ? ' (' + esc(d.error) + ')' : '') + '. Check the internet connection and try again.'
+            : 'Turn on <b>Online</b> in Settings to fetch the topic list.') +
+          '</div><div class="row"><button class="btn primary" id="tpRetry">Try again</button></div>'
+      );
+      document.getElementById('tpRetry').addEventListener('click', function () {
+        T.data = null;
+        renderTopics();
+        loadTopics(true);
+      });
+      return;
+    }
+    var local = d.local || {};
+    var q = T.q.toLowerCase();
+    var counts = { All: ix.topics.length };
+    ix.topics.forEach(function (t) { counts[t.category] = (counts[t.category] || 0) + 1; });
+    var list = ix.topics.filter(function (t) {
+      return (T.cat === 'All' || t.category === T.cat) && (!T.mine || local[t.file]) &&
+        (!q || (t.id + ' ' + t.title + ' ' + (t.remarks || '')).toLowerCase().indexOf(q) >= 0);
+    });
+    var note = d.source === 'live'
+      ? 'list checked just now'
+      : 'saved list from ' + (ix.fetchedAt ? new Date(ix.fetchedAt).toLocaleDateString() : ix.updated);
+    if (!d.enabled) note += ' · Online is off, so downloads are paused';
+    else if (d.error && d.source !== 'live') note += ' · could not refresh (' + d.error + ')';
+    body(
+      head +
+        '<div class="tabs">' +
+        TOPIC_CATS.filter(function (c) { return counts[c]; }).map(function (c) {
+          return '<button class="navlink' + (c === T.cat ? ' active' : '') + '" data-tpcat="' + esc(c) + '">' + esc(c) + ' (' + counts[c] + ')</button>';
+        }).join('') +
+        '</div>' +
+        '<div class="row" style="margin:12px 0">' +
+        '<input id="tpSearch" type="search" class="textinput" placeholder="Search topics" value="' + esc(T.q) + '" />' +
+        '<label class="small"><input id="tpMine" type="checkbox"' + (T.mine ? ' checked' : '') + ' /> Downloaded only</label>' +
+        '<button class="btn sm" id="tpRefresh">Check for new topics</button>' +
+        (onPhone() ? '' : '<button class="btn sm ghost" id="tpFolder">Open folder</button>') +
+        '</div>' +
+        '<div class="small muted" id="tpStatus">' + list.length + ' shown · ' + Object.keys(local).length + ' of ' + esc(String(ix.files)) +
+        ' PDFs on this ' + (onPhone() ? 'phone' : 'computer') + ' · ' + esc(note) + '</div>' +
+        (list.length ? list.map(topicRow).join('') : '<div class="empty">No topic matches.</div>')
+    );
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tpcat]'), function (b) {
+      b.addEventListener('click', function () { T.cat = b.getAttribute('data-tpcat'); renderTopics(); });
+    });
+    var box = document.getElementById('tpSearch');
+    box.addEventListener('change', function () { T.q = box.value; renderTopics(); });
+    document.getElementById('tpMine').addEventListener('change', function (e) { T.mine = e.target.checked; renderTopics(); });
+    document.getElementById('tpRefresh').addEventListener('click', function () {
+      document.getElementById('tpStatus').textContent = 'Checking for new topics…';
+      loadTopics(true);
+    });
+    var folder = document.getElementById('tpFolder');
+    if (folder) folder.addEventListener('click', function () { window.api.topicsFolder(); });
+
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tpget]'), function (b) {
+      b.addEventListener('click', function () {
+        var file = b.getAttribute('data-tpget');
+        T.busy[file] = true;
+        renderTopics();
+        Promise.resolve(window.api.topicsDownload(file)).then(function (r) {
+          delete T.busy[file];
+          if (r && r.ok) {
+            T.data.local = Object.assign({}, T.data.local, (function (o) { o[file] = r.sha; return o; })({}));
+            toast('Downloaded. Tap Open to read it.');
+          } else {
+            toast(topicError(r && r.error));
+          }
+          if (S.view === 'topics') renderTopics();
+        });
+      });
+    });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tpopen]'), function (b) {
+      b.addEventListener('click', function () {
+        Promise.resolve(window.api.topicsOpen(b.getAttribute('data-tpopen'))).then(function (r) {
+          if (!r || !r.ok) toast(topicError(r && r.error));
+        });
+      });
+    });
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tpdel]'), function (b) {
+      b.addEventListener('click', function () {
+        var file = b.getAttribute('data-tpdel');
+        Promise.resolve(window.api.topicsRemove(file)).then(function () {
+          var next = Object.assign({}, T.data.local);
+          delete next[file];
+          T.data.local = next;
+          toast('Removed from this ' + (onPhone() ? 'phone' : 'computer') + '. You can download it again any time.');
+          if (S.view === 'topics') renderTopics();
+        });
+      });
+    });
   }
 
   function wireExternal(root) {
@@ -6159,6 +6343,49 @@
       var providers = document.querySelectorAll('[data-aikey]').length;
       goto('home');
       return { stateBox: stateBox, timeline: timeline, providers: providers };
+    },
+    // Important Topics: real list from GitHub, the smallest PDF downloaded,
+    // checksum-checked, opened (stubbed under --smoke) and removed again.
+    topicsFlow: function () {
+      var out = { tile: TILES.some(function (t) { return t.id === 'topics'; }), listed: 0, offline: false };
+      S.topicsDb = null;
+      return Promise.resolve(window.api.topicsIndex({ force: true })).then(function (r) {
+        if (!r || !r.index) {
+          out.offline = true;
+          out.enabled = r && r.enabled;
+          out.error = r && r.error;
+          return out;
+        }
+        out.listed = r.index.topics.length;
+        var small = r.index.topics.slice().sort(function (a, b) { return a.size - b.size; })[0];
+        out.file = small.file;
+        return Promise.resolve(window.api.topicsDownload(small.file))
+          .then(function (d) {
+            out.download = !!(d && d.ok);
+            out.shaOk = !!d && d.sha === small.sha256;
+            return window.api.topicsIndex({});
+          })
+          .then(function (r2) {
+            out.local = !!(r2.local || {})[small.file];
+            return loadTopics(false).then(function () { goto('topics'); });
+          })
+          .then(function () {
+            out.rows = appEl.querySelectorAll('.lectcard').length;
+            out.openBtn = !!appEl.querySelector('[data-tpopen="' + small.file + '"]');
+            return window.api.topicsOpen(small.file);
+          })
+          .then(function (o) {
+            out.open = !!(o && o.ok);
+            return window.api.topicsRemove(small.file);
+          })
+          .then(function () { return window.api.topicsIndex({}); })
+          .then(function (r3) {
+            out.removed = !(r3.local || {})[small.file];
+            S.topicsDb.data.local = r3.local || {};
+            goto('topics');
+            return out;
+          });
+      });
     },
     bootCheck: function () {
       var w = builtinSets('wat');

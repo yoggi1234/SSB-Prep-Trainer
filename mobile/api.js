@@ -13,6 +13,7 @@
  *   pdf.js       draws that edition as the colour A4 PDF (port of render.py)
  *   digest.js    the phone's twelve-section edition and its fallback chain
  *   museum.js    public-domain plates kept in IndexedDB
+ *   topics.js    the Important Topics Database: study PDFs from GitHub on demand
  *   platform.js  gallery pictures, clipboard, wake lock, back button, diagnostics
  *
  * This file owns nothing but that assembly: one key, one module. A duplicate is
@@ -36,6 +37,7 @@
     ['pdf', SSB.pdf],
     ['digest', SSB.digest],
     ['museum', SSB.museum],
+    ['topics', SSB.topics],
     ['platform', SSB.platform]
   ];
 
