@@ -3135,9 +3135,52 @@ body::before { opacity: 0.09; }
 .mk-key.mk-k { background: #ffd200; }
 .mk-key.mk-f { background: #3ccb80; }
 .paper-ai-text { line-height: 1.5; margin-bottom: 6px; }
-/* How to use this app: the tutorial video, chapters and the feature guide. */
-.tut-video video { display: block; width: 100%; max-height: 70vh; border-radius: 10px; background: #000; }
-.tut-chapters { flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* How to use this app: the tour and video cards, the AI-key steps and the feature guide. */
+.tut-card { display: flex; align-items: center; gap: 16px; padding: 16px 18px; margin: 10px 0; }
+.tut-card .tut-grow { flex: 1; min-width: 0; }
+.tut-card b { color: var(--heading); font-size: calc(16px * var(--scale)); }
+.tut-card .small { margin-top: 4px; line-height: 1.5; }
+.tut-thumb { width: 132px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+@media (max-width: 560px) {
+  .tut-card { flex-wrap: wrap; }
+  .tut-card .btn { width: 100%; }
+  .tut-thumb { width: 100%; }
+}
 .tut-steps { margin: 0 0 12px; padding-left: 20px; }
 .tut-steps li { margin: 6px 0; line-height: 1.5; }
 .tut-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin: 6px 0; }
+/* The tutorial video plays over the whole app, not in a box on the page. */
+.tut-player { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 9100; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.tut-player video { width: 100%; height: 100%; max-height: 100%; object-fit: contain; background: #000; }
+.tut-player .tut-close { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 28px; line-height: 1; cursor: pointer; }
+.tut-player .tut-msg { position: absolute; left: 16px; right: 16px; top: 72px; text-align: center; color: #eaf0f7; font-size: 15px; }
+.tut-player .tut-msg button { margin-top: 8px; }
+.tut-player .tut-chaps { position: absolute; left: 0; right: 0; bottom: 64px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 12px; opacity: 0.95; }
+.tut-player .tut-chaps button { background: rgba(0, 0, 0, 0.55); color: #eaf0f7; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+/* First-time invitation on the dashboard. */
+.tour-invite { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; margin: 0 0 14px; }
+.tour-invite .tut-grow { flex: 1; min-width: 200px; }
+/* Guided tour (tour.js): the app is dimmed, one part is lit up, and a card explains it. */
+/* top/right/bottom/left rather than inset: older Android WebViews (before Chrome 87) ignore inset. */
+.tour { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 9000; }
+.tour-shade { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(3, 8, 18, 0.74); }
+.tour-on .toast { z-index: 9050; } /* messages stay readable above the tour */
+.tour-hole { position: absolute; border-radius: 12px; border: 2px solid #d9b45a; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(3, 8, 18, 0.74), 0 0 18px rgba(217, 180, 90, 0.45);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease; }
+.tour-card { position: absolute; top: 40%; left: 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: 0 18px 50px var(--shadow-2); padding: 12px 16px 14px; transition: top 0.25s ease, left 0.25s ease;
+  max-height: calc(100vh - 24px); overflow-y: auto; }
+.tour-top { display: flex; align-items: center; gap: 4px; }
+.tour-count { flex: 1; font-size: calc(12.5px * var(--scale)); color: var(--muted); letter-spacing: 0.04em; }
+.tour-icon { background: transparent; border: 0; color: var(--muted); width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; }
+.tour-icon:hover, .tour-icon:focus-visible { color: var(--text); background: var(--panel-2); }
+.tour-bar { height: 3px; border-radius: 3px; background: var(--line); margin: 4px 0 10px; overflow: hidden; }
+.tour-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.25s ease; }
+.tour-card h3 { margin: 0 0 6px; color: var(--heading); font-size: calc(17px * var(--scale)); }
+.tour-card p { margin: 0 0 14px; line-height: 1.55; font-size: calc(15px * var(--scale)); }
+.tour-btns { display: flex; align-items: center; gap: 8px; }
+.tour-grow { flex: 1; }
+html[data-reduce-motion='true'] .tour-hole, html[data-reduce-motion='true'] .tour-card, html[data-reduce-motion='true'] .tour-bar i { transition: none; }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card, .tour-bar i { transition: none; } }

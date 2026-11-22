@@ -2304,6 +2304,8 @@ async function runSmoke() {
   }
   const results = [];
   const consoleErrors = [];
+  // The guided tour speaks; a test run must stay silent on the machine it runs on.
+  mainWindow.webContents.setAudioMuted(true);
 
   mainWindow.webContents.on('console-message', (...args) => {
     const ev = args[0];
@@ -3710,10 +3712,45 @@ async function runSmoke() {
     const tut = await js('window.__smoke.tutorialInfo()', 'How to use this app');
     await takeShot('42-how-to-use');
     results.push({
-      step: '"How to use this app" is the first row and holds the video, the AI-key steps and a guide to every section',
-      result: !!tut && tut.first && tut.title === 'How to use this app' && tut.video && tut.preloadNone && tut.poster === 'tutorial-poster.jpg' &&
-        /topics-db\/video\/tutorial\.mp4$/.test(tut.src) && tut.steps >= 5 && tut.guideRows === 12 && tut.blurbsFilled,
+      step: '"How to use this app" is the first row, with the guided tour, the full video (not boxed on the page), the AI-key steps and a guide to every section',
+      result: !!tut && tut.first && tut.invite && tut.title === 'How to use this app' && tut.tourButton && tut.videoButton && !tut.videoOnPage &&
+        tut.thumb === 'tutorial-poster.jpg' && tut.tourLoaded && tut.tourSteps >= 12 && tut.steps >= 5 && tut.guideRows === 12 && tut.blurbsFilled,
       got: tut
+    });
+    // Every voice clip the tour names is shipped, and no step is missing one.
+    const tourList = (await js('window.__smoke.tourSteps()', 'the tour steps')) || [];
+    const tourDir = path.join(__dirname, 'renderer', 'tour');
+    const missingClips = tourList.filter((s) => !s.audio || !fs.existsSync(path.join(tourDir, s.audio))).map((s) => s.id);
+    results.push({
+      step: 'every guided-tour step has its voice clip',
+      result: tourList.length >= 12 && missingClips.length === 0,
+      got: { steps: tourList.length, missingClips }
+    });
+    // The same walk on a phone-sized window, where cards have the least room.
+    const fullSize = mainWindow.getSize();
+    const fullMin = mainWindow.getMinimumSize();
+    mainWindow.setMinimumSize(320, 480);
+    mainWindow.setSize(400, 780);
+    await wait(700);
+    const tourSmall = await js('window.__smoke.tourFlow()', 'the guided tour on a phone-sized window');
+    mainWindow.setMinimumSize(fullMin[0], fullMin[1]);
+    mainWindow.setSize(fullSize[0], fullSize[1]);
+    await wait(700);
+    results.push({
+      step: 'on a phone-sized window every tour step is lit, and its card fits on screen without covering it',
+      result: !!tourSmall && !tourSmall.error && tourSmall.seen.length === tourSmall.count &&
+        tourSmall.missing.length === 0 && tourSmall.offScreen.length === 0 && tourSmall.covering.length === 0,
+      got: tourSmall && { count: tourSmall.count, missing: tourSmall.missing, offScreen: tourSmall.offScreen, covering: tourSmall.covering,
+        rooms: (tourSmall.seen || []).filter((x) => x.covers).map((x) => ({ id: x.id, room: x.room })), error: tourSmall.error }
+    });
+    const tour = await js('window.__smoke.tourFlow()', 'the guided tour, every step');
+    await takeShot('43-tour');
+    results.push({
+      step: 'the guided tour lights up every step\'s part of the screen, keeps its card on screen, and Back, voice, Finish and Skip work',
+      result: !!tour && !tour.error && tour.hadInvite && tour.count >= 12 && tour.seen.length === tour.count &&
+        tour.missing.length === 0 && tour.offScreen.length === 0 && tour.covering.length === 0 &&
+        tour.backWorks && tour.voiceToggles && tour.closed && tour.seenSaved && tour.inviteGone && tour.skipCloses && tour.backToTutorial,
+      got: tour
     });
     // The test paper is not packaged; a packaged build is tested with SSB_PAPER_FIXTURE.
     const paperB64 = fs.readFileSync(process.env.SSB_PAPER_FIXTURE || path.join(ROOT, 'tools', 'fixtures', 'test-paper.pdf')).toString('base64');

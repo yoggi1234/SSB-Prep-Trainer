@@ -621,6 +621,7 @@
       '<div class="dashbadge"><b>' + TILES.length + '</b><span>sections</span></div>' +
       '</div>' +
       updateBanner() +
+      tourInvite() +
       '<div class="dash" id="dash">' + TILES.map(dashTile).join('') + '</div>' +
       '<h2>At a glance</h2>' + stats +
       '<div class="note">Timings follow the format commonly reported for the SSB psychology battery: ' +
@@ -632,6 +633,7 @@
     );
 
     wireDash();
+    wireTourInvite();
   }
 
   /* ----------------------------------------------------------- setup view */
@@ -656,7 +658,9 @@
 
     var opts = sets
       .map(function (s, i) {
-        return '<option value="' + i + '"' + (i === S.pending.setIndex ? ' selected' : '') + '>' + esc(s.name) + ' — ' + s.items.length + ' items</option>';
+        // A built-in TAT set draws its pictures fresh each time, so it has no fixed list to count.
+        var count = test === 'tat' && !s.items.length ? '11 pictures + 1 blank' : s.items.length + ' items';
+        return '<option value="' + i + '"' + (i === S.pending.setIndex ? ' selected' : '') + '>' + esc(s.name) + ' — ' + count + '</option>';
       })
       .join('');
 
@@ -2603,12 +2607,14 @@
         P.tab = 'plan';
         P.hist = null;
         toast(paper.articles.length + ' stories found and sorted' + (paper.adsSkipped ? ', ' + paper.adsSkipped + ' adverts skipped.' : '.'));
-        renderPaper();
+        // Only redraw if the Newspaper screen is still showing (the person may
+        // have moved on, or be in the guided tour, while the paper was read).
+        if (S.view === 'paper') renderPaper();
       })
       .catch(function (err) {
         P.busy = '';
         toast('Could not read that PDF: ' + ((err && err.message) || 'unknown error'));
-        renderPaper();
+        if (S.view === 'paper') renderPaper();
       });
   }
 
@@ -2632,7 +2638,7 @@
       'Everything happens on this ' + (onPhone() ? 'phone' : 'computer') + ': the PDF is not uploaded or kept, only the text and the cut-outs of the newest ' +
       '5 papers.</p>' +
       '<div class="row" style="margin:12px 0">' +
-      '<label class="btn primary">Load a newspaper PDF<input id="paperFile" type="file" accept="application/pdf,.pdf" hidden /></label></div>' +
+      '<label class="btn primary" id="paperLoadBtn">Load a newspaper PDF<input id="paperFile" type="file" accept="application/pdf,.pdf" hidden /></label></div>' +
       (P.busy ? '<div class="note" id="paperBusy">' + esc(P.busy) + '</div>' : '') +
       '<h2>Your newspapers</h2>' +
       (P.list.length
@@ -2712,38 +2718,268 @@
   }
 
   /* --------------------------------------------- How to use this app */
-  // The tutorial video lives on the repo's topics-db branch (like the study
-  // PDFs), so it can be replaced without a new app version and does not make
-  // the app bigger. It streams only when the person presses play.
+  // Two ways to learn the app, both in Hindi + English: the guided tour
+  // (tour.js; offline, it lights up the real screens one step at a time with a
+  // voice clip per step) and the full video. The video lives on the repo's
+  // topics-db branch, so it can be replaced without a new app version and does
+  // not make the app bigger; it streams full screen only when asked.
   var TUTORIAL_URL = 'https://raw.githubusercontent.com/yoggi1234/SSB-Prep-Trainer/topics-db/video/tutorial.mp4';
   var TUTORIAL_PAGE = 'https://github.com/yoggi1234/SSB-Prep-Trainer/blob/topics-db/video/tutorial.mp4';
-  // [seconds, title] for the chapter buttons, filled in once the video is made.
+  // [seconds, title] for the chapter buttons on the video, when known.
   var TUTORIAL_CHAPTERS = [];
 
+  // Each step: the screen to open, the part to light up (a selector; '' for a
+  // card in the middle) and what the card says, in Roman Hindi-English. The
+  // voice clip tour/<id>.mp3 says the same in Hindi script with English terms
+  // (tools/tour-voice.json, made by tools/make-tour-voice.py). Screens that
+  // load over the internet or start a program (Important Topics, News Digest)
+  // are shown by their dashboard row, so the tour never waits on a network.
+  // The smoke suite walks every step on the PC, so a renamed button fails it.
+  // only: 'desktop' | 'phone' for a step that differs between the two.
+  var TOUR_STEPS = [
+    { id: 'welcome', view: 'home', target: '', title: 'Welcome! Chalo app dekhte hain',
+      text: 'Yeh chhota sa tour aapko app ka har section dikhayega, Hindi aur English mein. Aage badhne ke liye Next dabao. Kabhi bhi band karna ho to "Skip tour" dabao.' },
+    { id: 'dashboard', view: 'home', target: '[data-tile="tutorial"]', title: 'Dashboard: app ka main menu',
+      text: 'Har row ek section hai; tour ke baad row dabao aur woh section khul jaayega. Yeh roshan row "How to use this app" hai: yahan yeh tour dobara chala sakte ho, aur internet ho to poora video bhi dekh sakte ho.' },
+    { id: 'netchip', view: 'home', target: '#netChip', title: 'Internet ka chip',
+      text: 'Yeh chip batata hai: "online", "offline" ya "online off". "Online off" ka matlab hai Settings mein Online lookup band hai. Practice tests bina internet ke chalte hain; sirf online extras ko internet chahiye, jaise live news aur AI.' },
+    { id: 'tat', view: 'setup:tat', target: '#go, #setupAdd', title: 'TAT: Thematic Apperception Test',
+      text: '12 slides: 11 pictures aur ek blank. Shuru ki timing: har picture 30 second dekho, 30 second socho, phir 4 minute mein story apni copy mein likho (Settings mein badal sakte ho). Tour ke baad "Start TAT" dabaoge to test turant shuru ho jaayega.' },
+    { id: 'wat', view: 'setup:wat', target: '#setSel', title: 'WAT: Word Association Test',
+      text: 'Poore set mein 60 shabd hote hain, aur shuru mein har shabd 15 second ke liye aata hai. Shabd dekhte hi jo pehla meaningful sentence mann mein aaye, copy mein likho. Yahan se practice set chunte hain.' },
+    { id: 'srt', view: 'setup:srt', target: '#shuffleT', title: 'SRT: Situation Reaction Test',
+      text: 'Poore set mein 60 situations hoti hain, aur shuru mein poore set ke liye 30 minute. Har situation par apna practical reaction copy mein likho. Yeh Shuffle switch on ho to har baar order badal jaata hai.' },
+    { id: 'ppdt', view: 'ppdt', target: '#ppdtGo', title: 'PPDT',
+      text: 'Ek dhundhli picture 30 second dikhti hai, phir 30 second socho, phir 4 minute mein story apni copy mein likho. Round ke baad saaf picture dikhti hai. Kai pictures ki model stories pehle se hain; baaki ke liye review screen par "Write 5 stories" se AI likh deta hai (AI chahiye: Settings mein key, ya PC par Ollama app).' },
+    { id: 'lecturette', view: 'lecturette', target: '[data-lectwrite]:not([disabled])', title: 'Lecturette',
+      text: 'List ke kisi bhi topic par "Generate lecture" dabao: Wikipedia aur latest news se 3 minute ka speech banta hai, 30 second intro, 2 minute body, 30 second conclusion. Likhte hi lecture khulta hai aur ghadi chal padti hai; baad mein "Open lecture" se dobara khol sakte ho. Iske liye Online lookup on hona chahiye.' },
+    { id: 'topics', view: 'home', target: '[data-tile="topics"]', title: 'Important Topics',
+      text: 'Lecturette aur GD ke study notes, har topic ka ek PDF. Pehli baar internet se Download karo (Online lookup on ho); phir woh bina internet ke bhi khul jaata hai.' },
+    { id: 'digest-pc', only: 'desktop', view: 'home', target: '[data-tile="digest"]', title: 'News Digest',
+      text: 'Current affairs ka PDF: National, International, Defence, Economy samet 12 sections, aur state chuno to uske page bhi. Khabrein internet se aati hain. PC par iske liye Python aur uski libraries chahiye; steps screen par likhe hain.' },
+    { id: 'digest-phone', only: 'phone', view: 'home', target: '[data-tile="digest"]', title: 'News Digest',
+      text: 'Aaj ki khabrein 12 sections mein, aur state chuno to ek aur; bina internet ke pichhla saved edition khulta hai. "Make the PDF" se digest PDF banta hai, aur "Add newspaper PDF" se apna akhbaar bhi usmein jod sakte ho.' },
+    { id: 'timeline', view: 'timeline', target: '#tlSearch', title: 'News Timeline',
+      text: 'Digest ki har khabar apne section mein, aur baad ki follow-up reports usi ke neeche judti jaati hain. Kisi topic ko search karo aur uski poori kahani shuru se dekho. Har naya digest ise aur bharta hai.' },
+    { id: 'paper', view: 'paper', target: '#paperLoadBtn', title: 'Newspaper',
+      text: 'Yahan apna e-paper PDF load karo (text wala PDF; scan ki hui photo-PDF nahi chalegi). App ads hata deta hai, khabron ko sections mein lagata hai, key points aur notes banata hai, aur 30 minute ka reading plan deta hai. Sab kuch isi device par hota hai.' },
+    { id: 'add', view: 'add', target: '#addTatPics', title: 'Add material',
+      text: 'Apne phone ya PC ki pictures add karo (internet nahi chahiye); woh PPDT aur TAT dono mein aa jaati hain. Excel sheet se apne WAT words, SRT situations aur lecture topics bhi jod sakte ho.' },
+    { id: 'bin', view: 'bin', target: '#app .lead', title: 'Bin',
+      text: 'PPDT review par "Take this picture out" se hatayi gayi pictures yahan aati hain; woh PPDT aur TAT dono se bahar rehti hain. "Restore" se wapas la sakte ho. "Delete forever" ya "Empty the bin" se picture hamesha ke liye nikal jaati hai, phir bhi neeche "Undo" se laut sakti hai.' },
+    { id: 'online', view: 'settings', target: '[data-toggle="onlineEnabled"]', title: 'Settings: Online lookup',
+      text: 'Yeh switch on ho to live news, lecture writer, AI, video, Important Topics ka download aur update check chalte hain. Off ho to bhi saare tests bina internet ke chalte rahenge.' },
+    { id: 'aikey', view: 'settings', target: '#aiRow-gemini', title: 'Free AI key: behtar answers',
+      text: 'Tour ke baad: Google Gemini wale hisse mein "Log in / Sign up (free)" dabao, Google se sign in karke "Create API key" dabao, aur key is box mein paste karo. Key sirf isi device par rehti hai, aur Online lookup on hona chahiye. Bina key ke bhi lecture ban jaata hai; key se answers behtar hote hain aur PPDT stories bhi milti hain.' },
+    { id: 'timings', view: 'settings', target: '[data-num="watPerWordSec"]', title: 'Timings badlo',
+      text: 'TAT, WAT, SRT aur PPDT ki timing yahin badal sakte ho, jaise WAT mein har shabd ke seconds. WAT aur SRT ki shuru ki timing asli test jaisi hai; TAT aur PPDT ki apni practice ke hisaab se set kar lo.' },
+    { id: 'finish', view: 'home', target: '', title: 'Bas, tour khatam!',
+      text: 'Ab practice shuru karo. Yeh tour "How to use this app" mein kabhi bhi dobara chala sakte ho; poora video bhi wahin hai (internet chahiye). All the best!' }
+  ];
+  TOUR_STEPS.forEach(function (s) { s.audio = s.id + '.mp3'; });
+
+  function tourSteps() {
+    return TOUR_STEPS.filter(function (s) {
+      return !s.only || (s.only === 'phone') === onPhone();
+    });
+  }
+
+  // The voice clips run about 19 seconds a step.
+  function tourMinutes() {
+    return Math.max(1, Math.round((tourSteps().length * 19) / 60));
+  }
+
+  // The tour's own names for screens that share one S.view: each test's setup
+  // ('setup:tat'), and the start pages of PPDT, Newspaper and Lecturette,
+  // which are opened fresh so a leftover round or an open paper never shows.
+  function tourView() {
+    if (S.view === 'setup' && S.pending) return 'setup:' + S.pending.test;
+    return S.view;
+  }
+
+  function tourOpen(view) {
+    if (view.indexOf('setup:') === 0) return openTile(view.slice(6));
+    if (view === 'ppdt') {
+      stopPpdtTimer();
+      ppdtState().mode = 'setup';
+    }
+    if (view === 'paper') paperState().cur = null;
+    if (view === 'lecturette') {
+      var L = lectState();
+      L.cat = 'all';
+      L.q = '';
+    }
+    goto(view);
+  }
+
+  // Starts the tour from the dashboard. When it ends (finished or skipped) it
+  // is marked as seen, so the first-time invitation does not come back.
+  function startTour(from) {
+    if (!window.SSBTour) {
+      toast('The guided tour did not load. Please restart the app.');
+      return;
+    }
+    if (S.session) return; // never over a running test
+    tourRunning = true; // keeps the "New here?" card off the dashboard meanwhile
+    goto('home');
+    // The tour opens fresh start pages (Newspaper, PPDT, Lecturette, a test's
+    // setup); what was open before comes back when it ends. A PPDT round that
+    // was still ticking is not resumed: it comes back as its start page.
+    var openPaper = paperState().cur;
+    var pp = ppdtState();
+    var keepPpdt = { mode: pp.mode === 'run' ? 'setup' : pp.mode, pic: pp.pic };
+    var lex = lectState();
+    var keepLect = { cat: lex.cat, q: lex.q };
+    var keepPending = S.pending ? { test: S.pending.test, setIndex: S.pending.setIndex, source: S.pending.source } : null;
+    window.SSBTour.start(tourSteps(), {
+      go: tourOpen,
+      view: tourView,
+      audioBase: 'tour/',
+      voice: !(S.config && S.config.tourVoice === false),
+      onVoice: function (on) {
+        S.config.tourVoice = on;
+        window.api.setConfig({ tourVoice: on });
+      },
+      onEnd: function (r) {
+        tourRunning = false;
+        if (openPaper && !paperState().cur) paperState().cur = openPaper;
+        stopPpdtTimer();
+        ppdtState().mode = keepPpdt.mode;
+        ppdtState().pic = keepPpdt.pic;
+        lectState().cat = keepLect.cat;
+        lectState().q = keepLect.q;
+        if (keepPending) Object.assign(S.pending, keepPending);
+        S.config.tourSeen = true;
+        window.api.setConfig({ tourSeen: true });
+        if (r.done) toast('Tour finished. Open "How to use this app" any time to see it again.');
+        goto(from === 'tutorial' ? 'tutorial' : 'home');
+        // Keyboard focus lands somewhere sensible, not on the page itself.
+        var f = from === 'tutorial' ? document.getElementById('tourStart') : appEl.querySelector('.dash-row');
+        if (f) f.focus();
+      }
+    });
+  }
+
+  // A one-time invitation on the dashboard for someone who has not seen the tour.
+  var tourRunning = false;
+  function tourInvite() {
+    var c = S.config || {};
+    if (c.tourSeen || c.tourInviteClosed || tourRunning) return '';
+    return '<div class="card tour-invite" id="tourInvite"><div class="tut-grow"><b>New here?</b> ' +
+      '<span class="small">Take the guided tour: the app shows you every section in Hindi + English, with voice. About ' + tourMinutes() + ' minutes.</span></div>' +
+      '<button class="btn primary sm" id="tourInviteStart">Start the tour</button>' +
+      '<button class="btn ghost sm" id="tourInviteLater">Not now</button></div>';
+  }
+
+  function wireTourInvite() {
+    var go = document.getElementById('tourInviteStart');
+    var later = document.getElementById('tourInviteLater');
+    if (go) go.addEventListener('click', function () { startTour('home'); });
+    if (later) {
+      later.addEventListener('click', function () {
+        S.config.tourInviteClosed = true;
+        window.api.setConfig({ tourInviteClosed: true });
+        var box = document.getElementById('tourInvite');
+        if (box) box.parentNode.removeChild(box);
+        toast('You can start the tour any time from "How to use this app".');
+      });
+    }
+  }
+
+  // The full video, over the whole app (not a box on the page), with a close
+  // button; it tries true full screen, sideways on a phone.
+  var tutPlayerClose = null; // set while the video is open
+  function playTutorialVideo() {
+    if (tutPlayerClose) return;
+    if (!(S.config && S.config.onlineEnabled)) {
+      toast('Turn on Online lookup in Settings to watch the video. The guided tour works without the internet.');
+      return;
+    }
+    var ov = document.createElement('div');
+    ov.className = 'tut-player';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-label', 'Tutorial video');
+    ov.innerHTML =
+      '<video controls autoplay playsinline poster="tutorial-poster.jpg" src="' + TUTORIAL_URL + '"></video>' +
+      (TUTORIAL_CHAPTERS.length
+        ? '<div class="tut-chaps">' + TUTORIAL_CHAPTERS.map(function (c) {
+            return '<button type="button" data-seek="' + c[0] + '">' + Math.floor(c[0] / 60) + ':' + ('0' + (c[0] % 60)).slice(-2) + ' ' + esc(c[1]) + '</button>';
+          }).join('') + '</div>'
+        : '') +
+      '<div class="tut-msg" hidden></div>' +
+      '<button type="button" class="tut-close" aria-label="Close the video" title="Close">&times;</button>';
+    document.body.appendChild(ov);
+    var v = ov.querySelector('video');
+    var msg = ov.querySelector('.tut-msg');
+    var onKey = function (e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }
+    };
+    // Leaving the app pauses the video; the phone's Back button closes it.
+    var onHidden = function () { if (document.hidden) v.pause(); };
+    var close = function () {
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('visibilitychange', onHidden);
+      tutPlayerClose = null;
+      try {
+        v.pause();
+        v.removeAttribute('src');
+        v.load();
+      } catch (_) {}
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+        if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+      } catch (_) {}
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+    };
+    tutPlayerClose = close;
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('visibilitychange', onHidden);
+    ov.querySelector('.tut-close').addEventListener('click', close);
+    v.addEventListener('error', function () {
+      msg.hidden = false;
+      msg.innerHTML = 'The video could not be loaded. Check the internet and try again.<br>' +
+        '<button type="button" class="btn sm" data-external="' + TUTORIAL_PAGE + '">Open it on GitHub</button>';
+      wireExternal(msg);
+    });
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-seek]'), function (b) {
+      b.addEventListener('click', function () {
+        v.currentTime = +b.getAttribute('data-seek');
+        v.play().catch(function () {});
+      });
+    });
+    try {
+      if (ov.requestFullscreen) {
+        ov.requestFullscreen().then(function () {
+          if (onPhone() && screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+        }).catch(function () {});
+      }
+    } catch (_) {}
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  }
+
   function renderTutorial() {
-    var online = !!(S.config && S.config.onlineEnabled);
-    var video = online
-      ? '<div class="tut-video"><video id="tutVideo" controls playsinline preload="none" poster="tutorial-poster.jpg" src="' + TUTORIAL_URL + '"></video></div>' +
-        '<div class="small muted" id="tutVideoNote">Press play to stream the video (it needs the internet; it is not saved on this ' + (onPhone() ? 'phone' : 'computer') + ').</div>'
-      : '<div class="empty">Turn on <b>Online lookup</b> in Settings to watch the video. The written guide below works offline.</div>';
-    var chapters = TUTORIAL_CHAPTERS.length
-      ? '<div class="row tut-chapters">' + TUTORIAL_CHAPTERS.map(function (c) {
-          var m = Math.floor(c[0] / 60);
-          var s = ('0' + (c[0] % 60)).slice(-2);
-          return '<button class="btn ghost sm" data-seek="' + c[0] + '">' + m + ':' + s + ' ' + esc(c[1]) + '</button>';
-        }).join('') + '</div>'
-      : '';
+    // Open works like the dashboard row: a test opens its setup screen.
     var guide = TILES.filter(function (t) { return t.id !== 'tutorial'; }).map(function (t) {
       var m = dashMeta(t);
       return '<div class="card tut-row"><div><b>' + esc(t.label) + '</b><div class="small">' + esc(m.blurb || '') + '</div></div>' +
-        '<button class="btn sm" data-goto="' + t.id + '">Open</button></div>';
+        '<button class="btn sm" data-tileopen="' + t.id + '">Open</button></div>';
     }).join('');
     body(
       '<h1>How to use this app</h1>' +
-      '<p class="lead">Watch the video once (Hindi + English). It shows every section step by step and how to add free AI keys. ' +
-      'The same app runs on the phone and on the PC.</p>' +
-      video + chapters +
-      '<div class="row" style="margin:8px 0 18px"><button class="btn ghost sm" data-external="' + TUTORIAL_PAGE + '">Open the video on GitHub</button></div>' +
+      '<p class="lead">Two ways to learn the app, both in Hindi + English. The same app runs on the phone and on the PC.</p>' +
+      '<div class="card tut-card"><div class="tut-grow"><b>Guided tour</b>' +
+      '<div class="small">The app lights up each section, one step at a time, and explains it, with voice. ' +
+      'About ' + tourMinutes() + ' minutes. Works without the internet. Skip any time.</div></div>' +
+      '<button class="btn primary" id="tourStart">Start the guided tour</button></div>' +
+      '<div class="card tut-card"><img class="tut-thumb" src="tutorial-poster.jpg" alt="" />' +
+      '<div class="tut-grow"><b>Full video</b><div class="small">Every feature, step by step, and how to add free AI keys. ' +
+      'Plays full screen; needs the internet.</div></div>' +
+      '<button class="btn" id="tutPlay">Play the video</button></div>' +
       '<h2>Better answers with free AI keys</h2>' +
       '<div class="card"><ol class="tut-steps">' +
       '<li>Open <b>Settings</b> and turn on <b>Online lookup</b>.</li>' +
@@ -2755,19 +2991,11 @@
       '</ol><button class="btn primary sm" data-goto="settings">Open Settings</button></div>' +
       '<h2>Every section in one line</h2>' + guide
     );
-    var v = document.getElementById('tutVideo');
-    if (v) {
-      v.addEventListener('error', function () {
-        var n = document.getElementById('tutVideoNote');
-        if (n) n.textContent = 'The video could not be loaded. Check the internet, or open it on GitHub with the button below.';
-      });
-      Array.prototype.forEach.call(appEl.querySelectorAll('[data-seek]'), function (b) {
-        b.addEventListener('click', function () {
-          v.currentTime = +b.getAttribute('data-seek');
-          v.play().catch(function () {});
-        });
-      });
-    }
+    document.getElementById('tourStart').addEventListener('click', function () { startTour('tutorial'); });
+    document.getElementById('tutPlay').addEventListener('click', playTutorialVideo);
+    Array.prototype.forEach.call(appEl.querySelectorAll('[data-tileopen]'), function (b) {
+      b.addEventListener('click', function () { openTile(b.getAttribute('data-tileopen')); });
+    });
   }
 
   function wireExternal(root) {
@@ -4130,8 +4358,8 @@
 
     body(
       '<h1>Bin</h1>' +
-        '<p class="lead">Pictures you took out of the TAT test. Nothing here is used by a test, and nothing is ' +
-        'destroyed until you press <b>Delete forever</b>. Restore puts a picture straight back into its source.</p>' +
+        '<p class="lead">Pictures you took out on the PPDT review screen. They stay out of both PPDT and TAT, and nothing is ' +
+        'destroyed until you press <b>Delete forever</b> or <b>Empty the bin</b>. Restore puts a picture straight back into its source.</p>' +
         (bin.length
           ? '<div class="row" style="margin-bottom:14px">' +
             '<span class="chip">' + bin.length + ' picture' + (bin.length === 1 ? '' : 's') + '</span>' +
@@ -4988,7 +5216,7 @@
         '<p class="small muted" style="margin-top:0">Lectures work straight away with no login. PPDT stories read a picture, so they need a provider marked for pictures. To add one, press Log in / Sign up, create a key on its page and paste it here. The first that answers does the writing, so one running out never stops you. Keys stay on this device.</p>' +
         Object.keys(AI_PROVIDERS).filter(function (id) { return !AI_PROVIDERS[id].pc && !AI_PROVIDERS[id].noLogin; }).map(function (id) {
           var a = aiSettings(id);
-          return '<div class="field"><label>' + esc(a.label) + (AI_PROVIDERS[id].vision ? '' : ' <span class="small muted">(text only)</span>') +
+          return '<div class="field" id="aiRow-' + id + '"><label>' + esc(a.label) + (AI_PROVIDERS[id].vision ? '' : ' <span class="small muted">(text only)</span>') +
             '<br><button class="btn sm ghost" data-external="' + esc(AI_PROVIDERS[id].url) + '">Log in / Sign up (free)</button></label>' +
             '<div class="ctl"><input data-aikey="' + id + '" type="password" class="textinput" autocomplete="off" placeholder="' + (AI_BUILT_IN[id] ? 'built in' : 'paste your key') + '" value="' + esc(((S.config.aiKeys || {})[id]) || (id === 'ollama' ? S.config.ollamaKey || '' : '')) + '" />' +
             '<input data-aimodel="' + id + '" class="textinput" autocomplete="off" aria-label="' + esc(a.label) + ' model" value="' + esc(a.model) + '" /></div></div>';
@@ -6674,24 +6902,106 @@
       goto('home');
       return { stateBox: stateBox, timeline: timeline, providers: providers };
     },
-    // How to use this app: first on the dashboard, the video (not loaded until
-    // play), the AI-key steps and one guide row per section.
+    // How to use this app: first on the dashboard, with the tour and video
+    // buttons (no video player on the page itself), the AI-key steps and one
+    // guide row per section; the first-time invitation is on the dashboard.
     tutorialInfo: function () {
       goto('home');
       var firstRow = appEl.querySelector('.dash-row');
+      var invite = !!document.getElementById('tourInvite') && !!document.getElementById('tourInviteStart') && !!document.getElementById('tourInviteLater');
       goto('tutorial');
-      var v = appEl.querySelector('#tutVideo');
+      var thumb = appEl.querySelector('.tut-thumb');
       return {
         first: firstRow ? firstRow.textContent.indexOf('How to use this app') >= 0 : false,
+        invite: invite,
         title: (appEl.querySelector('h1') || {}).textContent,
-        video: !!v,
-        preloadNone: !!v && v.getAttribute('preload') === 'none',
-        poster: v ? v.getAttribute('poster') : '',
-        src: v ? v.getAttribute('src') : '',
+        tourButton: !!document.getElementById('tourStart'),
+        videoButton: !!document.getElementById('tutPlay'),
+        videoOnPage: !!appEl.querySelector('video'),
+        thumb: thumb ? thumb.getAttribute('src') : '',
+        tourLoaded: !!window.SSBTour,
+        tourSteps: tourSteps().length,
         steps: appEl.querySelectorAll('.tut-steps li').length,
         guideRows: appEl.querySelectorAll('.tut-row').length,
         blurbsFilled: Array.prototype.every.call(appEl.querySelectorAll('.tut-row .small'), function (d) { return d.textContent.trim().length > 20; })
       };
+    },
+    // Every step of the guided tour, in order: the screen it opens, whether its
+    // part of the screen was found and lit up, and that the card sits on
+    // screen without covering it. Then Back, the voice switch and Skip/Finish.
+    tourSteps: function () {
+      return tourSteps().map(function (s) { return { id: s.id, audio: s.audio || '' }; });
+    },
+    tourFlow: function () {
+      S.config.tourSeen = false;
+      S.config.tourInviteClosed = false;
+      goto('home');
+      var hadInvite = !!document.getElementById('tourInvite');
+      var startBtn = document.getElementById('tourInviteStart');
+      if (!startBtn) return Promise.resolve({ hadInvite: false, error: 'the first-time invitation was not shown' });
+      startBtn.click();
+      var steps = tourSteps();
+      var seen = [];
+      var settle = function (i) {
+        var t0 = performance.now();
+        return new Promise(function (resolve) {
+          (function poll() {
+            var s = window.SSBTour.state();
+            if (!s) return resolve(null);
+            if (s.i === i && s.settled) return resolve(s);
+            if (performance.now() - t0 > 6000) return resolve(s);
+            setTimeout(poll, 60);
+          })();
+        });
+      };
+      var walk = function (i) {
+        return settle(i).then(function (s) {
+          if (!s) return { error: 'the tour closed at step ' + i };
+          seen.push({ id: s.id, view: S.view, wanted: s.wanted, lit: s.lit, cardOnScreen: s.cardOnScreen, covers: s.covers, room: s.covers ? s.room : undefined });
+          if (i + 1 < steps.length) {
+            window.SSBTour.next();
+            return walk(i + 1);
+          }
+          return null;
+        });
+      };
+      var out = { hadInvite: hadInvite, count: steps.length };
+      return walk(0).then(function (err) {
+        if (err) out.error = err.error;
+        out.seen = seen;
+        out.missing = seen.filter(function (x) { return x.wanted && !x.lit; }).map(function (x) { return x.id; });
+        out.offScreen = seen.filter(function (x) { return !x.cardOnScreen; }).map(function (x) { return x.id; });
+        out.covering = seen.filter(function (x) { return x.covers; }).map(function (x) { return x.id; });
+        // Back one step, then the voice switch, then Finish on the last step.
+        window.SSBTour.back();
+        return settle(steps.length - 2);
+      }).then(function (s) {
+        out.backWorks = !!s && s.i === steps.length - 2;
+        var before = s && s.voice;
+        document.getElementById('tourVoice').click();
+        out.voiceToggles = !!window.SSBTour.state() && window.SSBTour.state().voice === !before && S.config.tourVoice === !before;
+        document.getElementById('tourVoice').click();
+        window.SSBTour.next();
+        return settle(steps.length - 1);
+      }).then(function () {
+        document.getElementById('tourNext').click();
+        out.closed = !window.SSBTour.active() && !document.getElementById('tour');
+        out.seenSaved = S.config.tourSeen === true;
+        goto('home');
+        out.inviteGone = !document.getElementById('tourInvite');
+        // Skip from the middle closes it too, from the How to use screen.
+        goto('tutorial');
+        document.getElementById('tourStart').click();
+        return settle(0);
+      }).then(function () {
+        window.SSBTour.next();
+        return settle(1);
+      }).then(function () {
+        document.getElementById('tourSkip').click();
+        out.skipCloses = !window.SSBTour.active() && !document.getElementById('tour');
+        out.backToTutorial = S.view === 'tutorial';
+        return out;
+      });
     },
     // Newspaper: the bundled test paper is analysed, saved, shown, its notes
     // and Line opened, then deleted again.
@@ -7598,6 +7908,15 @@
   // app. A screen returns to the dashboard; a running test asks before it is
   // thrown away; only the dashboard lets the press leave the app.
   window.__ssbBack = function () {
+    // The phone's Back button closes the tutorial video, then the guided tour (like Skip).
+    if (tutPlayerClose) {
+      tutPlayerClose();
+      return true;
+    }
+    if (window.SSBTour && window.SSBTour.active()) {
+      window.SSBTour.skip();
+      return true;
+    }
     if (S.view === 'home') return false;
     var running = !!S.session;
     var lect = S.view === 'lecturette' && lectState().run;
