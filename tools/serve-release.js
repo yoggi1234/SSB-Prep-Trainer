@@ -53,7 +53,7 @@ function indexPage() {
         '</a><span>' +
         mb +
         ' MB · ' +
-        (portable ? 'no install needed' : 'installer') +
+        (/\.zip$/i.test(n) ? 'unzip and run; works with Smart App Control' : portable ? 'no install needed' : 'installer') +
         (when ? ' · built ' + when : '') +
         '</span></li>'
       );

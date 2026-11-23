@@ -57,10 +57,18 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
-      ]
+      ],
+      "artifactName": "SSB-Prep-Trainer-${version}-win-${arch}.${ext}"
     },
     "nsis": {
+      "artifactName": "${productName} Setup ${version}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

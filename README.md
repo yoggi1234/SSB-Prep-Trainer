@@ -35,11 +35,12 @@ what is being read on launch. The dashboard tiles are frosted green glass.
 
 | Format | Size | What it does |
 |--------|------|--------------|
+| **Windows .zip** | 175 MB | Right-click → **Extract All**, then run **SSB Prep Trainer.exe** in the extracted folder. Nothing is installed. Use this if Windows **Smart App Control** blocks the .exe files. |
 | **Portable .exe** | 200 MB | Single file. Put it anywhere and double-click. Nothing is installed. |
 | **Installer .exe** | 200 MB | Choose the folder; creates Desktop and Start Menu shortcuts, plus an uninstaller in Windows Settings. |
 | **Android APK** | 14 MB | [Download from Releases](https://github.com/yoggi1234/SSB-Prep-Trainer/releases/latest) and sideload it. Unsigned debug build; see *Build the Android app* below. |
 
-**Important:** The build is unsigned. Windows may show "Windows protected your PC" on first run. Click **More info → Run anyway** — this is expected and not a virus warning.
+**Important:** The build is unsigned. Windows may show "Windows protected your PC" on first run. Click **More info → Run anyway** — this is expected and not a virus warning. If instead you see "Smart App Control blocked an app that may be unsafe" (no Run anyway button), download the **Windows .zip** instead: Smart App Control blocks the unsigned single-file .exe, but the unzipped app runs.
 
 ## Run it from source
 
@@ -57,6 +58,7 @@ npm run dist
 Output lands in `release/`:
 - `SSB Prep Trainer Setup 1.0.0.exe` — installer
 - `SSB-Prep-Trainer-1.0.0-portable.exe` — portable .exe
+- `SSB-Prep-Trainer-1.0.0-win-x64.zip` — the unpacked app zipped (runs under Smart App Control)
 
 The build is unsigned, so Windows SmartScreen may show "Windows protected your PC" the first time. Choose **More info → Run anyway**.
 
