@@ -5,6 +5,24 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — Custom WAT/TAT practice; a MASTER EXE beside the user EXE
+
+**Custom practice (WAT and TAT set screens).** A "Custom practice" card: how many words (10–60) or
+pictures (3–11), and a theme. Words are drawn from every WAT set at once (bundled, "(update)" and your own),
+pictures from every picture in the TAT/PPDT pool; the per-word / per-picture clock is unchanged, so 20 words
+take 20 × the word time (the card shows the total). WAT themes are hand-sorted lists of the 620 bundled
+words (`WAT_THEMES` in app.js): positive 162, negative 146, social 93, OLQ 95, armed forces 61; a word may be
+in more than one, and words you add yourself appear under "All words" only. TAT themes come from the 53
+pictures that have a written description in data/ppdt-stories.json (`TAT_THEMES`): society 23, family 18,
+outdoors 16, study/work 11, uniform 6 (46 themed); the other pictures are under "All pictures". Each theme
+shows how many it holds; the choice is remembered (`customWat`, `customTat`).
+
+**Master EXE.** `isMasterPc()` is also true when the EXE's own file name contains "master"
+(`PORTABLE_EXECUTABLE_FILE` for the portable EXE). The build now writes `SSB-Prep-Trainer-<v>-MASTER.exe`
+(the same file, renamed) next to the user `-portable.exe`. The MASTER file in the settings folder still works.
+
+---
+
 ## 2026-11-25 — AI lecturette: names and quotes must come from the sources
 
 `lectVerified` used to drop only sentences with a number the sources did not hold, so a made-up name

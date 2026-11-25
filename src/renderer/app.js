@@ -694,6 +694,108 @@
 
   /* ----------------------------------------------------------- setup view */
 
+  // Practice themes. WAT: the bundled words, sorted by hand (a word may be in more
+  // than one). TAT: the pictures that have a written description (data/ppdt-stories.json),
+  // sorted by what the description says. Made by D:\Claude\work: regenerate when those files change.
+  var WAT_THEMES = {"positive": ["ability", "abundant", "accomplish", "achieve", "adaptability", "admire", "advantage", "adventure", "adventurous", "affection", "affluent", "agree", "ahead", "alert", "ambition", "ample", "appreciate", "assist", "award", "awesome", "beauty", "best", "bold", "brave", "bravery", "bright", "candid", "care", "chance", "character", "charity", "cheerful", "clever", "co-operation", "comfort", "confidence", "conquest", "courage", "curiosity", "decent", "determination", "develop", "discipline", "discover", "duty", "earn", "education", "encourage", "encouragement", "enjoy", "faith", "favour", "fit", "fortune", "freedom", "friend", "friendship", "glow", "goal", "good", "grace", "greatness", "growth", "guts", "happiness", "happy", "hard work", "hardwork", "help", "heritage", "hero", "honest", "honesty", "honour", "hope", "humanity", "humble", "imagination", "improve", "improvement", "initiative", "innovation", "inspiration", "integrity", "intelligence", "joy", "judicious", "justice", "kind", "knowledge", "laughing", "laughter", "leader", "leadership", "learning", "literacy", "love", "loyal", "luck", "mature", "mercy", "merit", "motivation", "noble", "opportunity", "optimist", "organise", "overcome", "patience", "patriotism", "peace", "politeness", "popular", "power", "praise", "precious", "pride", "progress", "prosperity", "protect", "punctuality", "purpose", "quality", "quick", "recognition", "regular", "respect", "responsible", "reward", "sacrifice", "satisfaction", "save", "secure", "self control", "self respect", "service", "shine", "solution", "solve", "spirit", "stable", "stamina", "strength", "success", "sympathy", "systematic", "tact", "team", "thank", "thrill", "together", "trust", "truth", "understanding", "unity", "valour", "value", "victory", "virtue", "win", "zeal", "zenith"], "negative": ["abstain", "accident", "accuse", "afraid", "aggression", "aggressive", "alcohol", "alone", "aloof", "anger", "angry", "annoy", "anxious", "apathy", "argument", "avenge", "bad", "bitter", "blind", "blow", "bluff", "blunder", "boast", "bomb", "bribe", "burn", "calamity", "cancel", "careless", "compel", "complaint", "conflict", "confusion", "corruption", "coward", "craze", "criticise", "criticism", "crook", "cry", "curse", "danger", "dark", "death", "defeat", "delay", "dengue", "deny", "depression", "destroy", "deteriorate", "die", "difficult", "disaster", "dislike", "dismiss", "disobey", "dispute", "doubt", "empty", "enemy", "error", "escape", "evil", "exaggerate", "excuse", "exploit", "failure", "fake", "fault", "fear", "fool", "foul", "ghost", "hangry", "hate", "helpless", "hesitate", "hide", "hijack", "hindrance", "hungry", "hurdle", "hurry", "idle", "illegal", "impossible", "injustice", "interference", "irresponsible", "irritate", "jealous", "kill", "lazy", "lie", "lies", "lone", "lonely", "lose", "lost", "mad", "mischief", "mistakes", "misunderstanding", "mutation", "naughty", "neglect", "nervous", "pain", "peep", "poor", "pressure", "problem", "punishment", "revenge", "rigid", "riot", "rogue", "sad", "selfish", "shy", "sick", "sorry", "steal", "stress", "struggle", "stupid", "suspend", "tear", "tension", "thief", "threat", "timid", "tired", "tiredness", "tragedy", "ugly", "unable", "vice", "war", "waste", "weak", "weakness", "weep", "withdraw", "worry"], "social": ["adults", "affection", "ambassador", "assist", "baby", "behave", "behaviour", "bribe", "business", "care", "charity", "co-education", "co-operation", "college", "communication", "company", "complaint", "concern", "conference", "corruption", "country", "crowd", "democracy", "discussion", "dispute", "doctor", "education", "election", "employment", "family", "father", "fellow", "freedom", "friend", "friends", "friendship", "government", "governor", "group", "help", "heritage", "home", "humanity", "identity", "india", "injustice", "interference", "invite", "judge", "junior", "justice", "kind", "language", "law", "literacy", "meet", "meeting", "minister", "money", "mother", "movement", "nation", "newspaper", "organization", "party", "patriotism", "person", "politeness", "poor", "property", "respect", "responsibility", "revolution", "rights", "riot", "sacrifice", "senior", "service", "share", "sister", "social", "stranger", "sympathy", "teacher", "team", "together", "trust", "understanding", "union", "unity", "women", "world", "youth"], "olq": ["ability", "accomplish", "achieve", "adaptability", "adventure", "adventurous", "afraid", "aim", "alert", "bold", "brave", "bravery", "careless", "challenge", "cheerful", "co-operation", "command", "communication", "confidence", "convince", "courage", "coward", "curiosity", "decide", "decision", "defeat", "determination", "difficult", "discipline", "discover", "duties", "duty", "encourage", "failure", "fear", "goal", "guts", "hard work", "hardwork", "help", "hero", "hesitate", "honest", "honesty", "imagination", "improve", "influence", "initiative", "innovation", "integrity", "intelligence", "irresponsible", "judicious", "lazy", "lead", "leader", "leadership", "loyal", "mature", "motivation", "nervous", "organise", "organization", "overcome", "patience", "persuade", "plan", "planning", "pressure", "punctuality", "quick", "responsibility", "responsible", "risk", "sacrifice", "self control", "self respect", "solution", "solve", "speed", "spirit", "stamina", "strength", "stress", "struggle", "systematic", "tackle", "tact", "team", "trust", "understanding", "unity", "valour", "weakness", "zeal"], "forces": ["aggression", "air force", "army", "atom", "battle", "battlefield", "blood", "bomb", "border", "brave", "bravery", "chief", "command", "conflict", "conquest", "courage", "danger", "death", "defeat", "defend", "discipline", "disobey", "duty", "enemy", "escape", "fight", "fire", "flying", "gun", "hero", "hijack", "honour", "india", "junior", "kill", "leader", "leadership", "nation", "navy", "obey", "officer", "operation", "patriotism", "peace", "protect", "rank", "revolution", "riot", "risk", "sacrifice", "secure", "senior", "soldier", "team", "threat", "uniform", "unit", "valour", "victory", "war", "weapon"]};
+  var WAT_THEME_LABELS = { all: 'All words', positive: 'Positive words', negative: 'Negative words', social: 'Social words', olq: 'OLQ words (officer-like qualities)', forces: 'Armed forces words' };
+  var TAT_THEMES = {"ppdt-003": ["uniform"], "ppdt-004": ["social"], "ppdt-002": ["social"], "ppdt-006": ["social"], "ppdt-007": ["social", "family"], "ppdt-008": ["family"], "ppdt-009": ["social"], "ppdt-010": ["family"], "ppdt-011": ["outdoor", "social"], "ppdt-012": ["outdoor", "family"], "ppdt-013": ["outdoor"], "ppdt-014": ["social"], "ppdt-015": ["social", "family"], "ppdt-016": ["family"], "ppdt-017": ["social", "family", "study"], "ppdt-018": ["social", "family", "study"], "ppdt-020": ["social", "study"], "ppdt-021": ["family"], "ppdt-022": ["family"], "ppdt-023": ["uniform", "outdoor", "social"], "ppdt-024": ["outdoor", "social"], "ppdt-025": ["family", "study"], "ppdt-029": ["uniform", "study"], "ppdt-030": ["social"], "ppdt-031": ["family", "study"], "ppdt-033": ["outdoor", "family"], "ppdt-035": ["social"], "ppdt-036": ["family", "study"], "ppdt-037": ["outdoor"], "ppdt-038": ["social"], "ppdt-039": ["social"], "ppdt-040": ["outdoor"], "ppdt-041": ["outdoor", "social"], "ppdt-042": ["family"], "ppdt-043": ["outdoor", "social"], "ppdt-044": ["family", "study"], "ppdt-045": ["family"], "ppdt-046": ["outdoor"], "ppdt-049": ["uniform", "outdoor"], "ppdt-051": ["uniform", "outdoor", "social", "study"], "ppdt-052": ["social", "family", "study"], "ppdt-053": ["outdoor"], "ppdt-054": ["outdoor", "social"], "ppdt-055": ["outdoor", "social"], "ppdt-056": ["uniform"], "ppdt-057": ["study"]};
+  var TAT_THEME_LABELS = { all: 'All pictures', uniform: 'Uniform and duty', outdoor: 'Outdoors and adventure', social: 'Society and people', family: 'Home and family', study: 'Study and work' };
+
+  // Custom practice: words (or pictures) drawn from every set at once, as many
+  // as you choose, optionally from one theme. The per-word (per-picture) clock
+  // is unchanged, so 20 words take 20 x the word time.
+  function customOpts(test) {
+    var key = test === 'wat' ? 'customWat' : 'customTat';
+    var c = (S.config && S.config[key]) || {};
+    return { count: c.count || (test === 'wat' ? 20 : 6), theme: c.theme || 'all' };
+  }
+
+  function watPool(theme) {
+    var seen = {};
+    var out = [];
+    allSets('wat').forEach(function (s) {
+      (s.items || []).forEach(function (w) {
+        var k = String(w).trim().toLowerCase();
+        if (!k || seen[k]) return;
+        seen[k] = 1;
+        if (theme === 'all' || (WAT_THEMES[theme] || []).indexOf(k) >= 0) out.push(String(w).trim());
+      });
+    });
+    return out;
+  }
+
+  function tatThemePool(theme) {
+    return picturePool().filter(function (p) {
+      return theme === 'all' || (TAT_THEMES[p.id] || []).indexOf(theme) >= 0;
+    });
+  }
+
+  function customCardHtml(test) {
+    var o = customOpts(test);
+    var isWat = test === 'wat';
+    var labels = isWat ? WAT_THEME_LABELS : TAT_THEME_LABELS;
+    var counts = isWat ? [10, 15, 20, 30, 40, 60] : [3, 4, 6, 8, 11];
+    var avail = isWat ? watPool(o.theme).length : tatThemePool(o.theme).length;
+    var n = Math.min(o.count, avail);
+    var secs = isWat ? n * S.config.watPerWordSec : n * (S.config.tatViewSec + tatThinkSec() + S.config.tatWriteSec);
+    var mins = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+    return '<h2>Custom practice</h2>' +
+      '<div class="card" id="customCard">' +
+      '<p class="small muted" style="margin-top:0">' + (isWat
+        ? 'Words are mixed from every set (yours and the updates too). Pick how many and a theme.'
+        : 'Pictures are mixed from every picture you have. Pick how many and a theme.') + '</p>' +
+      '<div class="field"><label>' + (isWat ? 'Number of words' : 'Number of pictures') + '</label><div class="ctl"><select id="customCount">' +
+      counts.map(function (c) { return '<option value="' + c + '"' + (c === o.count ? ' selected' : '') + '>' + c + '</option>'; }).join('') +
+      '</select></div></div>' +
+      '<div class="field"><label>Theme</label><div class="ctl"><select id="customTheme">' +
+      Object.keys(labels).map(function (k) {
+        var have = isWat ? watPool(k).length : tatThemePool(k).length;
+        return '<option value="' + k + '"' + (k === o.theme ? ' selected' : '') + (have ? '' : ' disabled') + '>' + esc(labels[k]) + ' (' + have + ')</option>';
+      }).join('') + '</select></div></div>' +
+      '<div class="row" style="align-items:center"><button class="btn primary" id="customGo"' + (n ? '' : ' disabled') + '>Start custom ' + test.toUpperCase() + '</button>' +
+      '<span class="small muted" id="customInfo">' + (n
+        ? n + (isWat ? ' words' : ' pictures') + (n < o.count ? ' (only ' + avail + ' in this theme)' : '') + ' · about ' + mins + ' in all'
+        : 'No ' + (isWat ? 'words' : 'pictures') + ' in this theme yet.') + '</span></div>' +
+      '</div>';
+  }
+
+  function wireCustomCard(test) {
+    var key = test === 'wat' ? 'customWat' : 'customTat';
+    var cs = document.getElementById('customCount');
+    if (!cs) return;
+    var save = function () {
+      var c = {
+        count: parseInt(cs.value, 10) || 20,
+        theme: document.getElementById('customTheme').value || 'all'
+      };
+      S.config[key] = c;
+      window.api.setConfig({ [key]: c });
+      render();
+    };
+    cs.addEventListener('change', save);
+    document.getElementById('customTheme').addEventListener('change', save);
+    document.getElementById('customGo').addEventListener('click', function () { startCustom(test); });
+  }
+
+  function startCustom(test) {
+    var o = customOpts(test);
+    var label = (test === 'wat' ? WAT_THEME_LABELS : TAT_THEME_LABELS)[o.theme] || 'All';
+    if (test === 'wat') {
+      var words = shuffle(watPool(o.theme)).slice(0, o.count);
+      if (!words.length) { toast('No words in this theme yet.'); return; }
+      startWithSet('wat', { name: 'Custom: ' + label + ' · ' + words.length + ' words', items: words, custom: true });
+      return;
+    }
+    var pics = shuffle(tatThemePool(o.theme)).slice(0, o.count);
+    if (!pics.length) { toast('No pictures in this theme yet.'); return; }
+    var slides = pics.map(function (p, i) {
+      return { kind: 'image', src: fileUrl(p.file), prompt: p.title || ('Picture ' + (i + 1)), response: '' };
+    });
+    slides.push({ kind: 'blank', prompt: 'Blank slide — write your own story', response: '' });
+    startWithSet('tat', { name: 'Custom: ' + label + ' · ' + pics.length + ' pictures', items: [], custom: true }, slides);
+  }
+
   function renderSetup() {
     var test = S.pending.test;
     var m = META[test];
@@ -765,9 +867,11 @@
         '<button class="btn primary" id="go">Start ' + m.code + '</button>' +
         '<button class="btn" id="goSettings">Edit timings</button>' +
         '</div>' +
+        (test === 'srt' ? '' : customCardHtml(test)) +
         shareCard
     );
     wireShare();
+    if (test !== 'srt') wireCustomCard(test);
 
     var back = document.getElementById('back');
     if (back) back.addEventListener('click', function () { goto('home'); });
@@ -885,6 +989,11 @@
       toast('That practice set is unavailable');
       return;
     }
+    startWithSet(test, set);
+  }
+
+  // slides: ready-made TAT slides (custom practice); otherwise they are drawn here.
+  function startWithSet(test, set, slides) {
     var items;
 
     if (test === 'wat') {
@@ -894,7 +1003,7 @@
       items = set.items.map(function (s) { return { prompt: s, response: '' }; });
       if (S.config.shuffleSRT) items = shuffle(items);
     } else {
-      items = buildTatSlides(set);
+      items = slides || buildTatSlides(set);
     }
 
     S.session = {
