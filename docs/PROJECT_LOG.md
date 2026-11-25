@@ -5,6 +5,20 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — Smoke: lecturette checks wait for the lecture to start
+
+`lectureStart(0)` opens a topic with no speech yet, so the app first writes one (Wikipedia facts and
+recent news are fetched online) and only then starts the run. The smoke run checked after a fixed 500 ms,
+so whether the lecturette checks passed depended on the network; when they failed, every later
+lecturette step failed with them. The run now waits up to 30 s for the lecture to begin (it took
+1.2–1.6 s in three runs here). With that, "a lecturette starts", "pausing freezes the lecturette clock",
+"the body phase runs" and "finishing shows a summary" passed in all three runs and are no longer on the
+retired list, so a real break there counts as a failure again. Still retired, failing in all three runs
+and failing before this change: "the lecturette fits the window and re-flows", "the intro shows
+meaning, history and origin", "the conclusion asks for challenges, precautions and an opinion".
+
+---
+
 ## 2026-11-25 — 1.0.26 (third build): clean newspaper stories, "Think about it" answers
 
 **Mixed columns (src/renderer/paper.js, segment).** A wide headline used to take every line below it that
