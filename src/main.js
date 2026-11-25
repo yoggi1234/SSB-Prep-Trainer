@@ -1270,6 +1270,17 @@ const CONTENT_BRANCH = 'content';
 const CONTENT_FILE = 'pack.json';
 const CONTENT_API = 'https://api.github.com/repos/' + CONTENT_REPO;
 
+// Only the owner's PC may publish. It is marked by an empty file named MASTER
+// in the app's settings folder (%APPDATA%\SSB Prep Trainer). Copies given to
+// other people never have it, so they show Refresh content but no Publish card.
+// The self-test runs as master so it can check the card.
+function isMasterPc() {
+  if (SMOKE) return true;
+  try { return fs.existsSync(path.join(app.getPath('userData'), 'MASTER')); } catch (_) { return false; }
+}
+
+ipcMain.handle('content:isMaster', () => isMasterPc());
+
 function validPack(p) {
   if (!p || p.format !== 1 || !(p.version > 0)) return false;
   return ['wat', 'srt'].every((k) => Array.isArray(p[k]) && p[k].every((x) =>
@@ -1304,6 +1315,7 @@ ipcMain.handle('content:fetch', async () => {
 });
 
 ipcMain.handle('content:publish', async (_e, payload) => {
+  if (!isMasterPc()) return { ok: false, error: 'not-master' };
   if (!onlineAllowed()) return { ok: false, error: 'offline' };
   const token = String(getStore().config.masterToken || '').trim();
   if (!token) return { ok: false, error: 'no-token' };

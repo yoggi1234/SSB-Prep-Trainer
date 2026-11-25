@@ -2216,7 +2216,8 @@
     return '<ol class="tl-events">' + t.events.map(function (e) {
       return '<li><div class="small muted">' + esc(e.date) + (e.sources && e.sources.length ? ' · ' + esc(e.sources.slice(0, 3).join(', ')) : '') + '</div>' +
         '<b>' + esc(e.headline) + '</b>' + (e.text ? '<p>' + esc(e.text) + '</p>' : '') +
-        (/^https?:\/\//.test(e.link || '') ? '<button class="btn sm ghost" data-external="' + esc(e.link) + '">Open the source</button>' : '') + '</li>';
+        (/^https?:\/\//.test(e.link || '') ? '<button class="btn sm ghost" data-external="' + esc(e.link) + '">Open the source</button>' : '') +
+        (e.paperArt ? '<button class="btn sm ghost" data-tlcut="' + esc(e.paperArt) + '">Show the cut-out</button><div class="paper-cut" hidden></div>' : '') + '</li>';
     }).join('') + '</ol>';
   }
 
@@ -2230,8 +2231,97 @@
 
   function loadTimeline() {
     return Promise.resolve(window.api.timelineLoad ? window.api.timelineLoad() : []).then(function (list) {
-      S.timeline = list || [];
+      return paperIntoTimeline(list || []).catch(function () { return list || []; });
+    }).then(function (list) {
+      S.timeline = list;
     }).catch(function () { S.timeline = []; });
+  }
+
+  // The saved newspapers add their stories to the timeline: a story that
+  // matches an existing thread (most of its headline words are shared) joins it
+  // as a follow-up, the rest start their own thread under the paper's section.
+  // Each such event keeps its article id, so the timeline can show the cut-out.
+  var TL_STOP = ['with', 'from', 'that', 'this', 'will', 'after', 'over', 'into', 'says', 'said', 'amid', 'more', 'than', 'have', 'been', 'their', 'about', 'india'];
+  function tlWords(s) {
+    var seen = {};
+    return (String(s || '').toLowerCase().match(/[a-z]{4,}/g) || []).filter(function (w) {
+      if (TL_STOP.indexOf(w) >= 0 || seen[w]) return false;
+      seen[w] = 1;
+      return true;
+    });
+  }
+  function tlSame(a, b) {
+    if (a.length < 2 || b.length < 2) return false;
+    var shared = a.filter(function (w) { return b.indexOf(w) >= 0; }).length;
+    return shared >= 2 && shared / Math.min(a.length, b.length) >= 0.6;
+  }
+
+  function paperIntoTimeline(list) {
+    var SP = window.SSBPaper;
+    if (!SP || !SP.db || !SP.db.all) return Promise.resolve(list);
+    return SP.db.all().then(function (papers) {
+      var threads = list.map(function (t) {
+        return { section: t.section, title: t.title, id: t.id, events: t.events.slice(), words: tlWords(t.events.map(function (e) { return e.headline; }).join(' ')) };
+      });
+      S.tlArts = {};
+      (papers || []).sort(function (a, b) { return a.addedAt - b.addedAt; }).forEach(function (p) {
+        var date = new Date(p.addedAt).toISOString().slice(0, 10);
+        var name = String(p.name || 'Newspaper').replace(/\.pdf$/i, '');
+        (p.articles || []).forEach(function (a) {
+          if (!a || a.brief || !a.headline || (a.words || 0) < 120 || (a.priority || 0) < 45) return;
+          S.tlArts[a.id] = a;
+          var ev = { date: date, headline: a.headline, text: (a.points && a.points[0]) || '', sources: [name + ', page ' + a.page], paperArt: a.id };
+          var w = tlWords(a.headline);
+          var hit = threads.filter(function (t) { return tlSame(w, t.words); })[0];
+          if (hit) {
+            if (hit.events.some(function (e) { return e.headline === ev.headline; })) return;
+            hit.events.push(ev);
+            hit.events.sort(function (x, y) { return String(x.date).localeCompare(String(y.date)); });
+            hit.words = hit.words.concat(w.filter(function (x) { return hit.words.indexOf(x) < 0; }));
+          } else {
+            threads.push({ section: a.sectionLabel || 'Newspaper', title: a.headline, id: 'paper-' + a.id, events: [ev], words: w });
+          }
+        });
+      });
+      return threads.map(function (t) { return { section: t.section, title: t.title, id: t.id, events: t.events }; });
+    });
+  }
+
+  // Opens the newspaper cut-out of one timeline event in place.
+  function wireTimelineCuts(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-tlcut]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-tlcut');
+        var a = S.tlArts && S.tlArts[id];
+        var holder = b.nextElementSibling;
+        if (!a || !holder) return;
+        if (!holder.hidden) { holder.hidden = true; b.textContent = 'Show the cut-out'; return; }
+        holder.hidden = false;
+        b.textContent = 'Hide the cut-out';
+        if (holder.getAttribute('data-done')) return;
+        holder.setAttribute('data-done', '1');
+        holder.innerHTML = '<span class="small muted">Loading the cut-out…</span>';
+        window.SSBPaper.db.cut(id).then(function (c) {
+          if (!c || !c.blob) {
+            holder.innerHTML = '<span class="small muted">No cut-out kept for this story (pictures are kept for the newest 5 papers only).</span>';
+            return;
+          }
+          var url = URL.createObjectURL(c.blob);
+          holder.innerHTML = paperCutHtml(a, url, c.w);
+          var wrap = holder.querySelector('.cut-wrap');
+          holder.querySelector('[data-cutmarks]').addEventListener('click', function (e) {
+            var off = wrap.classList.toggle('nomarks');
+            e.target.textContent = off ? 'Show marks' : 'Hide marks';
+          });
+          holder.querySelector('[data-cutzoom]').addEventListener('click', function (e) {
+            var on = wrap.classList.toggle('zoomed');
+            e.target.textContent = on ? 'Zoom out' : 'Zoom in';
+          });
+        }, function () {
+          holder.innerHTML = '<span class="small muted">The cut-out could not be opened.</span>';
+        });
+      });
+    });
   }
 
   function renderTimeline() {
@@ -2250,7 +2340,7 @@
     }).sort(function (a, b) { return timelineLast(b).localeCompare(timelineLast(a)) || b.events.length - a.events.length; });
     body(
       '<h1>News Timeline</h1>' +
-      '<p class="lead">Every story from your digests, section by section. A later report on the same story is added under it as a follow-up.</p>' +
+      '<p class="lead">Every story from your digests and your newspapers (high and medium priority), section by section. A later report on the same story is added under it as a follow-up; a newspaper story has its cut-out one tap away.</p>' +
       '<div class="tabs">' + Object.keys(counts).map(function (s) {
         return '<button class="navlink' + (s === V.section ? ' active' : '') + '" data-tlsec="' + esc(s) + '">' + esc(s) + ' (' + counts[s] + ')</button>';
       }).join('') + '</div>' +
@@ -2266,6 +2356,7 @@
     box.addEventListener('change', function () { V.q = box.value; renderTimeline(); });
     document.getElementById('tlOnly').addEventListener('change', function (e) { V.only = e.target.checked; renderTimeline(); });
     wireExternal(appEl);
+    wireTimelineCuts(appEl);
   }
 
   /* ------------------------------------------- Important Topics Database */
@@ -2506,7 +2597,7 @@
   }
 
   function paperAiHtml(text) {
-    return '<div class="paper-ai-text">' + esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>') + '</div>' +
+    return '<div class="paper-ai-text">' + esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[\s(–-])\*([^*\s][^*\n]*?[^*\s]|[^*\s])\*(?=[\s).,;:]|$)/gm, '$1<i>$2</i>').replace(/\n/g, '<br>') + '</div>' +
       '<div class="small muted">Written by an AI from the story\'s text and the latest headlines. Check any fact against the cut-out above before you use it.</div>';
   }
 
@@ -2799,6 +2890,7 @@
         if (!res.paper.articles.length) throw new Error('no stories could be found in this PDF');
         say('Saving…');
         return window.SSBPaper.db.save(res.paper).then(function () {
+          S.timeline = null; // the new paper's stories join the timeline next time it opens
           if (res.cutting) {
             P.cutting = { id: res.paper.id, n: 0, total: 0 };
             res.cutting.then(function (made) {
@@ -2826,6 +2918,25 @@
         toast('Could not read that PDF: ' + ((err && err.message) || 'unknown error'));
         if (S.view === 'paper') renderPaper();
       });
+  }
+
+  // A paper saved by an older version has no short forms, quotes, "other side"
+  // or the fuller fact lines. They come from the story's own text, so they are
+  // made again here when the paper is opened (in memory; nothing is lost).
+  function paperUpgrade(p) {
+    var x = window.SSBPaper && window.SSBPaper._x;
+    if (!x || !p || !Array.isArray(p.articles)) return;
+    p.articles.forEach(function (a) {
+      if (!a || typeof a.text !== 'string' || a.quotes !== undefined) return;
+      try {
+        a.points = a.points || [];
+        a.facts = x.facts(a.text, a.points);
+        a.glossary = x.glossary(a.text);
+        a.quotes = x.quotes(a.text);
+        a.other = x.otherSide(a.text, a.points.concat(a.facts));
+        a.places = a.places || x.placesIn((a.headline || '') + ' ' + a.text);
+      } catch (_) { /* keep the saved notes as they were */ }
+    });
   }
 
   function renderPaper() {
@@ -2867,6 +2978,7 @@
       b.addEventListener('click', function () {
         SP.db.get(b.getAttribute('data-popen')).then(function (p) {
           if (!p) return;
+          paperUpgrade(p);
           P.cur = p;
           P.tab = 'plan';
           P.hist = null;
@@ -3445,7 +3557,9 @@
           (dup.length ? ':\n' + dup.map(function (d) { return d.topic === d.same ? d.topic : d.topic + '  =  ' + d.same; }).join('\n') : '.');
       });
     }
-    var cleaned = uniqueTexts(rows.map(function (r) { return r[0]; }));
+    // A sheet's own numbering ("41. He was...") would clash with the app's
+    // "Situation 1 of 60" once the order is shuffled, so it is dropped.
+    var cleaned = uniqueTexts(rows.map(function (r) { return String(r[0]).replace(/^\s*\d{1,3}\s*[.)]\s+/, ''); }));
     var builtIn = {};
     builtinSets(kind).forEach(function (s) { s.items.forEach(function (x) { builtIn[textKey(x)] = 1; }); });
     var items = cleaned.filter(function (x) { return !builtIn[textKey(x)]; });
@@ -4805,7 +4919,7 @@
   }
 
   function masterCardHtml() {
-    if (onPhone() || !window.api.contentPublish) return '';
+    if (onPhone() || !window.api.contentPublish || !S.isMaster) return '';
     var pk = masterPack();
     var has = !!(S.config.masterToken);
     var last = S.config.masterPublished;
@@ -8140,7 +8254,8 @@
       ['Reading the classic set', function () { return window.api.tatClassic(); }, 'classic'],
       ['Reading the PPDT pictures', function () { return window.api.ppdtList ? window.api.ppdtList() : []; }, 'ppdt'],
       ['Checking removed pictures', function () { return window.api.tatBin(); }, 'bin'],
-      ['Checking deleted pictures', function () { return window.api.tatGoneList(); }, 'gone']
+      ['Checking deleted pictures', function () { return window.api.tatGoneList(); }, 'gone'],
+      ['Checking for the master copy', function () { return window.api.contentIsMaster ? window.api.contentIsMaster() : false; }, 'master']
     ];
     var got = {};
     var at = 0;
@@ -8174,6 +8289,7 @@
         S.tatBin = res.bin || [];
         S.tatGoneItems = res.gone || [];
         S.tatGone = S.tatGoneItems.length;
+        S.isMaster = res.master === true;
         bootProgress(96, 'Drawing the dashboard');
         render();
         bootDone();

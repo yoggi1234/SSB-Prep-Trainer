@@ -5,6 +5,34 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — 1.0.26 (second build): master-only publishing, newspaper stories in the News Timeline
+
+**Publish is for the owner's PC only.** The "Master copy" card and `content:publish` work only when an
+empty file named `MASTER` sits in the app's settings folder (`%APPDATA%\SSB Prep Trainer`). Copies given
+to other people show Refresh content but no Publish card, and the main process refuses a publish. The
+smoke run counts as master so its checks still see the card.
+
+**Newspaper → News Timeline.** Saved newspapers add their high/medium-priority stories (120+ words) to
+the News Timeline. A story whose headline shares most of its words with an existing thread joins it as a
+follow-up; others start a thread under the paper's section. Each such event has **Show the cut-out**
+(the marked cut-out from the paper, kept for the newest 5 papers). Lecturette topic matching sees these
+stories too, since it reads the same timeline.
+
+**Smaller fixes.** Papers saved by 1.0.25 get the new offline notes (short forms, who said what, the
+other side, 5 fact lines) made from their saved text when opened. AI notes show `*Source*` as italics
+instead of raw asterisks. Imported WAT/SRT rows lose the sheet's own numbering ("41. He…"), which
+clashed with "Situation 1 of 60" when shuffled. The smoke window opens off-screen without focus.
+
+**Verified on the real phone (Motorola Edge 50 Fusion, first 1.0.26 build):** Refresh content fetched
+a real `pack.json` v1 (60 SRT situations, published to the `content` branch with the GitHub CLI in the
+same format the EXE uses), listed "SRT sheet 1 (update) — 60 items", ran it, and kept it with the
+network off. Newspaper on a real The Hindu paper: online helper filled the top 8 stories, Latest on this
+(Google News) and AI notes with "Since the paper" showed. Build scripts: apksigner `--key-pass` dropped
+(same file read twice hit EOF); smoke run in its own hidden process so an Electron stderr line cannot
+stop the build. **Not yet exercised:** a publish from the EXE's own button against the real GitHub.
+
+---
+
 ## 2026-11-25 — 1.0.26: richer newspaper notes, online helper, master content for phones
 
 **Newspaper, offline (src/renderer/paper.js).** Each story now also gets: up to 5 fact lines (was 3; `₹`

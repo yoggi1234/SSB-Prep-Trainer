@@ -1074,6 +1074,8 @@
       });
     },
     get: function (id) { return tx(['papers'], 'readonly', function (s) { return s.papers.get(id); }); },
+    // Every saved paper in full (the News Timeline adds their stories).
+    all: function () { return tx(['papers'], 'readonly', function (s) { return s.papers.getAll(); }); },
     putCut: function (cut) { return tx(['cuts'], 'readwrite', function (s) { s.cuts.put(cut); }); },
     cut: function (articleId) { return tx(['cuts'], 'readonly', function (s) { return s.cuts.get(articleId); }); },
     remove: function (id) {

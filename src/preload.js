@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('api', {
   // Shared content: read the master's WAT/SRT sets; publish them (master PC only).
   contentFetch: () => ipcRenderer.invoke('content:fetch'),
   contentPublish: (pack) => ipcRenderer.invoke('content:publish', pack),
+  contentIsMaster: () => ipcRenderer.invoke('content:isMaster'),
   aiBuiltIn: () => ipcRenderer.invoke('ai:builtIn'),
   timelineLoad: () => ipcRenderer.invoke('timeline:load'),
 
