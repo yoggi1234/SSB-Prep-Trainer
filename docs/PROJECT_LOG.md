@@ -5,6 +5,34 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — 1.0.26 (third build): clean newspaper stories, "Think about it" answers
+
+**Mixed columns (src/renderer/paper.js, segment).** A wide headline used to take every line below it that
+no other headline covered: crossword clues, the Sudoku answer, results boxes, rate tables, advert
+disclaimers and the printer's imprint ended up inside news stories (TH 23.11: the India–China LAC talks
+story carried crossword clues). Now each story's body size is read from the top of its first real column
+(5+ lines, first 25 lines), and a line in another size is kept only above its column's body text (deck,
+byline, dateline); a column with no body text is kept only right under the headline. Left-out lines are
+dropped, not made into "In brief". Justified lines split by a wide word gap are joined again (gap up to
+3.5× the type size, never wider than one column). Printer's marks (`CM`, `YK`, job GUIDs, ISSN, PAGE n)
+are skipped. The reporter's name and dateline are taken off the first sentence ("Shrimansi Kaushik NEW
+DELHI Deepika…" → "Deepika…"; "ISRO Chairman…" is left alone).
+
+**Think about it.** Each question now has a two-line answer from the story's own sentences, chosen by
+cue words per kind of question (why / who gains / court ground / threat / response / capability / self-
+reliance / sides / India impact / relevance / editorial argument). A sentence is never given twice; a
+question the story does not answer says so. The AI notes also answer the same questions online.
+
+**Measured (hidden Electron harness in D:\Claude\work\pdftest, five real papers, before → after):** story
+counts unchanged on the three The Hindu papers (107, 131, 107); TOI Delhi 262 → 261 and TOI Dehradun
+129 → 128 (a tender advert, a quote box and "Sacredspace" no longer count as stories; one real story that
+was swallowed now stands alone). Words −2 to −9% (the junk). Hindu stories with junk in their key points:
+16 → 1, 11 → 0, 11 → 0. Cut-outs unchanged (60 each); marked cut-outs within 2. About half of the
+questions get an answer from the story. Papers already saved keep their old text; load them again to get
+clean stories (their notes are refreshed on opening either way).
+
+---
+
 ## 2026-11-25 — 1.0.26 (second build): master-only publishing, newspaper stories in the News Timeline
 
 **Publish is for the owner's PC only.** The "Master copy" card and `content:publish` work only when an

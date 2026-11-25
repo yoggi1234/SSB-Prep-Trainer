@@ -525,7 +525,7 @@
       return {
         code: t.code,
         chip: 'follow-ups',
-        blurb: 'Every story from your digests by section, with later reports added under the first one.',
+        blurb: 'Every story from your digests and newspapers by section, with later reports added under the first one and the paper\'s cut-out a tap away.',
         rows: '<li><span>Grouped by</span><b>section</b></li><li><span>Search</span><b>any topic</b></li><li><span>Grows with</span><b>each digest</b></li>'
       };
     }
@@ -2241,6 +2241,10 @@
   // matches an existing thread (most of its headline words are shared) joins it
   // as a follow-up, the rest start their own thread under the paper's section.
   // Each such event keeps its article id, so the timeline can show the cut-out.
+  // The newspaper's sections, filed under the timeline's own tabs (the ones
+  // the News Digest uses), so the tabs do not split in two.
+  var TL_SECTION = { policy: 'National', polity: 'Politics', natsec: 'National', border: 'Defence', defence: 'Defence',
+    intsec: 'WAR SECTION', ir: 'International', economy: 'Economic', editorial: 'Miscellaneous', other: 'National' };
   var TL_STOP = ['with', 'from', 'that', 'this', 'will', 'after', 'over', 'into', 'says', 'said', 'amid', 'more', 'than', 'have', 'been', 'their', 'about', 'india'];
   function tlWords(s) {
     var seen = {};
@@ -2279,7 +2283,7 @@
             hit.events.sort(function (x, y) { return String(x.date).localeCompare(String(y.date)); });
             hit.words = hit.words.concat(w.filter(function (x) { return hit.words.indexOf(x) < 0; }));
           } else {
-            threads.push({ section: a.sectionLabel || 'Newspaper', title: a.headline, id: 'paper-' + a.id, events: [ev], words: w });
+            threads.push({ section: TL_SECTION[a.sectionKey] || 'National', title: a.headline, id: 'paper-' + a.id, events: [ev], words: w });
           }
         });
       });
@@ -2560,6 +2564,7 @@
     'Why it matters for India: 2 lines.\n' +
     'GD points: one point for and one against.\n' +
     'Interview questions: two questions an SSB interviewer might ask on this.\n' +
+    'Think about it: answer each of these questions in 2 short lines, using the story (say plainly if the story does not tell): {{think}}\n' +
     'Since the paper: only if LATEST HEADLINES below are given and are about the same event, up to 3 bullet points on what happened after, ' +
     'each ending with the source and date in brackets. Use only those headlines for this part. If none fit, write "No newer report found."\n\n' +
     'HEADLINE: {{head}}\n\nSTORY:\n{{text}}\n\nLATEST HEADLINES (from Google News, may be newer than the paper):\n{{latest}}';
@@ -2570,7 +2575,8 @@
 
   function paperPrompt(a) {
     var text = a.text.length > 6000 ? a.text.slice(0, 6000) : a.text;
-    return PAPER_AI_PROMPT.replace('{{head}}', a.headline).replace('{{text}}', text).replace('{{latest}}', paperLatestText(a));
+    var think = (a.prompts || []).map(function (q, i) { return (i + 1) + ') ' + q; }).join(' ');
+    return PAPER_AI_PROMPT.replace('{{head}}', a.headline).replace('{{text}}', text).replace('{{latest}}', paperLatestText(a)).replace('{{think}}', think);
   }
 
   // The words to search Google News with: the headline, cut to its key words.
@@ -2640,7 +2646,12 @@
       ((a.glossary || []).length ? '<h4>Short forms</h4><ul class="small">' + a.glossary.map(function (g) { return '<li><b>' + esc(g.abbr) + '</b>: ' + esc(g.full) + '</li>'; }).join('') + '</ul>' : '') +
       ((a.quotes || []).length ? '<h4>Who said what</h4><ul class="small">' + a.quotes.map(function (q) { return '<li>' + esc(q) + '</li>'; }).join('') + '</ul>' : '') +
       (a.other ? '<h4>The other side <span class="muted small">(from the story, for a balanced GD point)</span></h4><p class="small">' + esc(a.other) + '</p>' : '') +
-      '<h4>Think about it</h4><ol class="small">' + a.prompts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      '<h4>Think about it <span class="muted small">(answers from the story)</span></h4><ol class="small think">' + a.prompts.map(function (s, qi) {
+        var ans = (a.think && a.think[qi]) || [];
+        return '<li><b>' + esc(s) + '</b>' +
+          (ans.length ? '<div class="think-a">' + ans.map(esc).join(' ') + '</div>'
+            : '<div class="think-a muted">The story does not answer this; think it through yourself' + (a.ai ? ' (or see the AI answer below).' : '.') + '</div>') + '</li>';
+      }).join('') + '</ol>' +
       '<h4>Line: earlier stories</h4><div class="small paper-line" data-line="' + i + '">Looking for earlier stories…</div>' +
       '<h4>Latest on this <span class="muted">(internet)</span></h4><div class="paper-latest" data-latest="' + i + '">' + paperLatestHtml(a) + '</div>' +
       '<h4>AI notes <span class="muted">(optional)</span></h4><div class="paper-ai" data-ai="' + i + '">' +
@@ -2927,7 +2938,11 @@
     var x = window.SSBPaper && window.SSBPaper._x;
     if (!x || !p || !Array.isArray(p.articles)) return;
     p.articles.forEach(function (a) {
-      if (!a || typeof a.text !== 'string' || a.quotes !== undefined) return;
+      if (!a || typeof a.text !== 'string') return;
+      if (!a.think && x.thinkAnswers) {
+        try { a.think = x.thinkAnswers(a.text, a.prompts || []); } catch (_) { /* no answers then */ }
+      }
+      if (a.quotes !== undefined) return;
       try {
         a.points = a.points || [];
         a.facts = x.facts(a.text, a.points);

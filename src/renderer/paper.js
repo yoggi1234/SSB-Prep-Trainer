@@ -138,6 +138,18 @@
     // Protect common abbreviations so they do not end a sentence.
     t = t.replace(/\b(Mr|Mrs|Ms|Dr|Lt|Gen|Col|Maj|Capt|Brig|Adm|Rs|No|St|Jr|Sr|vs|etc|i\.e|e\.g|U\.S|U\.K)\./g, '$1§');
     var out = t.split(/(?<=[.?!])\s+(?=["'‘“(]?[A-Z0-9])/).map(function (s) { return s.replace(/§/g, '.').trim(); });
+    // The first line of a story often carries the reporter and the dateline
+    // ("Shrimansi Kaushik NEW DELHI Deepika, 17, ...", "Agence France-Presse
+    // HERZLIYA The parties ..."): they are not part of what the story says.
+    if (out.length) {
+      var dl = /^((?:[A-Z][\w.'’-]*\s+){0,4}?)([A-Z]{3,}(?:[\s\/-]+[A-Z]{2,}){0,3})\s+(?=[A-Z‘“"(][a-z]|\d)/.exec(out[0]);
+      // A lone capitalised word with no reporter before it must look like a
+      // place (5+ letters, not a known body), so "ISRO Chairman ..." stays.
+      if (dl && (dl[1] || /[\s\/-]/.test(dl[2]) ||
+          (dl[2].length >= 5 && !/^(UNESCO|UNICEF|NABARD|ASEAN|NATO|BRICS|SEBI|DRDO|ISRO|SIPRI|INTERPOL|UNHCR|UNSC|UNGA|OPEC|NITI)$/.test(dl[2])))) {
+        out[0] = out[0].slice(dl[0].length);
+      }
+    }
     // Papers repeat lines (pull-quotes, a story continued on another page): keep each sentence once.
     var seen = {};
     return out.filter(function (s) {
@@ -235,7 +247,10 @@
           var A = out[i];
           if (Math.abs(A.y - l.y) > l.h * 0.3 || Math.abs(A.h - l.h) > l.h * 0.06) continue;
           var gap = l.x0 - A.x1;
-          if (gap < -1 || gap > l.h * 1.6 || l.x1 - A.x0 > colW) continue;
+          // Justified text can leave a gap of several letters inside one line
+          // ("closely guarded      discussions,"); the column width, not the
+          // gap, is what keeps two columns apart.
+          if (gap < -1 || gap > l.h * 3.5 || l.x1 - A.x0 > colW) continue;
           A.text = A.text.replace(/\s+$/, '') + ' ' + l.text.replace(/^\s+/, '');
           A.x1 = l.x1;
           A.chars += l.chars;
@@ -252,6 +267,10 @@
   // and pointers to another page ("NMC backs, P 16", "Continued on P 12").
   function notStoryText(t) {
     if (t.length > 45) return false;
+    // Printer's marks and page furniture: colour marks ("CM", "YK", "X"),
+    // job codes ("5048930b-3b19-…"), "ISSN 0971 - 751X", "PAGE 3", lone symbols.
+    if (/^[A-Z]{1,2}$/.test(t) || /^[^A-Za-z0-9]{1,3}$/.test(t) || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(t) ||
+        /^ISSN\b/i.test(t) || /^(page|p\.?)\s?\d{1,2}$/i.test(t) || /^[A-Z]+PLUS$/.test(t)) return true;
     return /@\w+(\.\w+)+/.test(t) ||
       /^[A-Z][A-Za-z]+(\.[A-Z][A-Za-z]+)+$/.test(t) ||
       /^(tnn|pti|ani|ians|reuters|afp|ap|agencies|times news network|express news service)$/i.test(t) ||
@@ -422,6 +441,41 @@
           c.lines.push(l);
         });
         cols.sort(function (a, b) { return a.x - b.x; });
+        // A story is set in one body size. A line in another size belongs to
+        // it only above the body text of its column (the deck, the byline,
+        // the dateline); below or among the body it is a photo caption, a
+        // results box or the next item on the page (a crossword, a brief
+        // with a small headline) and is left out. A column with no body text
+        // at all is kept only right under the headline.
+        // The body size is the size most letters are set in at the top of the
+        // first column, where the report starts: a larger deck there has only
+        // a line or two, and a results box or table elsewhere under a wide
+        // headline cannot outvote the report itself.
+        var bySize = {};
+        // (A stray line at the foot of the page, such as the printer's imprint,
+        // is not a column: a column has at least five lines.)
+        var firstCol = cols.filter(function (c) { return c.lines.length >= 5; })[0] || cols[0];
+        (firstCol ? firstCol.lines : []).slice().sort(function (a, b) { return b.y - a.y; }).slice(0, 25).forEach(function (l) {
+          var k = r1(l.h);
+          bySize[k] = (bySize[k] || 0) + l.chars;
+        });
+        var bodyH = 0;
+        Object.keys(bySize).forEach(function (k) { if (!bodyH || bySize[k] > bySize[bodyH]) bodyH = k; });
+        bodyH = +bodyH;
+        if (bodyH) {
+          var isBody = function (l) { return Math.abs(l.h - bodyH) <= bodyH * 0.04; };
+          cols.forEach(function (c) {
+            var bodyTop = -Infinity;
+            c.lines.forEach(function (l) { if (isBody(l) && l.y > bodyTop) bodyTop = l.y; });
+            // (What is left out here is page furniture, not news: it is dropped,
+            // not gathered into an "In brief" item.)
+            c.lines = c.lines.filter(function (l) {
+              if (isBody(l)) return true;
+              return bodyTop > -Infinity ? l.y > bodyTop + l.h * 0.3 : l.y >= h.yLast - h.h - body * 6;
+            });
+          });
+          cols = cols.filter(function (c) { return c.lines.length; });
+        }
         var text = '';
         var spots = [];
         var x0 = h.x0;
@@ -685,6 +739,76 @@
     return out;
   }
 
+  // "Think about it": a two-line answer to each question, taken from the
+  // story's own sentences. Each kind of question has its own cue words (a
+  // "why" question looks for "because", "after", "aimed at"; "who gains or
+  // loses" looks for who is helped or hit, and so on); the two best sentences
+  // win, with a small lead bias since news puts the essentials first. When no
+  // sentence answers it, the answer says so instead of making one up.
+  var THINK_CUES = [
+    [/\bwhy\b|caused|cause|why now|in the news|problem does this solve/i,
+      /\b(because|due to|after|following|amid|in view of|in response to|aimed at|in order to|so that|to (prevent|ensure|curb|boost|tackle|address|stop|check|ease|reduce|improve|protect|strengthen))\b|\b(concern|demand|shortage|rise in|fall in|surge|spike|crisis)\b/i],
+    [/relationship|give and get|countries gain/i,
+      /\b(bilateral|agreement|pact|cooperation|partnership|trade|investment|defence ties|mou|signed|agreed)\b/i],
+    [/who gains|who loses|gains, who|who (wins|benefits)/i,
+      /\b(benefit\w*|help\w*|relief|boost\w*|gain\w*|hit|hurt|loss\w*|lose|cost\w*|burden|affect\w*|welcom\w*|oppos\w*|criticis\w*|farmers|consumers|industry|traders|students|families|workers|taxpayers|exporters|soldiers|residents|villagers)\b/i],
+    [/decide|ruled|on what ground/i,
+      /\b(ruled|held that|ordered|directed|observed|verdict|bench|struck down|upheld|quashed|stayed|dismissed|on the ground|because)\b/i],
+    [/right|constitutional|value/i,
+      /\b(article \d+|fundamental right|right to|constitution\w*|freedom|equality|liberty|privacy|dignity|federal\w*|due process)\b/i],
+    [/what is the threat|where did it come from/i,
+      /\b(attack\w*|threat\w*|militant\w*|terror\w*|infiltrat\w*|smuggl\w*|maoist\w*|naxal\w*|insurgen\w*|drone\w*|cross-border|from across|backed by)\b/i],
+    [/respond|responding/i,
+      /\b(forces|police|army|operation|arrested|deployed|security|cordon|search|neutralis\w*|launched|government said|ministry said|stepped up)\b/i],
+    [/position|options|india's stand/i,
+      /\b(india|indian|mea|new delhi)\b.*\b(said|stand|position|maintain\w*|insist\w*|call\w* for|urg\w*|talks|dialogue|option)\b/i],
+    [/capability|against which threat/i,
+      /\b(missile|range|capab\w*|aircraft|fighter|submarine|radar|system|strike|precision|surveillance|threat|enemy|adversar\w*)\b/i],
+    [/made in india|self-reliance|indigen/i,
+      /\b(indigenous\w*|make in india|atmanirbhar|self-relian\w*|drdo|hal|bel|domestic\w*|locally|import\w*|export\w*|private sector)\b/i],
+    [/sides|each want/i,
+      /\b(wants?|demand\w*|seek\w*|accus\w*|warn\w*|vow\w*|insist\w*|refus\w*|ceasefire|talks)\b/i],
+    [/oil|trade|diaspora|affect india/i,
+      /\b(india|indian\w*|oil|crude|trade|nationals|diaspora|shipping|prices|imports?|exports?|evacuat\w*)\b/i],
+    [/strategic autonomy|fit india/i,
+      /\b(autonomy|multi-?alignment|balanc\w*|neutral\w*|independent|quad|brics|sco|russia|united states|china)\b/i],
+    [/jobs|prices|defence spending/i,
+      /\b(jobs?|employment|prices?|inflation|cost\w*|spending|budget|crore|per cent|%)\b/i],
+    [/relevance|internal security|on the ground|lesson|touch|army, navy|ordinary citizens|connect to/i,
+      /\b(security|forces|army|navy|air force|soldiers|troops|border|citizens|people|public|lesson|preparedness)\b/i],
+    [/writer's main argument|main argument/i,
+      /\b(must|should|need\w* to|ought|argu\w*|it is time|the real|the answer|the way forward)\b/i],
+    [/agree|for and one against/i,
+      /\b(however|but|on the other hand|critics?|while|although|yet|must|should)\b/i]
+  ];
+
+  function thinkAnswers(text, prompts) {
+    var ss = sentences(text).slice(0, 60).filter(function (s) { return s.length <= 300; });
+    var used = {};
+    var trim = function (s) { return s.length > 220 ? s.slice(0, 217).replace(/\s+\S*$/, '') + '…' : s; };
+    return (prompts || []).map(function (q) {
+      var cue = null;
+      for (var i = 0; i < THINK_CUES.length; i++) if (THINK_CUES[i][0].test(q)) { cue = THINK_CUES[i][1]; break; }
+      // "Say it in two lines" asks for the gist: the opening of the story.
+      if (!cue || /articulate|say (it|the issue|what changes)/i.test(q) && !/argument/i.test(q)) {
+        var lead = ss.filter(function (s) { return !used[s]; }).slice(0, 2);
+        lead.forEach(function (s) { used[s] = 1; });
+        return lead.length ? lead.map(trim) : [];
+      }
+      var cands = ss.map(function (s, idx) {
+        var hits = (s.match(new RegExp(cue.source, 'gi')) || []).length;
+        return { s: s, sc: hits ? hits * 2 + (idx < 3 ? 1.5 : idx < 8 ? 0.5 : 0) : 0, i: idx };
+      }).filter(function (x) { return x.sc > 0; });
+      // A sentence already given as another answer is not given again: the
+      // same line twice is no answer, so the question is left open instead.
+      var picked = cands.filter(function (x) { return !used[x.s]; })
+        .sort(function (a, b) { return b.sc - a.sc || a.i - b.i; }).slice(0, 2)
+        .sort(function (a, b) { return a.i - b.i; });
+      picked.forEach(function (x) { used[x.s] = 1; });
+      return picked.map(function (x) { return trim(x.s); });
+    });
+  }
+
   // Who said what: sentences with a quotation and a speaking verb.
   function quotes(text) {
     return sentences(text).filter(function (s) {
@@ -840,6 +964,7 @@
         a.other = otherSide(a.text, a.points.concat(a.facts));
         a.places = placesIn(a.headline + ' ' + a.text);
         a.prompts = PROMPTS[section.key] || PROMPTS.other;
+        a.think = thinkAnswers(a.text, a.prompts);
         a.sectionKey = section.key;
         a.sectionLabel = section.label;
         a.minutes = Math.max(1, Math.round(a.words / 200));
@@ -1111,7 +1236,7 @@
   };
 
   window.SSBPaper = {
-    _x: { glossary: glossary, quotes: quotes, otherSide: otherSide, placesIn: placesIn, facts: facts },
+    _x: { glossary: glossary, quotes: quotes, otherSide: otherSide, placesIn: placesIn, facts: facts, thinkAnswers: thinkAnswers },
     analyze: analyze,
     plan: plan,
     related: related,
