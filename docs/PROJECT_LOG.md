@@ -5,6 +5,18 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — Released 1.0.26
+
+`main` fast-forwarded from d600363 to 1c186ff (12 commits) and GitHub release **v1.0.26** published at that
+commit as the latest, with `SSB-Prep-Trainer-1.0.26-android.apk`, `-portable.exe` and `-win-x64.zip` (the
+MASTER zip stays with the owner). Notes in English with a Hindi summary and SHA-256 checksums
+(D:\Claude\work\release\notes-1.0.26.md). Checked: `releases/latest` returns v1.0.26, the tag points at
+1c186ff, the APK link downloads. Installed phones find it through `updateCheck` (the .apk asset); PC copies
+get a link to the release page (no setup EXE is built). Content published from the master so far: pack v4
+(10 WAT words, 10 SRT situations, 20 lecture topics).
+
+---
+
 ## 2026-11-25 — Publish sends lecture topics too
 
 The phone showed 199 lecture topics after a publish: both the PC and the phone list the bundled
