@@ -17,9 +17,12 @@ pictures that have a written description in data/ppdt-stories.json (`TAT_THEMES`
 outdoors 16, study/work 11, uniform 6 (46 themed); the other pictures are under "All pictures". Each theme
 shows how many it holds; the choice is remembered (`customWat`, `customTat`).
 
-**Master EXE.** `isMasterPc()` is also true when the EXE's own file name contains "master"
-(`PORTABLE_EXECUTABLE_FILE` for the portable EXE). The build now writes `SSB-Prep-Trainer-<v>-MASTER.exe`
-(the same file, renamed) next to the user `-portable.exe`. The MASTER file in the settings folder still works.
+**Master copy.** Windows Smart App Control is on on the owner's PC and blocks the unsigned portable EXE
+("An Application Control policy has blocked this file"); the unpacked app runs. So the master copy is the
+unpacked app with an empty `MASTER` file next to its EXE: `isMasterPc()` checks for it (and still for the
+MASTER file in the settings folder, and for a portable EXE whose file name contains "master"). The build
+writes `SSB-Prep-Trainer-<v>-MASTER-win-x64.zip` (unpacked app + MASTER) beside the user `-portable.exe` and
+`-win-x64.zip`. A first attempt that only renamed the portable EXE was dropped: it could not run on that PC.
 
 ---
 

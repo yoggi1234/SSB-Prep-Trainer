@@ -1273,16 +1273,20 @@ const CONTENT_API = 'https://api.github.com/repos/' + CONTENT_REPO;
 // Only the owner's PC may publish. It is marked by an empty file named MASTER
 // in the app's settings folder (%APPDATA%\SSB Prep Trainer). Copies given to
 // other people never have it, so they show Refresh content but no Publish card.
-// The owner's own EXE is the other way in: the build also makes a copy named
-// "...-MASTER.exe", and a copy whose file name says MASTER is the master.
-// (The portable EXE runs from a temporary folder; PORTABLE_EXECUTABLE_FILE
-// names the file that was actually opened.)
+// The owner's own copy of the app is the other way in: the build makes a
+// "...-MASTER-win-x64.zip" whose folder has an empty MASTER file next to the
+// EXE (the unpacked app is what runs under Windows Smart App Control; the
+// portable EXE is blocked there). A portable EXE renamed to contain MASTER
+// counts too (PORTABLE_EXECUTABLE_FILE names the file that was opened).
 // The self-test runs as master so it can check the card.
 function isMasterPc() {
   if (SMOKE) return true;
-  const exe = path.basename(process.env.PORTABLE_EXECUTABLE_FILE || process.execPath || '');
-  if (/master/i.test(exe)) return true;
-  try { return fs.existsSync(path.join(app.getPath('userData'), 'MASTER')); } catch (_) { return false; }
+  const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath || '';
+  if (/master/i.test(path.basename(exe))) return true;
+  try {
+    return fs.existsSync(path.join(path.dirname(process.execPath), 'MASTER')) ||
+      fs.existsSync(path.join(app.getPath('userData'), 'MASTER'));
+  } catch (_) { return false; }
 }
 
 ipcMain.handle('content:isMaster', () => isMasterPc());
