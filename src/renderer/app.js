@@ -146,8 +146,64 @@
     });
   }
 
+  // Sets published by the master PC and fetched with Refresh content. On the
+  // master itself its own sets are already listed as "(mine)", so those ids are skipped.
+  function sharedSets(test) {
+    var pack = S.config && S.config.sharedContent;
+    var list = (pack && Array.isArray(pack[test])) ? pack[test] : [];
+    var own = {};
+    ((S.config.custom && S.config.custom[test]) || []).forEach(function (c) { own[c.id] = 1; });
+    return list.filter(function (x) { return x && !own[x.id] && Array.isArray(x.items) && x.items.length; }).map(function (x) {
+      return { id: 'shared-' + x.id, name: x.name + ' (update)', items: x.items.slice(), shared: true };
+    });
+  }
+
   function allSets(test) {
-    return builtinSets(test).concat(customSets(test));
+    return builtinSets(test).concat(sharedSets(test), customSets(test));
+  }
+
+  function sharedLabel() {
+    var pack = S.config && S.config.sharedContent;
+    if (!pack) return 'No content updates on this ' + (onPhone() ? 'phone' : 'computer') + ' yet.';
+    var d = '';
+    try { d = new Date(pack.published).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (_) {}
+    return 'Content update v' + pack.version + (d ? ' (' + d + ')' : '') + ': ' + (pack.wat || []).length + ' WAT and ' + (pack.srt || []).length + ' SRT sets.';
+  }
+
+  // Refresh content: read the master's pack and keep it in the settings, so it
+  // works offline afterwards on this device.
+  function refreshContent(btn, test) {
+    if (!window.api.contentFetch) return;
+    if (!(S.config && S.config.onlineEnabled)) {
+      toast('Turn on Online lookup in Settings first, then press Refresh content.');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+    var before = sharedSets(test).length;
+    var oldVer = (S.config.sharedContent && S.config.sharedContent.version) || 0;
+    window.api.contentFetch().then(function (r) {
+      if (!r || !r.ok) {
+        btn.disabled = false;
+        btn.textContent = 'Refresh content';
+        toast(r && r.error === 'none' ? 'The master has not published any content yet.'
+          : r && r.error === 'offline' ? 'Turn on Online lookup in Settings first.'
+          : r && r.error === 'damaged' ? 'The content file looks damaged, so it was not used. Ask the master to publish again.'
+          : 'Could not reach the content server. Check the internet and try again.');
+        return;
+      }
+      S.config.sharedContent = r.pack;
+      return Promise.resolve(window.api.setConfig({ sharedContent: r.pack })).then(function () {
+        var now = sharedSets(test).length;
+        toast(r.pack.version === oldVer ? 'Already up to date (v' + r.pack.version + ').'
+          : 'Updated to v' + r.pack.version + ': ' + now + ' ' + test.toUpperCase() + ' set' + (now === 1 ? '' : 's') + ' from the master' + (now > before ? ' (' + (now - before) + ' new)' : '') + '.');
+        render();
+      });
+    }, function () {
+      btn.disabled = false;
+      btn.textContent = 'Refresh content';
+      toast('Could not reach the content server.');
+    });
   }
 
   function builtinRaw(test) {
@@ -645,12 +701,24 @@
     var images = S.tatImages;
 
     var anyPictures = test === 'tat' && picturePool().length >= 11;
+    var canShare = test !== 'tat' && !!window.api.contentFetch;
+    var shareCard = canShare
+      ? '<div class="card content-card" style="margin-top:14px"><div class="row" style="align-items:center;justify-content:space-between">' +
+        '<span class="small"><b>Content updates</b><br><span class="muted">' + esc(sharedLabel()) + '</span></span>' +
+        '<button class="btn sm" id="refreshContent">Refresh content</button></div></div>'
+      : '';
+    var wireShare = function () {
+      var rb = document.getElementById('refreshContent');
+      if (rb) rb.addEventListener('click', function () { refreshContent(rb, test); });
+    };
     if (test === 'tat' ? !anyPictures : !sets.length) {
       body(
         '<h1>' + esc(m.code || test.toUpperCase()) + '</h1>' +
         '<div class="empty">Nothing is loaded for this test yet. Open <b>Add material</b> and import your Excel sheet.</div>' +
-        '<div class="row"><button class="btn primary" id="setupAdd">Add material</button><button class="btn ghost" id="setupHome">Dashboard</button></div>'
+        '<div class="row"><button class="btn primary" id="setupAdd">Add material</button><button class="btn ghost" id="setupHome">Dashboard</button></div>' +
+        shareCard
       );
+      wireShare();
       document.getElementById('setupAdd').addEventListener('click', function () { goto('add'); });
       document.getElementById('setupHome').addEventListener('click', function () { goto('home'); });
       return;
@@ -696,8 +764,10 @@
         '<div class="row" style="margin-top:22px">' +
         '<button class="btn primary" id="go">Start ' + m.code + '</button>' +
         '<button class="btn" id="goSettings">Edit timings</button>' +
-        '</div>'
+        '</div>' +
+        shareCard
     );
+    wireShare();
 
     var back = document.getElementById('back');
     if (back) back.addEventListener('click', function () { goto('home'); });
@@ -2398,12 +2468,46 @@
     'Key facts: up to 5 bullet points, each with its number, name or place.\n' +
     'Why it matters for India: 2 lines.\n' +
     'GD points: one point for and one against.\n' +
-    'Interview questions: two questions an SSB interviewer might ask on this.\n\n' +
-    'HEADLINE: {{head}}\n\nSTORY:\n{{text}}';
+    'Interview questions: two questions an SSB interviewer might ask on this.\n' +
+    'Since the paper: only if LATEST HEADLINES below are given and are about the same event, up to 3 bullet points on what happened after, ' +
+    'each ending with the source and date in brackets. Use only those headlines for this part. If none fit, write "No newer report found."\n\n' +
+    'HEADLINE: {{head}}\n\nSTORY:\n{{text}}\n\nLATEST HEADLINES (from Google News, may be newer than the paper):\n{{latest}}';
+
+  function paperLatestText(a) {
+    return (a.latest || []).map(function (n) { return '- ' + n.title + ' (' + (n.source || 'news') + ', ' + (n.date || 'recent') + ')'; }).join('\n') || '(none)';
+  }
+
+  function paperPrompt(a) {
+    var text = a.text.length > 6000 ? a.text.slice(0, 6000) : a.text;
+    return PAPER_AI_PROMPT.replace('{{head}}', a.headline).replace('{{text}}', text).replace('{{latest}}', paperLatestText(a));
+  }
+
+  // The words to search Google News with: the headline, cut to its key words.
+  function paperQuery(a) {
+    var words = String(a.headline || '').replace(/[“”"‘’]/g, ' ').replace(/[^A-Za-z0-9&\- ]/g, ' ').split(/\s+/).filter(function (w) {
+      return w.length > 2 && !/^(the|and|for|with|from|after|over|into|amid|says|said|will|has|have|was|are|its|new)$/i.test(w);
+    });
+    return words.slice(0, 7).join(' ');
+  }
+
+  // Figures in a fact sentence are shown in bold, so the number is what the eye lands on.
+  function paperFactHtml(sv) {
+    return esc(sv).replace(/((?:₹|Rs\.?|\$)\s?[\d,.]+(?:\s?(?:crore|lakh|billion|million|trillion))?|\b[\d,.]*\d\s?(?:%|per cent|crore|lakh|billion|million|km|tonnes|MW|GW)|\b(?:19|20)\d\d(?:-\d\d)?\b)/gi, '<b>$1</b>');
+  }
+
+  function paperLatestHtml(a) {
+    if (a.latest && a.latest.length) {
+      return '<ul class="small">' + a.latest.map(function (n) {
+        return '<li><a href="#" data-extlink="' + esc(n.link) + '">' + esc(n.title) + '</a> <span class="muted">(' + esc(n.source || 'news') + (n.date ? ', ' + esc(n.date) : '') + ')</span></li>';
+      }).join('') + '</ul><div class="small muted">From Google News. Headlines only: open one to read it in the browser.</div>';
+    }
+    if (a.latest) return '<span class="small muted">No newer report found on the internet.</span>';
+    return '<button class="btn ghost sm" data-latestbtn>Find the latest on this</button> <span class="small muted">Needs the internet (no AI key needed).</span>';
+  }
 
   function paperAiHtml(text) {
     return '<div class="paper-ai-text">' + esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>') + '</div>' +
-      '<div class="small muted">Written by a free AI from the story\'s text. Check any fact against the cut-out above before you use it.</div>';
+      '<div class="small muted">Written by an AI from the story\'s text and the latest headlines. Check any fact against the cut-out above before you use it.</div>';
   }
 
   // The story's cut-out with the key points (yellow) and the facts (green)
@@ -2436,13 +2540,18 @@
       (a.cut ? '<h4>From the page</h4><div class="paper-cut" data-cut="' + i + '"><span class="small muted">Loading the cut-out…</span></div>' : '') +
       '<h4>Key points</h4><ul>' + a.points.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' +
       '<h4>Micro-notes</h4><ul class="small">' +
-      (a.facts.length ? a.facts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') : '') +
+      (a.facts.length ? a.facts.map(function (sv) { return '<li>' + paperFactHtml(sv) + '</li>'; }).join('') : '') +
       (a.terms.length ? '<li><b>Key terms:</b> ' + esc(a.terms.join(', ')) + '</li>' : '') +
       (a.names.length ? '<li><b>Names:</b> ' + esc(a.names.join(', ')) + '</li>' : '') +
+      ((a.places || []).length ? '<li><b>Places in India:</b> ' + esc(a.places.join(', ')) + '</li>' : '') +
       '<li><b>Reading time:</b> about ' + a.minutes + ' min for the full story</li>' +
       '</ul>' +
+      ((a.glossary || []).length ? '<h4>Short forms</h4><ul class="small">' + a.glossary.map(function (g) { return '<li><b>' + esc(g.abbr) + '</b>: ' + esc(g.full) + '</li>'; }).join('') + '</ul>' : '') +
+      ((a.quotes || []).length ? '<h4>Who said what</h4><ul class="small">' + a.quotes.map(function (q) { return '<li>' + esc(q) + '</li>'; }).join('') + '</ul>' : '') +
+      (a.other ? '<h4>The other side <span class="muted small">(from the story, for a balanced GD point)</span></h4><p class="small">' + esc(a.other) + '</p>' : '') +
       '<h4>Think about it</h4><ol class="small">' + a.prompts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
       '<h4>Line: earlier stories</h4><div class="small paper-line" data-line="' + i + '">Looking for earlier stories…</div>' +
+      '<h4>Latest on this <span class="muted">(internet)</span></h4><div class="paper-latest" data-latest="' + i + '">' + paperLatestHtml(a) + '</div>' +
       '<h4>AI notes <span class="muted">(optional)</span></h4><div class="paper-ai" data-ai="' + i + '">' +
       (a.ai ? paperAiHtml(a.ai) : '<button class="btn ghost sm" data-aibtn="' + i + '">Ask the free AI for notes</button>' +
         ' <span class="small muted">Needs the internet. Everything above is made on this ' + (onPhone() ? 'phone' : 'computer') + ' without AI.</span>') +
@@ -2497,8 +2606,7 @@
     }
     btn.disabled = true;
     btn.textContent = 'Writing notes…';
-    var text = a.text.length > 6000 ? a.text.slice(0, 6000) : a.text;
-    aiAsk(PAPER_AI_PROMPT.replace('{{head}}', a.headline).replace('{{text}}', text)).then(function (r) {
+    paperFillLatest(a).then(function () { return aiAsk(paperPrompt(a)); }).then(function (r) {
       if (!r || !r.ok || !r.text) {
         btn.disabled = false;
         btn.textContent = 'Ask the free AI for notes';
@@ -2507,8 +2615,108 @@
       }
       a.ai = String(r.text).trim();
       box.innerHTML = paperAiHtml(a.ai);
+      paperRefreshStory(a);
       var P = paperState();
       if (P.cur) window.SSBPaper.db.save(P.cur).catch(function () {});
+    });
+  }
+
+  // Latest coverage of one story; kept on the story, so it shows offline later too.
+  function paperFillLatest(a) {
+    if (a.latest || !window.api.paperNews || !(S.config && S.config.onlineEnabled)) return Promise.resolve(a.latest || null);
+    var q = paperQuery(a);
+    if (!q) return Promise.resolve(null);
+    return Promise.resolve(window.api.paperNews(q)).then(function (r) {
+      if (r && r.ok) a.latest = r.items || [];
+      return a.latest || null;
+    }, function () { return null; });
+  }
+
+  // Redraw one story's internet parts if it is on screen right now.
+  function paperRefreshStory(a) {
+    var P = paperState();
+    if (S.view !== 'paper' || !P.shown) return;
+    var i = P.shown.indexOf(a);
+    if (i < 0) return;
+    var lb = appEl.querySelector('[data-latest="' + i + '"]');
+    if (lb) { lb.innerHTML = paperLatestHtml(a); wireLatest(lb, a); }
+    var ab = appEl.querySelector('[data-ai="' + i + '"]');
+    if (ab && a.ai) ab.innerHTML = paperAiHtml(a.ai);
+  }
+
+  // The online helper: with Online lookup on, the most important stories get
+  // their latest coverage (Google News, no key) and, when an AI key is set,
+  // AI notes, one story at a time in the background. Off with the switch on the
+  // paper's screen; nothing here is needed for the offline notes.
+  var PAPER_AUTO_MAX = 8;
+
+  function paperAutoOn() {
+    return !!(S.config && S.config.onlineEnabled) && S.config.paperAuto !== false;
+  }
+
+  function paperAutoStatus() {
+    var P = paperState();
+    var j = P.auto;
+    if (!(S.config && S.config.onlineEnabled)) return 'Online helper: off (turn on Online lookup in Settings to add the latest news and AI notes to the top stories).';
+    if (S.config.paperAuto === false) return 'Online helper: paused.';
+    if (j && j.id === (P.cur && P.cur.id)) {
+      if (!j.total) return 'Online helper: the top stories are already filled in.';
+      return j.done >= j.total ? 'Online helper: the top ' + j.total + ' stories have their latest news' + (aiReady() ? ' and AI notes.' : '. Add an AI key in Settings for AI notes too.')
+        : 'Online helper: working on story ' + (j.done + 1) + ' of ' + j.total + ' (latest news' + (aiReady() ? ' + AI notes' : '') + ')…';
+    }
+    return 'Online helper: ready.';
+  }
+
+  function paperAutoStart(paper) {
+    var P = paperState();
+    if (!paper || !paperAutoOn() || (P.auto && P.auto.id === paper.id && P.auto.running)) return;
+    var todo = paper.articles.filter(function (a) { return !a.brief && a.words >= 120 && (!a.latest || (aiReady() && !a.ai)); }).slice(0, PAPER_AUTO_MAX);
+    if (!todo.length) {
+      if (!P.auto || P.auto.id !== paper.id) P.auto = { id: paper.id, total: 0, done: 0 };
+      return;
+    }
+    var job = P.auto = { id: paper.id, total: todo.length, done: 0, running: true };
+    var say = function () { var el = document.getElementById('paperAuto'); if (el) el.textContent = paperAutoStatus(); };
+    var step = function () {
+      if (P.auto !== job || !paperAutoOn() || job.done >= todo.length) { job.running = false; say(); return; }
+      var a = todo[job.done];
+      paperFillLatest(a).then(function () {
+        if (!aiReady() || a.ai) return null;
+        return aiAsk(paperPrompt(a)).then(function (r) { if (r && r.ok && r.text) a.ai = String(r.text).trim(); }, function () {});
+      }).then(function () {
+        job.done++;
+        window.SSBPaper.db.save(paper).catch(function () {});
+        paperRefreshStory(a);
+        say();
+        // A short pause between stories keeps inside the free AI limits.
+        setTimeout(step, aiReady() ? 2500 : 600);
+      });
+    };
+    say();
+    step();
+  }
+
+  function wireLatest(box, a) {
+    var lbtn = box.querySelector('[data-latestbtn]');
+    if (lbtn) lbtn.addEventListener('click', function () {
+      if (!(S.config && S.config.onlineEnabled)) { toast('Turn on Online lookup in Settings first.'); return; }
+      lbtn.disabled = true;
+      lbtn.textContent = 'Searching…';
+      a.latest = null;
+      paperFillLatest(a).then(function (got) {
+        if (!got) { lbtn.disabled = false; lbtn.textContent = 'Find the latest on this'; toast('Could not reach Google News. Try again.'); return; }
+        var P = paperState();
+        if (P.cur) window.SSBPaper.db.save(P.cur).catch(function () {});
+        box.innerHTML = paperLatestHtml(a);
+        wireLatest(box, a);
+      });
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-extlink]'), function (l) {
+      l.addEventListener('click', function (e) {
+        e.preventDefault();
+        var u = l.getAttribute('data-extlink');
+        if (/^https:\/\//.test(u) && window.api.openExternal) window.api.openExternal(u);
+      });
     });
   }
 
@@ -2533,6 +2741,8 @@
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-story]'), function (d) {
       var ai = d.querySelector('[data-aibtn]');
       if (ai) ai.addEventListener('click', function () { askPaperAi(ai, list[+d.getAttribute('data-story')]); });
+      var lb = d.querySelector('[data-latest]');
+      if (lb) wireLatest(lb, list[+d.getAttribute('data-story')]);
       d.addEventListener('toggle', function () {
         if (!d.open) return;
         var a = list[+d.getAttribute('data-story')];
@@ -2705,6 +2915,8 @@
       '<div class="small muted">' + new Date(paper.addedAt).toLocaleDateString() + ' · ' + arts.length + ' stories · ' +
       paper.pagesRead + ' of ' + paper.numPages + ' pages read · tap a story to see its notes</div>' +
       (P.cutting && P.cutting.id === paper.id ? '<div class="note small" id="paperCutStatus" style="margin-top:8px">' + esc(paperCutStatus()) + '</div>' : '') +
+      (window.api.paperNews ? '<div class="row small" style="margin-top:8px;align-items:center"><span class="muted" id="paperAuto">' + esc(paperAutoStatus()) + '</span>' +
+        (S.config && S.config.onlineEnabled ? '<button class="btn ghost sm" id="paperAutoT">' + (S.config.paperAuto === false ? 'Turn on' : 'Pause') + '</button>' : '') + '</div>' : '') +
       '<div class="tabs" style="margin:12px 0">' + tabs.map(function (t) {
         return '<button class="navlink' + (t[0] === P.tab ? ' active' : '') + '" data-ptab="' + t[0] + '">' + esc(t[1]) + '</button>';
       }).join('') + '</div>' +
@@ -2714,7 +2926,16 @@
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-ptab]'), function (b) {
       b.addEventListener('click', function () { P.tab = b.getAttribute('data-ptab'); renderPaper(); });
     });
+    P.shown = list;
     wirePaperStories(list);
+    var at = document.getElementById('paperAutoT');
+    if (at) at.addEventListener('click', function () {
+      S.config.paperAuto = S.config.paperAuto === false;
+      window.api.setConfig({ paperAuto: S.config.paperAuto });
+      if (S.config.paperAuto) paperAutoStart(paper); else P.auto = null;
+      renderPaper();
+    });
+    paperAutoStart(paper);
   }
 
   /* --------------------------------------------- How to use this app */
@@ -4525,8 +4746,10 @@
       (mine ? '<button class="btn sm ghost" id="clearPics">Remove uploaded</button>' : '') + '</div><div class="note import-out" id="importOut-pics" hidden></div></div>' +
       importCard('wat', 'WAT words', 'A column headed <b>Word</b> or <b>WAT</b>. Other columns are ignored.', sets('wat') + ' added') +
       importCard('srt', 'SRT situations', 'A column headed <b>Situation</b>, <b>SRT</b> or <b>Question</b>.', sets('srt') + ' added') +
-      importCard('lect', 'Lecture topics', 'A column headed <b>Topic</b>, and <b>Category</b> if you have one. Repeats are found even when worded a little differently.', (S.config.lectOwn || []).length + ' added')
+      importCard('lect', 'Lecture topics', 'A column headed <b>Topic</b>, and <b>Category</b> if you have one. Repeats are found even when worded a little differently.', (S.config.lectOwn || []).length + ' added') +
+      masterCardHtml()
     );
+    wireMasterCard();
     document.getElementById('addTatPics').addEventListener('click', function () {
       window.api.pickTatImages().then(function (list) {
         S.tatImages = list || [];
@@ -4562,6 +4785,82 @@
       impOut.hidden = false;
       S.importMsg = null;
     }
+  }
+
+  /* ------------------------------------------------- master copy: publish */
+
+  // The PC with a GitHub key is the master: its own WAT and SRT sets (the
+  // "(mine)" ones above) go to every phone that presses Refresh content.
+  function masterPack() {
+    var pick = function (test) {
+      return ((S.config.custom && S.config.custom[test]) || []).map(function (c) {
+        return {
+          id: String(c.id),
+          name: String(c.name || 'Set').slice(0, 80),
+          items: (c.items || []).map(function (i) { return String(i).trim().slice(0, 600); }).filter(Boolean).slice(0, 500)
+        };
+      }).filter(function (c) { return c.items.length; });
+    };
+    return { format: 1, wat: pick('wat'), srt: pick('srt') };
+  }
+
+  function masterCardHtml() {
+    if (onPhone() || !window.api.contentPublish) return '';
+    var pk = masterPack();
+    var has = !!(S.config.masterToken);
+    var last = S.config.masterPublished;
+    return '<h2>Master copy: send to every phone</h2>' +
+      '<div class="card"><p class="small muted" style="margin-top:0">Your own WAT and SRT sets (the ones marked <b>mine</b>) are published from this PC. ' +
+      'Every phone gets them when someone presses <b>Refresh content</b> on its WAT or SRT screen. TAT pictures are not sent: the app\'s GitHub is public, and TAT pictures are copyrighted.</p>' +
+      '<div class="field"><label>GitHub key<br><span class="small muted">' + (has ? 'Saved on this PC only' : 'Needed once, to publish') + '</span></label>' +
+      '<div class="ctl"><input type="password" id="masterTok" autocomplete="off" placeholder="' + (has ? '•••••••• (saved)' : 'github_pat_…') + '" style="min-width:260px">' +
+      ' <button class="btn sm" id="masterTokSave">Save key</button>' + (has ? ' <button class="btn sm ghost" id="masterTokClear">Remove key</button>' : '') + '</div></div>' +
+      '<div class="row" style="align-items:center">' +
+      '<button class="btn primary" id="masterPublish"' + (has ? '' : ' disabled') + '>Publish to all phones</button>' +
+      '<span class="small muted">Will send ' + pk.wat.length + ' WAT and ' + pk.srt.length + ' SRT sets.' +
+      (last ? ' Last published: v' + esc(last.version) + ', ' + esc(new Date(last.published).toLocaleString('en-IN')) + '.' : '') + '</span></div>' +
+      '<div class="note import-out" id="masterOut" hidden></div></div>';
+  }
+
+  function wireMasterCard() {
+    var save = document.getElementById('masterTokSave');
+    if (!save) return;
+    var out = document.getElementById('masterOut');
+    var say = function (t) { out.textContent = t; out.hidden = false; };
+    save.addEventListener('click', function () {
+      var v = document.getElementById('masterTok').value.trim();
+      if (!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(v)) { say('That does not look like a GitHub key. It starts with github_pat_ and has no spaces.'); return; }
+      S.config.masterToken = v;
+      window.api.setConfig({ masterToken: v }).then(function () { toast('GitHub key saved on this PC.'); renderAdd(); });
+    });
+    var clr = document.getElementById('masterTokClear');
+    if (clr) clr.addEventListener('click', function () {
+      S.config.masterToken = '';
+      window.api.setConfig({ masterToken: '' }).then(function () { renderAdd(); });
+    });
+    var pub = document.getElementById('masterPublish');
+    pub.addEventListener('click', function () {
+      if (!S.config.onlineEnabled) { say('Turn on Online lookup in Settings first.'); return; }
+      var pk = masterPack();
+      if (!pk.wat.length && !pk.srt.length) { say('There is nothing to send yet. Import WAT words or SRT situations above first.'); return; }
+      pub.disabled = true;
+      pub.textContent = 'Publishing…';
+      window.api.contentPublish(pk).then(function (r) {
+        pub.disabled = false;
+        pub.textContent = 'Publish to all phones';
+        if (!r || !r.ok) {
+          say(r && r.error === 'bad-token' ? 'GitHub refused the key. Make a new one with Contents: Read and write on SSB-Prep-Trainer, and save it again.'
+            : r && r.error === 'no-token' ? 'Save the GitHub key first.'
+            : r && r.error === 'offline' ? 'Turn on Online lookup in Settings first.'
+            : 'Could not publish: ' + ((r && (r.detail || r.error)) || 'unknown') + '.');
+          return;
+        }
+        var mark = { version: r.version, published: r.published };
+        S.config.masterPublished = mark;
+        window.api.setConfig({ masterPublished: mark });
+        say('Published v' + r.version + ': ' + pk.wat.length + ' WAT and ' + pk.srt.length + ' SRT sets. Phones get them with Refresh content (it can take a minute).');
+      });
+    });
   }
 
   function validWords(text) {

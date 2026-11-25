@@ -79,6 +79,38 @@
     enabled: onlineOn,
 
     api: {
+      // Newspaper reader: recent coverage of one story, as src/main.js 'paper:news'.
+      paperNews: function (query) {
+        if (!onlineOn()) return Promise.resolve({ ok: false, error: 'offline' });
+        var q = String(query || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+        if (!q) return Promise.resolve({ ok: false, error: 'empty' });
+        return net.googleNews(q + ' when:14d', 6).then(function (rows) {
+          return { ok: true, items: rows.map(function (r) { return { title: r.title, source: r.source, date: r.date, link: r.link }; }) };
+        }, function (err) {
+          return { ok: false, error: 'network', detail: String((err && err.message) || err) };
+        });
+      },
+
+      // Shared content from the master PC (see 'content:fetch' in src/main.js).
+      // The phone only reads; publishing is the master's job.
+      contentFetch: function () {
+        if (!onlineOn()) return Promise.resolve({ ok: false, error: 'offline' });
+        var url = 'https://api.github.com/repos/yoggi1234/SSB-Prep-Trainer/contents/pack.json?ref=content&t=' + Date.now();
+        return net.getText(url, 15000, { headers: { Accept: 'application/vnd.github.raw+json' } }).then(function (txt) {
+          var pack = JSON.parse(txt);
+          var ok = pack && pack.format === 1 && pack.version > 0 && ['wat', 'srt'].every(function (k) {
+            return Array.isArray(pack[k]) && pack[k].every(function (x) {
+              return x && typeof x.id === 'string' && typeof x.name === 'string' && Array.isArray(x.items) &&
+                x.items.length <= 500 && x.items.every(function (i) { return typeof i === 'string' && i.length <= 600; });
+            });
+          });
+          return ok ? { ok: true, pack: pack } : { ok: false, error: 'damaged' };
+        }, function (err) {
+          var m = String((err && err.message) || err);
+          return { ok: false, error: /HTTP 404/.test(m) ? 'none' : 'network', detail: m };
+        });
+      },
+
       onlineStatus: function () {
         return Promise.resolve({ enabled: onlineOn() });
       },

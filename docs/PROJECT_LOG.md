@@ -5,6 +5,38 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — 1.0.26: richer newspaper notes, online helper, master content for phones
+
+**Newspaper, offline (src/renderer/paper.js).** Each story now also gets: up to 5 fact lines (was 3; `₹`
+amounts count, figures shown in bold), **Short forms** spelled out by the story itself ("Defence Research
+and Development Organisation (DRDO)", kept only when the capitals spell the short form), **Who said what**
+(quoted sentences with a speaking verb), **The other side** (one line of doubt or criticism from the story,
+for a balanced GD point) and the Indian states/UTs it names. All extractive: nothing is written that the
+paper did not print.
+
+**Newspaper, online.** A **Latest on this** panel per story: recent Google News headlines for the story
+(14 days, no key needed; `paper:news` in main, `paperNews` in mobile/online.js). With Online lookup on, an
+**online helper** fills the top 8 stories in the background, one at a time: latest headlines, and AI notes
+when an AI key is set. The AI prompt now gets the latest headlines too, with a "Since the paper" part that
+may use only those headlines (source and date in brackets). The helper can be paused on the paper's screen
+(`config.paperAuto`). Everything is saved with the paper, so it shows offline afterwards.
+
+**Master content.** The PC with a GitHub key (Add material → Master copy) publishes its own WAT and SRT
+sets ("mine") as `pack.json` on the repo's `content` branch (made from main on first publish; version
+number goes up each time). Every copy, phones included, gets them with **Refresh content** on the WAT/SRT
+set screen; they are kept in `config.sharedContent` and listed as "(update)" sets, so they work offline
+afterwards. Reading uses the GitHub contents API (raw.githubusercontent.com can lag five minutes). TAT
+pictures are not sent: the repo is public and the pictures are copyrighted. Phone CSP: api.github.com added.
+
+**Verified here (Linux, no Electron):** `node --check` on every changed file; the new extractors on a test
+story; fact highlighting and search-query helpers; the phone's contentFetch/paperNews against a stubbed
+network (good pack, damaged pack, 404, news); the main-process `content:publish` against a stubbed GitHub
+(first publish makes the branch; second sends the sha and bumps the version; no key → refused) and
+`content:fetch` / `paper:news` (offline refused, online parsed). **Not yet exercised:** the smoke suite,
+the screens in a running app, a real publish to GitHub, and the APK on a phone.
+
+---
+
 ## 2026-10-25 — 1.0.7: PPDT section, 418 more pictures, cleaner word library
 
 **PPDT.** 471 pictures were extracted from the owner's "PPDT 400+ practice images" PDF, shrunk to 720 px,

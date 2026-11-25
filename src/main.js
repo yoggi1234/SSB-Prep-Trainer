@@ -201,8 +201,17 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   mainWindow.once('ready-to-show', () => {
+    if (SMOKE) {
+      // Self-test runs in the background: off-screen, no focus, no taskbar
+      // button, so it never interrupts whoever is using the PC. It still
+      // paints, so screenshots and layout checks work as before.
+      mainWindow.setSkipTaskbar(true);
+      mainWindow.setPosition(-32000, -32000);
+      mainWindow.showInactive();
+      setTimeout(runSmoke, 700);
+      return;
+    }
     mainWindow.show();
-    if (SMOKE) setTimeout(runSmoke, 700);
   });
 
   mainWindow.on('closed', () => {
@@ -1223,6 +1232,128 @@ async function googleNews(query) {
   }
   return out;
 }
+
+// The newspaper reader's "Latest on this": recent coverage of one story from
+// Google News (no key needed). Titles end in " - Publisher"; that becomes the source.
+ipcMain.handle('paper:news', async (_e, query) => {
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  const q = String(query || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (!q) return { ok: false, error: 'empty' };
+  try {
+    const items = (await googleNews(q + ' when:14d')).slice(0, 6).map((it) => {
+      let title = it.title;
+      let source = '';
+      const dash = title.lastIndexOf(' - ');
+      if (dash > 20) {
+        source = title.slice(dash + 3).trim();
+        title = title.slice(0, dash).trim();
+      }
+      let day = '';
+      try { day = new Date(it.date).toISOString().slice(0, 10); } catch (_) {}
+      return { title, source, date: day, link: it.link };
+    });
+    return { ok: true, items };
+  } catch (err) {
+    return { ok: false, error: 'network', detail: err.message };
+  }
+});
+
+/* ------------------------------------------------- shared content (master) */
+
+// The master copy (this PC, with a GitHub key) publishes its own WAT and SRT
+// sets as one file, pack.json, on the repo's `content` branch. Every copy of
+// the app (phones included) reads it when Refresh content is pressed. The
+// GitHub contents API is used for reading too: raw.githubusercontent.com can
+// serve a copy up to five minutes old.
+const CONTENT_REPO = 'yoggi1234/SSB-Prep-Trainer';
+const CONTENT_BRANCH = 'content';
+const CONTENT_FILE = 'pack.json';
+const CONTENT_API = 'https://api.github.com/repos/' + CONTENT_REPO;
+
+function validPack(p) {
+  if (!p || p.format !== 1 || !(p.version > 0)) return false;
+  return ['wat', 'srt'].every((k) => Array.isArray(p[k]) && p[k].every((x) =>
+    x && typeof x.id === 'string' && typeof x.name === 'string' && Array.isArray(x.items) &&
+    x.items.length <= 500 && x.items.every((i) => typeof i === 'string' && i.length <= 600)));
+}
+
+function githubHeaders(token, raw) {
+  return Object.assign(
+    { Accept: raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json', 'User-Agent': 'SSB Prep Trainer', 'X-GitHub-Api-Version': '2022-11-28' },
+    token ? { Authorization: 'Bearer ' + token } : {}
+  );
+}
+
+ipcMain.handle('content:fetch', async () => {
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  try {
+    const res = await fetch(CONTENT_API + '/contents/' + CONTENT_FILE + '?ref=' + CONTENT_BRANCH + '&t=' + Date.now(), {
+      signal: AbortSignal.timeout(15000),
+      headers: githubHeaders('', true)
+    });
+    if (res.status === 404) return { ok: false, error: 'none' };
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const pack = JSON.parse(await res.text());
+    if (!validPack(pack)) return { ok: false, error: 'damaged' };
+    appLog('content', 'fetched', { version: pack.version });
+    return { ok: true, pack };
+  } catch (err) {
+    appLog('content', 'fetch failed', { error: err.message });
+    return { ok: false, error: 'network', detail: err.message };
+  }
+});
+
+ipcMain.handle('content:publish', async (_e, payload) => {
+  if (!onlineAllowed()) return { ok: false, error: 'offline' };
+  const token = String(getStore().config.masterToken || '').trim();
+  if (!token) return { ok: false, error: 'no-token' };
+  const pack = Object.assign({ format: 1, version: 1 }, payload || {});
+  try {
+    // The current file (for its sha and version), or the branch made fresh from main.
+    let sha;
+    let version = 0;
+    const cur = await fetch(CONTENT_API + '/contents/' + CONTENT_FILE + '?ref=' + CONTENT_BRANCH, {
+      signal: AbortSignal.timeout(15000), headers: githubHeaders(token)
+    });
+    if (cur.ok) {
+      const meta = await cur.json();
+      sha = meta.sha;
+      try { version = JSON.parse(Buffer.from(meta.content || '', 'base64').toString('utf8')).version || 0; } catch (_) {}
+    } else if (cur.status === 404) {
+      const br = await fetch(CONTENT_API + '/branches/' + CONTENT_BRANCH, { signal: AbortSignal.timeout(15000), headers: githubHeaders(token) });
+      if (br.status === 404) {
+        const main = await fetch(CONTENT_API + '/git/ref/heads/main', { signal: AbortSignal.timeout(15000), headers: githubHeaders(token) });
+        if (!main.ok) throw new Error('HTTP ' + main.status + ' reading main');
+        const made = await fetch(CONTENT_API + '/git/refs', {
+          method: 'POST', signal: AbortSignal.timeout(15000), headers: githubHeaders(token),
+          body: JSON.stringify({ ref: 'refs/heads/' + CONTENT_BRANCH, sha: (await main.json()).object.sha })
+        });
+        if (!made.ok) throw new Error('HTTP ' + made.status + ' making the content branch');
+      } else if (!br.ok) throw new Error('HTTP ' + br.status);
+    } else {
+      throw new Error('HTTP ' + cur.status);
+    }
+    pack.version = version + 1;
+    pack.published = new Date().toISOString();
+    if (!validPack(pack)) return { ok: false, error: 'damaged' };
+    const put = await fetch(CONTENT_API + '/contents/' + CONTENT_FILE, {
+      method: 'PUT', signal: AbortSignal.timeout(30000), headers: githubHeaders(token),
+      body: JSON.stringify({
+        message: 'Content v' + pack.version + ': ' + pack.wat.length + ' WAT, ' + pack.srt.length + ' SRT sets',
+        content: Buffer.from(JSON.stringify(pack, null, 1), 'utf8').toString('base64'),
+        branch: CONTENT_BRANCH,
+        sha
+      })
+    });
+    if (!put.ok) throw new Error('HTTP ' + put.status + ' ' + (await put.text()).slice(0, 160));
+    appLog('content', 'published', { version: pack.version, wat: pack.wat.length, srt: pack.srt.length });
+    return { ok: true, version: pack.version, published: pack.published };
+  } catch (err) {
+    const m = String(err.message || err);
+    appLog('content', 'publish failed', { error: m });
+    return { ok: false, error: /HTTP 40[13]/.test(m) ? 'bad-token' : 'network', detail: m };
+  }
+});
 
 // Recent SSB and defence headlines, offered as "hot topics" to prepare a
 // lecturette on. Google News RSS needs no account or key, and the request

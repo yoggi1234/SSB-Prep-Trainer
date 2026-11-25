@@ -46,6 +46,11 @@ contextBridge.exposeInMainWorld('api', {
   tatLastPick: () => ipcRenderer.invoke('tat:lastPick'),
   updateCheck: () => ipcRenderer.invoke('update:check'),
   aiChat: (opts) => ipcRenderer.invoke('ai:chat', opts),
+  // Newspaper reader: recent coverage of one story (Google News, online only).
+  paperNews: (query) => ipcRenderer.invoke('paper:news', query),
+  // Shared content: read the master's WAT/SRT sets; publish them (master PC only).
+  contentFetch: () => ipcRenderer.invoke('content:fetch'),
+  contentPublish: (pack) => ipcRenderer.invoke('content:publish', pack),
   aiBuiltIn: () => ipcRenderer.invoke('ai:builtIn'),
   timelineLoad: () => ipcRenderer.invoke('timeline:load'),
 

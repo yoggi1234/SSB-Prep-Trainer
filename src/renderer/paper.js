@@ -632,8 +632,8 @@
   function facts(text, skip) {
     return sentences(text).filter(function (s) {
       return skip.indexOf(s) < 0 &&
-        /(\d[\d,.]*\s?(%|per cent|crore|lakh|billion|million|km|tonnes|mw|gw))|(Rs\.?\s?\d)|(\$\s?\d)|\b(19|20)\d\d\b/i.test(s);
-    }).slice(0, 3);
+        /(\d[\d,.]*\s?(%|per cent|crore|lakh|billion|million|km|tonnes|mw|gw))|(Rs\.?\s?\d)|(₹\s?\d)|(\$\s?\d)|\b(19|20)\d\d\b/i.test(s);
+    }).slice(0, 5);
   }
 
   function keyTerms(a, df, nDocs) {
@@ -642,6 +642,73 @@
     return Object.keys(tf).map(function (w) {
       return { w: w, s: tf[w] * Math.log((nDocs + 1) / ((df[w] || 0) + 1)) };
     }).sort(function (x, y) { return y.s - x.s; }).slice(0, 6).map(function (x) { return x.w; });
+  }
+
+  // Short forms the story itself spells out: "Defence Research and Development
+  // Organisation (DRDO)" or "DRDO (Defence Research ...)". Kept only when the
+  // capitals of the long form spell the short one, so a stray bracket is not a term.
+  function glossary(text) {
+    var out = [];
+    var seen = {};
+    var initials = function (full) {
+      return full.split(/[\s-]+/).filter(function (w) { return /^[A-Z]/.test(w); }).map(function (w) { return w.charAt(0); }).join('');
+    };
+    var fits = function (abbr, full) {
+      var a = abbr.replace(/[^A-Z]/g, '');
+      var ini = initials(full);
+      if (a.length < 2 || ini.length < 2) return false;
+      // Every capital of the short form, in order, among the long form's initials.
+      var at = 0;
+      for (var i = 0; i < ini.length && at < a.length; i++) if (ini.charAt(i) === a.charAt(at)) at++;
+      return at === a.length && ini.charAt(0) === a.charAt(0);
+    };
+    var add = function (abbr, full) {
+      full = full.replace(/^((the|a|an|and|of|for|on|in|&)\s+)+/i, '').trim();
+      if (seen[abbr] || !fits(abbr, full) || full.length > 90) return;
+      seen[abbr] = 1;
+      out.push({ abbr: abbr, full: full });
+    };
+    var t = String(text).replace(/\s+/g, ' ');
+    var LONG = "((?:[A-Z][A-Za-z'’-]*\\s+(?:(?:of|and|for|the|on|in|&)\\s+)*){1,8}[A-Z][A-Za-z'’-]*)";
+    var re1 = new RegExp(LONG + '\\s*\\(([A-Z][A-Za-z&]{1,9})\\)', 'g');
+    var m;
+    while ((m = re1.exec(t)) && out.length < 6) {
+      // The match may start too early ("India's Defence Research ... (DRDO)"): trim words from the left until it fits.
+      var words = m[1].split(' ');
+      for (var k = 0; k < words.length - 1; k++) {
+        var cand = words.slice(k).join(' ');
+        if (fits(m[2], cand)) { add(m[2], cand); break; }
+      }
+    }
+    var re2 = new RegExp('\\b([A-Z][A-Z&]{1,9})\\s*\\(' + LONG + '\\)', 'g');
+    while ((m = re2.exec(t)) && out.length < 6) add(m[1], m[2]);
+    return out;
+  }
+
+  // Who said what: sentences with a quotation and a speaking verb.
+  function quotes(text) {
+    return sentences(text).filter(function (s) {
+      return /["“][^"”]{12,}["”]/.test(s) && /\b(said|says|stated|told|added|asserted|remarked|noted|warned|announced)\b/i.test(s);
+    }).slice(0, 2).map(function (s) { return s.length > 260 ? s.slice(0, 257) + '…' : s; });
+  }
+
+  // The other side, as the story itself reports it: a line of doubt, criticism
+  // or concern that is not already a key point. Useful for a balanced GD point.
+  function otherSide(text, skip) {
+    var re = /\b(however|but|critics?|criticis\w+|opposition|concerns?|questioned|objected|alleged|warned|risk|challenges?|despite|although|on the other hand)\b/i;
+    var hit = sentences(text).filter(function (s) { return skip.indexOf(s) < 0 && re.test(s) && s.length < 320; });
+    return hit.length ? hit[0] : '';
+  }
+
+  var PLACES = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
+    'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+    'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar',
+    'Chandigarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'];
+
+  // Indian states and Union Territories the story names.
+  function placesIn(text) {
+    var t = String(text).replace(/\s+/g, ' ');
+    return PLACES.filter(function (p) { return new RegExp('\\b' + p + '\\b').test(t) || (p === 'Jammu and Kashmir' && /\bJ&K\b/.test(t)); }).slice(0, 6);
   }
 
   // Where each key point (k) and fact (f) sits on the page: one box per line it
@@ -768,6 +835,10 @@
         a.facts = facts(a.text, a.points);
         a.names = names(a.text);
         a.terms = keyTerms(a, df, arts.length);
+        a.glossary = glossary(a.text);
+        a.quotes = quotes(a.text);
+        a.other = otherSide(a.text, a.points.concat(a.facts));
+        a.places = placesIn(a.headline + ' ' + a.text);
         a.prompts = PROMPTS[section.key] || PROMPTS.other;
         a.sectionKey = section.key;
         a.sectionLabel = section.label;
@@ -1038,6 +1109,7 @@
   };
 
   window.SSBPaper = {
+    _x: { glossary: glossary, quotes: quotes, otherSide: otherSide, placesIn: placesIn, facts: facts },
     analyze: analyze,
     plan: plan,
     related: related,
