@@ -1,21 +1,21 @@
 {
  "format": 1,
- "version": 3,
+ "version": 4,
  "wat": [
   {
    "id": "excel-wat-1",
    "name": "WAT sheet 1",
    "items": [
-    "Valiant",
-    "Mission",
-    "Salute",
-    "Grit",
-    "Wisdom",
-    "Patrol",
-    "Optimism",
-    "Compassion",
-    "Bravado",
-    "Empathy"
+    "Gratitude",
+    "Diligent",
+    "Endurance",
+    "Fortitude",
+    "Loyalty",
+    "Humility",
+    "Teamwork",
+    "Composure",
+    "Candour",
+    "Prudence"
    ]
   }
  ],
@@ -24,18 +24,120 @@
    "id": "excel-srt-1",
    "name": "SRT sheet 1",
    "items": [
-    "He was leading a trek when a member of his group slipped and twisted his ankle far from the road. He...",
-    "On his way to the SSB interview, he saw an old man collapse at the bus stop. He...",
-    "His hostel warden accused him of breaking a window that he had not broken. He...",
-    "During a cricket match the umpire gave a wrong decision against his team in the final over. He...",
-    "He found a wallet with money and an ID card lying on the platform. He...",
-    "His village had no electricity for a week after a storm and the exams were near. He...",
-    "He was made the captain of a team whose senior players did not accept him. He...",
-    "While on a night patrol he noticed smoke rising from a nearby village. He...",
-    "His friend asked him to share the answers during an online test. He...",
-    "Heavy rain flooded the road just as he had to reach the railway station for an urgent journey. He..."
+    "He was the only one in his class who knew first aid when a classmate fainted during the morning assembly. He...",
+    "His senior officer gave an order that he felt would put his men in danger. He...",
+    "He reached the exam centre and found he had left his admit card at home, 40 km away. He...",
+    "A group of boys in his colony were teasing a girl on her way to college. He...",
+    "He was given the task of organising a blood donation camp in his college with only two days left. He...",
+    "His younger brother failed his board exams and stopped talking to anyone. He...",
+    "While driving at night he saw a car lying overturned in a ditch beside the highway. He...",
+    "His team lost the inter-college debate and the members started blaming each other. He...",
+    "He was offered a well-paid private job and an SSB call letter in the same week. He...",
+    "A landslide blocked the only road to his village while his mother needed to reach a hospital. He..."
    ]
   }
  ],
- "published": "2026-11-25T16:23:58.953Z"
+ "lect": [
+  {
+   "id": "own-smart-fencing-on-the-borders",
+   "topic": "Smart Fencing on the Borders",
+   "category": "Defence & Security"
+  },
+  {
+   "id": "own-women-fighter-pilots",
+   "topic": "Women Fighter Pilots",
+   "category": "Defence & Security"
+  },
+  {
+   "id": "own-inland-waterways-of-india",
+   "topic": "Inland Waterways of India",
+   "category": "Economy & Infrastructure"
+  },
+  {
+   "id": "own-glacier-melting-in-uttarakhand",
+   "topic": "Glacier Melting in Uttarakhand",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-heatwaves-in-north-india",
+   "topic": "Heatwaves in North India",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-microplastics-in-our-food",
+   "topic": "Microplastics in Our Food",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-rising-air-pollution-in-winter",
+   "topic": "Rising Air Pollution in Winter",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-water-crisis-in-indian-cities",
+   "topic": "Water Crisis in Indian Cities",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-wildlife-corridors",
+   "topic": "Wildlife Corridors",
+   "category": "Environment & Geography"
+  },
+  {
+   "id": "own-indian-diaspora-in-the-gulf",
+   "topic": "Indian Diaspora in the Gulf",
+   "category": "International Relations"
+  },
+  {
+   "id": "own-panchayati-raj-and-village-development",
+   "topic": "Panchayati Raj and Village Development",
+   "category": "Polity & Governance"
+  },
+  {
+   "id": "own-paper-leaks-in-recruitment-exams",
+   "topic": "Paper Leaks in Recruitment Exams",
+   "category": "Polity & Governance"
+  },
+  {
+   "id": "own-agriculture-drones-in-indian-farms",
+   "topic": "Agriculture Drones in Indian Farms",
+   "category": "Science & Technology"
+  },
+  {
+   "id": "own-antibiotic-resistance",
+   "topic": "Antibiotic Resistance",
+   "category": "Science & Technology"
+  },
+  {
+   "id": "own-deepfakes-and-elections",
+   "topic": "Deepfakes and Elections",
+   "category": "Science & Technology"
+  },
+  {
+   "id": "own-space-tourism",
+   "topic": "Space Tourism",
+   "category": "Science & Technology"
+  },
+  {
+   "id": "own-vertical-farming",
+   "topic": "Vertical Farming",
+   "category": "Science & Technology"
+  },
+  {
+   "id": "own-coaching-centre-culture",
+   "topic": "Coaching Centre Culture",
+   "category": "Society & Culture"
+  },
+  {
+   "id": "own-gig-workers-and-their-rights",
+   "topic": "Gig Workers and Their Rights",
+   "category": "Society & Culture"
+  },
+  {
+   "id": "own-online-gaming-addiction",
+   "topic": "Online Gaming Addiction",
+   "category": "Society & Culture"
+  }
+ ],
+ "published": "2026-11-25T16:33:49.203Z"
 }
