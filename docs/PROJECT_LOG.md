@@ -24,6 +24,16 @@ MASTER file in the settings folder, and for a portable EXE whose file name conta
 writes `SSB-Prep-Trainer-<v>-MASTER-win-x64.zip` (unpacked app + MASTER) beside the user `-portable.exe` and
 `-win-x64.zip`. A first attempt that only renamed the portable EXE was dropped: it could not run on that PC.
 
+**Later the same evening: Smart App Control blocks every new build on the owner's PC**, the unpacked app and
+the MASTER copy too (Code Integrity log, event 3118 "Smart App Control Block Details"); an earlier build's
+unpacked app had run minutes before, so it is a per-file reputation decision on unsigned EXEs. Verified the
+master logic with the development Electron instead (allowed): with a MASTER file next to the EXE and a fresh
+settings folder, `contentIsMaster()` → true; without it → false. The owner now starts the app from a desktop
+shortcut, "SSB Prep Trainer (Master)", that runs `node_modules\electron\dist\electron.exe "D:\ssb prep trainer"`
+(master through the MASTER file in the settings folder; checked: starts, `contentIsMaster()` → true). It runs
+whatever is in the project folder. The lasting fixes are a code-signing certificate or the owner's own choice
+about Smart App Control.
+
 ---
 
 ## 2026-11-25 — AI lecturette: names and quotes must come from the sources
