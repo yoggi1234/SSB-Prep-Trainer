@@ -17,6 +17,15 @@ retired list, so a real break there counts as a failure again. Still retired, fa
 and failing before this change: "the lecturette fits the window and re-flows", "the intro shows
 meaning, history and origin", "the conclusion asks for challenges, precautions and an opinion".
 
+**Follow-up, same day: all seven lecturette checks count again.** The three left were test faults too:
+the layout check measured `.lect-grid` and the news dock before any lecture was running (they exist only
+on the running screen), so it read 0 columns at every size; it now runs during the intro. The intro and
+conclusion checks read the speech text (cut at 2,500 characters, so the conclusion was never in it) for
+the words "history" and "precautions", which an AI script written to fit the topic need not use; they now
+read the phase's cue box (`lectureCueText`, "Meaning · brief history · original background…" and
+"…challenges · precautions to exercise · your own opinion"), with "meaning" also accepted from the
+speech. Three hidden runs: all seven passed every time, failureCount 0, retired 50 → 47.
+
 ---
 
 ## 2026-11-25 — 1.0.26 (third build): clean newspaper stories, "Think about it" answers

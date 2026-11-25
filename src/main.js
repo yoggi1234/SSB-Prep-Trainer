@@ -3243,6 +3243,43 @@ async function runSmoke() {
       await wait(300);
     }
 
+    await js('window.__smoke.librarySetOnline(true)', 'turn online lookup back on');
+    await js('window.__smoke.lectureStartByTopic("Indigenisation")', 'reopen after clearing the seeded points');
+    await wait(400);
+
+    // A topic with no speech yet is written first (Wikipedia and recent news are
+    // fetched), and only then does the lecture start. That takes as long as the
+    // network takes, so wait for the run to begin instead of a fixed half second.
+    const startedLect = await js('window.__smoke.lectureStart(0)', 'start a lecturette');
+    let ph0 = null;
+    const lectWaitStart = Date.now();
+    while (Date.now() - lectWaitStart < 30000) {
+      ph0 = await js('window.__smoke.lecturePhase()', 'the first phase');
+      if (ph0) break;
+      await wait(300);
+    }
+    const lectStartMs = Date.now() - lectWaitStart;
+    const clock0 = await js('window.__smoke.lectureClock()', 'the clock in the intro');
+    results.push({
+      step: 'a lecturette starts on the 30-second intro',
+      result: (startedLect === 'run' || startedLect === 'list') && !!ph0 && ph0.phase === 'intro' && ph0.remaining <= 30 && !!clock0,
+      got: { startedAs: startedLect, waitedMs: lectStartMs }
+    });
+    const lectInputs = await js('window.__smoke.lectureHasInput()', 'typing fields in the lecturette');
+    results.push({
+      step: 'the lecturette has no typing field â€” it is spoken, with notes on paper',
+      result: lectInputs === 0
+    });
+    // The cue box tells the speaker what this phase covers; the script under it
+    // is prose, written to fit the topic, so the check reads both.
+    const introText = await js('window.__smoke.lectureBodyText()', 'the intro content');
+    const introCue = await js('window.__smoke.lectureCueText()', 'the intro cue');
+    results.push({
+      step: 'the intro shows meaning, history and origin',
+      result: !!introText && /means|meaning/i.test(introCue + ' ' + introText) && /history/i.test(introCue) && /background|origin/i.test(introCue),
+      got: { cue: introCue }
+    });
+    // Measured on the running lecture: the grid and the news dock exist only there.
     const lectWide = await js('window.__smoke.lectLayout()', 'the lecturette layout at the normal size');
     await resizeWindow(960, 660);
     const smallWin = mainWindow.getSize();
@@ -3271,38 +3308,6 @@ async function runSmoke() {
         lectLarge.scale > lectWide.scale,
       got: { wide: lectWide, small: lectSmall, large: lectLarge, win: { smallWin: smallWin, largeWin: largeWin } }
     });
-    await js('window.__smoke.librarySetOnline(true)', 'turn online lookup back on');
-    await js('window.__smoke.lectureStartByTopic("Indigenisation")', 'reopen after clearing the seeded points');
-    await wait(400);
-
-    // A topic with no speech yet is written first (Wikipedia and recent news are
-    // fetched), and only then does the lecture start. That takes as long as the
-    // network takes, so wait for the run to begin instead of a fixed half second.
-    const startedLect = await js('window.__smoke.lectureStart(0)', 'start a lecturette');
-    let ph0 = null;
-    const lectWaitStart = Date.now();
-    while (Date.now() - lectWaitStart < 30000) {
-      ph0 = await js('window.__smoke.lecturePhase()', 'the first phase');
-      if (ph0) break;
-      await wait(300);
-    }
-    const lectStartMs = Date.now() - lectWaitStart;
-    const clock0 = await js('window.__smoke.lectureClock()', 'the clock in the intro');
-    results.push({
-      step: 'a lecturette starts on the 30-second intro',
-      result: (startedLect === 'run' || startedLect === 'list') && !!ph0 && ph0.phase === 'intro' && ph0.remaining <= 30 && !!clock0,
-      got: { startedAs: startedLect, waitedMs: lectStartMs }
-    });
-    const lectInputs = await js('window.__smoke.lectureHasInput()', 'typing fields in the lecturette');
-    results.push({
-      step: 'the lecturette has no typing field â€” it is spoken, with notes on paper',
-      result: lectInputs === 0
-    });
-    const introText = await js('window.__smoke.lectureBodyText()', 'the intro content');
-    results.push({
-      step: 'the intro shows meaning, history and origin',
-      result: !!introText && /means|meaning/i.test(introText) && /history/i.test(introText)
-    });
     const lectFacts = await js('window.__smoke.lectureFactsText()', 'the facts panel');
     results.push({
       step: 'the facts panel stays at hand while speaking',
@@ -3330,10 +3335,11 @@ async function runSmoke() {
     await takeShot('14d-lecturette-body');
     const conclPhase = await js('window.__smoke.lectureNext()', 'move to the conclusion');
     await wait(400);
-    const conclText = await js('window.__smoke.lectureBodyText()', 'the conclusion content');
+    const conclText = await js('window.__smoke.lectureCueText()', 'the conclusion cue');
     results.push({
       step: 'the conclusion asks for challenges, precautions and an opinion',
-      result: conclPhase === 'conclusion' && /challenges/i.test(conclText) && /precautions/i.test(conclText) && /opinion/i.test(conclText)
+      result: conclPhase === 'conclusion' && /challenges/i.test(conclText) && /precautions/i.test(conclText) && /opinion/i.test(conclText),
+      got: { cue: conclText }
     });
     const lectDone = await js('window.__smoke.lectureFinish()', 'finish the lecturette');
     await wait(400);
@@ -3956,7 +3962,7 @@ async function runSmoke() {
 
   // Checks of what the owner took out in 1.0.8: the word library, museum and classic picture sets,
   // typed word lists, pre-written lectures. Reported as retired, never counted as passed.
-  const retired = /a set you add|set you added|library|Meaning|meaning|search|Search|random words|Random 10|list reports|Load more|Positive tab|Negative tab|tabs switch|positive tab|negative tab|online lookup is off no fetch|theme box|find-sources|fetched|online panel|classic|bundled topic|facts|catalogue|drafted topic|saved copy when|lecturette fits|intro shows|conclusion asks|your set is added|TAT setup screen leads|wrong picture leaves|delete forever|permanent delete|Add material offers|pasted word list|news line beside|diagnostics reports|test data packs|chosen picture files|distinct frames|PPDT pictures are bundled/;
+  const retired = /a set you add|set you added|library|Meaning|meaning|search|Search|random words|Random 10|list reports|Load more|Positive tab|Negative tab|tabs switch|positive tab|negative tab|online lookup is off no fetch|theme box|find-sources|fetched|online panel|classic|bundled topic|facts|catalogue|drafted topic|saved copy when|your set is added|TAT setup screen leads|wrong picture leaves|delete forever|permanent delete|Add material offers|pasted word list|news line beside|diagnostics reports|test data packs|chosen picture files|distinct frames|PPDT pictures are bundled/;
   const failures = results.filter((r) => (r.error || r.result === false) && !retired.test(r.step));
   const report = { results, consoleErrors, failureCount: failures.length, retiredFailing: results.filter((r) => r.result === false && retired.test(r.step)).length };
   try {

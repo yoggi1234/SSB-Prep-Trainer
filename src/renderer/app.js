@@ -7015,6 +7015,11 @@
         ? { phase: LECT_PHASES[R.phase].id, remaining: R.remaining, paused: R.paused, topic: R.topic.topic }
         : null;
     },
+    // What the screen asks the speaker to cover in this phase (the cue box).
+    lectureCueText: function () {
+      var el = document.getElementById('lectCue');
+      return el ? el.innerText : '';
+    },
     lectureClock: function () {
       var el = document.getElementById('lectClock');
       return el ? el.textContent : '';
