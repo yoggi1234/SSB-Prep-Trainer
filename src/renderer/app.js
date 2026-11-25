@@ -167,7 +167,7 @@
     if (!pack) return 'No content updates on this ' + (onPhone() ? 'phone' : 'computer') + ' yet.';
     var d = '';
     try { d = new Date(pack.published).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (_) {}
-    return 'Content update v' + pack.version + (d ? ' (' + d + ')' : '') + ': ' + (pack.wat || []).length + ' WAT and ' + (pack.srt || []).length + ' SRT sets.';
+    return 'Content update v' + pack.version + (d ? ' (' + d + ')' : '') + ': ' + (pack.wat || []).length + ' WAT and ' + (pack.srt || []).length + ' SRT sets, ' + (pack.lect || []).length + ' lecture topics.';
   }
 
   // Refresh content: read the master's pack and keep it in the settings, so it
@@ -193,10 +193,14 @@
         return;
       }
       S.config.sharedContent = r.pack;
+      S.lectures = lectWithWritten(S.lecturesBase || []);
       return Promise.resolve(window.api.setConfig({ sharedContent: r.pack })).then(function () {
         var now = sharedSets(test).length;
+        var nTopics = (r.pack.lect || []).length;
         toast(r.pack.version === oldVer ? 'Already up to date (v' + r.pack.version + ').'
-          : 'Updated to v' + r.pack.version + ': ' + now + ' ' + test.toUpperCase() + ' set' + (now === 1 ? '' : 's') + ' from the master' + (now > before ? ' (' + (now - before) + ' new)' : '') + '.');
+          : test === 'lect'
+            ? 'Updated to v' + r.pack.version + ': ' + nTopics + ' lecture topic' + (nTopics === 1 ? '' : 's') + ' from the master.'
+            : 'Updated to v' + r.pack.version + ': ' + now + ' ' + test.toUpperCase() + ' set' + (now === 1 ? '' : 's') + ' from the master' + (now > before ? ' (' + (now - before) + ' new)' : '') + '.');
         render();
       });
     }, function () {
@@ -4176,7 +4180,14 @@
     var own = (cfg.lectOwn || []).filter(function (o) { return !inBase[lectKey(o.topic)]; }).map(function (o) {
       return { id: o.id, topic: o.topic, query: o.topic, theme: 'Your topic', category: o.category || 'Your topics', boards: [], source: 'own' };
     });
-    return own.concat(base).map(function (t) {
+    own.forEach(function (o) { inBase[lectKey(o.topic)] = 1; });
+    // Topics the master copy published (Refresh content); kept offline with the rest of the update.
+    var shared = ((cfg.sharedContent && cfg.sharedContent.lect) || []).filter(function (o) {
+      return o && o.topic && !inBase[lectKey(o.topic)];
+    }).map(function (o) {
+      return { id: 'shared-' + o.id, topic: o.topic, query: o.topic, theme: 'Update', category: o.category || 'New topics', boards: [], source: 'shared' };
+    });
+    return own.concat(shared, base).map(function (t) {
       var w = written[t.id];
       return w
         ? Object.assign({}, t, {
@@ -4513,8 +4524,15 @@
       '<option value="__saved"' + (L.cat === '__saved' ? ' selected' : '') + '>Saved offline (' + Object.keys(lectSaved()).length + ')</option>' +
       lectCats().map(function (c) { return '<option' + (L.cat === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></div></div>' +
       '<div class="field"><label for="lectSearch">Find a topic</label><div class="ctl"><input id="lectSearch" class="textinput" type="search" value="' + esc(L.q || '') + '"></div></div></div>' +
-      (rows || '<div class="empty">No topic matches.</div>')
+      (rows || '<div class="empty">No topic matches.</div>') +
+      (window.api.contentFetch
+        ? '<div class="card content-card" style="margin-top:14px"><div class="row" style="align-items:center;justify-content:space-between">' +
+          '<span class="small"><b>Content updates</b><br><span class="muted">' + esc(sharedLabel()) + '</span></span>' +
+          '<button class="btn sm" id="refreshContent">Refresh content</button></div></div>'
+        : '')
     );
+    var rcl = document.getElementById('refreshContent');
+    if (rcl) rcl.addEventListener('click', function () { refreshContent(rcl, 'lect'); });
     document.getElementById('lectCat').addEventListener('change', function (e) { L.cat = e.target.value; render(); });
     document.getElementById('lectSearch').addEventListener('change', function (e) { L.q = e.target.value; render(); });
     Array.prototype.forEach.call(appEl.querySelectorAll('[data-lectstart]'), function (b) {
@@ -5096,7 +5114,10 @@
         };
       }).filter(function (c) { return c.items.length; });
     };
-    return { format: 1, wat: pick('wat'), srt: pick('srt') };
+    var lect = (S.config.lectOwn || []).map(function (o) {
+      return { id: String(o.id), topic: String(o.topic || '').trim().slice(0, 200), category: String(o.category || '').slice(0, 60) };
+    }).filter(function (o) { return o.topic; }).slice(0, 500);
+    return { format: 1, wat: pick('wat'), srt: pick('srt'), lect: lect };
   }
 
   function masterCardHtml() {
@@ -5153,7 +5174,7 @@
         var mark = { version: r.version, published: r.published };
         S.config.masterPublished = mark;
         window.api.setConfig({ masterPublished: mark });
-        say('Published v' + r.version + ': ' + pk.wat.length + ' WAT and ' + pk.srt.length + ' SRT sets. Phones get them with Refresh content (it can take a minute).');
+        say('Published v' + r.version + ': ' + pk.wat.length + ' WAT and ' + pk.srt.length + ' SRT sets and ' + pk.lect.length + ' lecture topics. Phones get them with Refresh content (it can take a minute).');
       });
     });
   }

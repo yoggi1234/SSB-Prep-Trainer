@@ -5,6 +5,19 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — Publish sends lecture topics too
+
+The phone showed 199 lecture topics after a publish: both the PC and the phone list the bundled
+`lecturettes.json` (199) plus the topics imported on that device (`lectOwn`), and the master pack carried
+only WAT and SRT. The pack now also carries the master's own lecture topics (`lect: [{id, topic,
+category}]`, up to 500); every copy adds them to the Lecturette list (after its own topics, before the
+bundled ones, repeats left out by the same fingerprint as an import) and keeps them offline. The Lecturette
+list has its own Refresh content card. `validPack` (main) and the phone's check accept a pack with or without
+`lect` and refuse a malformed one (tested: old pack ✓, with topics ✓, bad topic entry ✗). A phone needs this
+APK to see the topics; an older APK ignores them.
+
+---
+
 ## 2026-11-25 — Custom WAT/TAT practice; a MASTER EXE beside the user EXE
 
 **Custom practice (WAT and TAT set screens).** A "Custom practice" card: how many words (10–60) or

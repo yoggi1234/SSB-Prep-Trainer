@@ -103,7 +103,9 @@
               return x && typeof x.id === 'string' && typeof x.name === 'string' && Array.isArray(x.items) &&
                 x.items.length <= 500 && x.items.every(function (i) { return typeof i === 'string' && i.length <= 600; });
             });
-          });
+          }) && (pack.lect === undefined || (Array.isArray(pack.lect) && pack.lect.length <= 500 && pack.lect.every(function (t) {
+            return t && typeof t.id === 'string' && typeof t.topic === 'string' && t.topic.length <= 200;
+          })));
           return ok ? { ok: true, pack: pack } : { ok: false, error: 'damaged' };
         }, function (err) {
           var m = String((err && err.message) || err);

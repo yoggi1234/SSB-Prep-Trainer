@@ -1295,7 +1295,10 @@ function validPack(p) {
   if (!p || p.format !== 1 || !(p.version > 0)) return false;
   return ['wat', 'srt'].every((k) => Array.isArray(p[k]) && p[k].every((x) =>
     x && typeof x.id === 'string' && typeof x.name === 'string' && Array.isArray(x.items) &&
-    x.items.length <= 500 && x.items.every((i) => typeof i === 'string' && i.length <= 600)));
+    x.items.length <= 500 && x.items.every((i) => typeof i === 'string' && i.length <= 600))) &&
+    // Lecture topics (optional: packs from before they were sent have none).
+    (p.lect === undefined || (Array.isArray(p.lect) && p.lect.length <= 500 && p.lect.every((t) =>
+      t && typeof t.id === 'string' && typeof t.topic === 'string' && t.topic.length <= 200 && (t.category === undefined || typeof t.category === 'string'))));
 }
 
 function githubHeaders(token, raw) {
@@ -1361,7 +1364,7 @@ ipcMain.handle('content:publish', async (_e, payload) => {
     const put = await fetch(CONTENT_API + '/contents/' + CONTENT_FILE, {
       method: 'PUT', signal: AbortSignal.timeout(30000), headers: githubHeaders(token),
       body: JSON.stringify({
-        message: 'Content v' + pack.version + ': ' + pack.wat.length + ' WAT, ' + pack.srt.length + ' SRT sets',
+        message: 'Content v' + pack.version + ': ' + pack.wat.length + ' WAT, ' + pack.srt.length + ' SRT sets, ' + (pack.lect || []).length + ' lecture topics',
         content: Buffer.from(JSON.stringify(pack, null, 1), 'utf8').toString('base64'),
         branch: CONTENT_BRANCH,
         sha
