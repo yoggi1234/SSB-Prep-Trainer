@@ -5,6 +5,27 @@ merely attempted. Keep this file current when you ship a change.
 
 ---
 
+## 2026-11-25 — AI lecturette: names and quotes must come from the sources
+
+`lectVerified` used to drop only sentences with a number the sources did not hold, so a made-up name
+("Adani Defence won an award for arms exports…") went straight to the candidate. It now also drops a
+sentence when (a) a capitalised name in it (not the first word, unless a two-word name starts the
+sentence) has a part the sources never use, (b) a short form is not in the sources (UN, GDP, SSB, COVID
+and a few others are allowed), or (c) a quotation of 3+ words is not in the sources. Everyday capitalised
+words (India, Army, Prime Minister, months, greetings) and the topic's own words are always allowed. The
+prompt now tells the model the same rule. If too much is dropped (under 220 words) the app already falls
+back to the speech built from the sources only.
+
+Tested: 15 keep/drop cases right (keeps DRDO/HAL/Tejas, a quote from the sources, opinions, "Thank you";
+drops Bharat Forge, Lockheed Martin, ISRO/BrahMos, Adani Defence and an unsourced quote when the sources
+do not name them). On the real AI lecture saved by the smoke run (Defence Indigenisation), checked against
+the Wikipedia text alone: 4 of 27 sentences dropped, 323 words kept. Three of the four cite the news lines
+the real app also passes in, so the app keeps them. A wrong link between two true facts ("Modi's 2014 use of
+the word self-reliance") is not caught: this check proves names and figures exist in the sources, not what
+the sentence says about them.
+
+---
+
 ## 2026-11-25 — Smoke: lecturette checks wait for the lecture to start
 
 `lectureStart(0)` opens a topic with no speech yet, so the app first writes one (Wikipedia facts and

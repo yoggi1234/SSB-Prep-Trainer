@@ -2137,24 +2137,73 @@
     '- At least 370 words and at most 420: an answer under 350 words is a failure. Use four to six body paragraphs. Full sentences only, never bullet points.\n' +
     '- Sound like a real candidate speaking to assessors, not an academic essay.\n' +
     '- Adapt the structure to the topic; do not force history or advantages where they do not fit. Focus on India where appropriate.\n' +
-    '- Every number, date, name of a report and quotation must come from the FACTS below. Never invent one. If the FACTS have no quote, use no quote.\n\n' +
+    '- Every number, date, name of a report and quotation must come from the FACTS below. Never invent one. If the FACTS have no quote, use no quote.\n' +
+    '- Name only the people, companies, places, schemes, missions and events that appear in the FACTS. Do not add any other name from memory: ' +
+    'a sentence with a name or a figure that is not in the FACTS is deleted before the candidate sees it. Opinions and general points need no names.\n\n' +
     'Answer with JSON only, in this shape:\n' +
     '{"intro":["paragraph"],"body":[{"head":"short heading","text":"paragraph"}],"conclusion":["paragraph"],"keywords":["5 to 7 memory cues"],"line":"one strong line to remember"}\n\n' +
     'FACTS:\n{{facts}}';
 
   // A sentence with a figure the sources do not hold is taken out: a model's
   // made-up statistic must never reach a candidate who will repeat it to a board.
-  function lectVerified(text, facts) {
+  //
+  // The same goes for names: a person, company, place, scheme or event the
+  // sources never mention ("Adani Defence won an award…") is taken out with its
+  // sentence, and so is a quotation the sources do not hold. Everyday words in
+  // capitals (India, Army, Prime Minister, the months…) and the topic's own
+  // words are allowed.
+  var LECT_COMMON = ('india indian indians bharat government govt centre union state states nation national country prime minister ministry ' +
+    'chief president parliament supreme court high army navy air force forces armed defence defense security police people citizens ' +
+    'today good morning thank you respected assessors members board sir madam ladies gentlemen my our we i first second third finally ' +
+    'however moreover also this that these those the a an in on at for and but so yet it its there here when while as if because although ' +
+    'january february march april may june july august september october november december monday tuesday wednesday thursday friday saturday sunday ' +
+    'north south east west eastern western northern southern world global asia asian europe european africa african america american ' +
+    'introduction conclusion body current situation major causes advantages disadvantages impact way forward future challenges ' +
+    'one two three four five six seven eight nine ten hindi english god').split(' ');
+  var LECT_ACRONYMS = /^(UN|UNSC|US|USA|UK|EU|GDP|SSB|NDA|IT|AI|PM|CM|MP|MLA|IAS|IPS|NGO|NGOs|COVID|II|III|IV)$/;
+
+  function lectSupported(s, factsLower, topicLower) {
+    var known = function (w) {
+      var l = w.toLowerCase().replace(/['’]s$/, '');
+      return l.length < 3 || LECT_COMMON.indexOf(l) >= 0 || topicLower.indexOf(l) >= 0 || factsLower.indexOf(l) >= 0;
+    };
+    // Quotations: the words inside must be in the sources.
+    var q = s.match(/[“"‘']([^“”"‘’']{12,})[”"’']/g) || [];
+    for (var i = 0; i < q.length; i++) {
+      var inner = q[i].slice(1, -1).toLowerCase().replace(/\s+/g, ' ').trim();
+      if (inner.split(' ').length >= 3 && factsLower.indexOf(inner) < 0) return false;
+    }
+    // Names: capitalised words that are not the first word of the sentence,
+    // and short forms anywhere.
+    var words = s.replace(/[“”"‘’()\[\],;:!?]/g, ' ').split(/\s+/).filter(Boolean);
+    for (var j = 0; j < words.length; j++) {
+      var w = words[j].replace(/[.'’-]+$/, '');
+      if (/^[A-Z]{2,}s?$/.test(w)) {
+        if (!LECT_ACRONYMS.test(w) && factsLower.indexOf(w.toLowerCase()) < 0 && topicLower.indexOf(w.toLowerCase()) < 0) return false;
+        continue;
+      }
+      if (!/^[A-Z][a-z]/.test(w)) continue;
+      // The first word is capitalised anyway; it counts as a name only when the
+      // next word is capitalised too ("Adani Defence won…", "Lockheed Martin is…").
+      if (j === 0 && !(words[1] && /^[A-Z][a-z]/.test(words[1]))) continue;
+      if (!w.split(/[-‑]/).every(known)) return false;
+    }
+    return true;
+  }
+
+  function lectVerified(text, facts, topic) {
     var have = String(facts).replace(/,/g, '');
-    return String(text).replace(/([.!?])\s+(?=[A-Z"])/g, '$1\n').split('\n').filter(function (s) {
+    var factsLower = String(facts).toLowerCase().replace(/[‑–—]/g, '-');
+    var topicLower = String(topic || '').toLowerCase();
+    return String(text).replace(/([.!?])\s+(?=[A-Z"“])/g, '$1\n').split('\n').filter(function (s) {
       return (s.replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || []).every(function (n) {
         return n.length < 2 || have.indexOf(n) >= 0;
-      });
+      }) && lectSupported(s, factsLower, topicLower);
     }).join(' ');
   }
 
   // The model's answer -> the same shape lectCompose() gives, or null if it is not a lecture.
-  function lectFromAi(text, facts, sources, model) {
+  function lectFromAi(text, facts, sources, model, topic) {
     var out;
     try {
       out = JSON.parse(String(text).slice(String(text).indexOf('{'), String(text).lastIndexOf('}') + 1));
@@ -2162,14 +2211,14 @@
       return null;
     }
     var clean = function (list) {
-      return (Array.isArray(list) ? list : [list]).map(function (p) { return lectVerified(p, facts); }).filter(Boolean);
+      return (Array.isArray(list) ? list : [list]).map(function (p) { return lectVerified(p, facts, topic); }).filter(Boolean);
     };
     var bodyParts = (Array.isArray(out.body) ? out.body : []).map(function (b) {
       return typeof b === 'string' ? { head: '', text: b } : b;
     }).filter(function (b) { return b && b.text; });
     var speech = {
       intro: clean(out.intro),
-      body: bodyParts.map(function (b) { return lectVerified(b.text, facts); }),
+      body: bodyParts.map(function (b) { return lectVerified(b.text, facts, topic); }),
       conclusion: clean(out.conclusion),
       heads: bodyParts.map(function (b) { return b.head || ''; })
     };
@@ -4064,7 +4113,7 @@
           ? aiAsk(LECT_PROMPT.replace('{{topic}}', text).replace('{{facts}}', factText))
           : Promise.resolve(null);
         return write.then(function (ans) {
-        var fromAi = ans && ans.ok ? lectFromAi(ans.text, factText, sources, ans.model) : null;
+        var fromAi = ans && ans.ok ? lectFromAi(ans.text, factText, sources, ans.model, text) : null;
         if (ans && !fromAi) toast(ans.ok ? 'The AI answer was not a usable lecture, so this one is built from the sources.' : aiErrorText(ans));
         written[id] = fromAi || lectCompose(Object.assign({}, topic, { topic: text }), r[0], r[1]);
         var patch = { lectWritten: written };
