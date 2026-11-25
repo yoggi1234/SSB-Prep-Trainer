@@ -12,9 +12,14 @@ merely attempted. Keep this file current when you ship a change.
 sentence when (a) a capitalised name in it (not the first word, unless a two-word name starts the
 sentence) has a part the sources never use, (b) a short form is not in the sources (UN, GDP, SSB, COVID
 and a few others are allowed), or (c) a quotation of 3+ words is not in the sources. Everyday capitalised
-words (India, Army, Prime Minister, months, greetings) and the topic's own words are always allowed. The
-prompt now tells the model the same rule. If too much is dropped (under 220 words) the app already falls
-back to the speech built from the sources only.
+words (India, Army, Prime Minister, months, greetings) and the topic's own words are always allowed. If
+too much is dropped (under 220 words) the app already falls back to the speech built from the sources only.
+
+A prompt line telling the model the same rule was tried and taken out again: with it, the smoke run's AI
+lecture was not used (the fallback speech appeared every time); with the old prompt and the code check on,
+the AI lecture is used again. The rule is enforced in code, not asked of the model. What the check did to
+the last AI answer (words before/after, dropped sentences, or the AI error) is kept in `lectState().lastAi`
+and read by the smoke run (`lectureLastAi`).
 
 Tested: 15 keep/drop cases right (keeps DRDO/HAL/Tejas, a quote from the sources, opinions, "Thank you";
 drops Bharat Forge, Lockheed Martin, ISRO/BrahMos, Adani Defence and an unsourced quote when the sources

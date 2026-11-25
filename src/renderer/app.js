@@ -2137,9 +2137,7 @@
     '- At least 370 words and at most 420: an answer under 350 words is a failure. Use four to six body paragraphs. Full sentences only, never bullet points.\n' +
     '- Sound like a real candidate speaking to assessors, not an academic essay.\n' +
     '- Adapt the structure to the topic; do not force history or advantages where they do not fit. Focus on India where appropriate.\n' +
-    '- Every number, date, name of a report and quotation must come from the FACTS below. Never invent one. If the FACTS have no quote, use no quote.\n' +
-    '- Name only the people, companies, places, schemes, missions and events that appear in the FACTS. Do not add any other name from memory: ' +
-    'a sentence with a name or a figure that is not in the FACTS is deleted before the candidate sees it. Opinions and general points need no names.\n\n' +
+    '- Every number, date, name of a report and quotation must come from the FACTS below. Never invent one. If the FACTS have no quote, use no quote.\n\n' +
     'Answer with JSON only, in this shape:\n' +
     '{"intro":["paragraph"],"body":[{"head":"short heading","text":"paragraph"}],"conclusion":["paragraph"],"keywords":["5 to 7 memory cues"],"line":"one strong line to remember"}\n\n' +
     'FACTS:\n{{facts}}';
@@ -2238,6 +2236,15 @@
       speech.body[at] = parts.join(' ');
     }
     var words = countAll();
+    // What the check did to this answer, kept for Diagnostics and the self-test.
+    var raw = [].concat(out.intro || [], bodyParts.map(function (b) { return b.text; }), out.conclusion || []);
+    lectState().lastAi = {
+      at: new Date().toISOString(), model: model || '', wordsBefore: lectWordCount(raw), wordsAfter: words,
+      dropped: raw.join(' ').replace(/([.!?])\s+(?=[A-Z"“])/g, '$1\n').split('\n').filter(function (s) {
+        return s.trim() && !lectVerified(s, facts, topic);
+      }).slice(0, 12),
+      used: !(words < 220 || !speech.intro.length || !speech.conclusion.length)
+    };
     if (words < 220 || !speech.intro.length || !speech.conclusion.length) return null;
     return {
       speech: speech, words: words, keywords: (out.keywords || []).slice(0, 7), line: out.line || '',
@@ -4113,6 +4120,7 @@
           ? aiAsk(LECT_PROMPT.replace('{{topic}}', text).replace('{{facts}}', factText))
           : Promise.resolve(null);
         return write.then(function (ans) {
+        if (!ans || !ans.ok) lectState().lastAi = { at: new Date().toISOString(), used: false, error: ans ? (ans.error || 'failed') : 'no AI set up' };
         var fromAi = ans && ans.ok ? lectFromAi(ans.text, factText, sources, ans.model, text) : null;
         if (ans && !fromAi) toast(ans.ok ? 'The AI answer was not a usable lecture, so this one is built from the sources.' : aiErrorText(ans));
         written[id] = fromAi || lectCompose(Object.assign({}, topic, { topic: text }), r[0], r[1]);
@@ -7064,6 +7072,7 @@
         ? { phase: LECT_PHASES[R.phase].id, remaining: R.remaining, paused: R.paused, topic: R.topic.topic }
         : null;
     },
+    lectureLastAi: function () { return lectState().lastAi || null; },
     // What the screen asks the speaker to cover in this phase (the cue box).
     lectureCueText: function () {
       var el = document.getElementById('lectCue');

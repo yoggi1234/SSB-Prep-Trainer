@@ -3263,7 +3263,7 @@ async function runSmoke() {
     results.push({
       step: 'a lecturette starts on the 30-second intro',
       result: (startedLect === 'run' || startedLect === 'list') && !!ph0 && ph0.phase === 'intro' && ph0.remaining <= 30 && !!clock0,
-      got: { startedAs: startedLect, waitedMs: lectStartMs }
+      got: { startedAs: startedLect, waitedMs: lectStartMs, ai: await js('window.__smoke.lectureLastAi()', 'what the AI answer went through') }
     });
     const lectInputs = await js('window.__smoke.lectureHasInput()', 'typing fields in the lecturette');
     results.push({
